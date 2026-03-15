@@ -3,11 +3,15 @@ const fetch   = require('node-fetch');
 const admin   = require('firebase-admin');
 
 let serviceAccount;
-try {
-  serviceAccount = require('./firebase-service-account.json');
-} catch {
-  console.error('❌  Falta firebase-service-account.json en la carpeta Fudo Connect');
-  process.exit(1);
+if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+  serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+} else {
+  try {
+    serviceAccount = require('./firebase-service-account.json');
+  } catch {
+    console.error('❌  Falta firebase-service-account.json o variable FIREBASE_SERVICE_ACCOUNT');
+    process.exit(1);
+  }
 }
 
 admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
