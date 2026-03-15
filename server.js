@@ -474,13 +474,16 @@ app.get('/api/inv/stock/:restaurantId', requireAuth, async (req, res) => {
     return res.status(403).json({ error: 'Sin acceso a este local' });
   }
 
-  const [prodSnap, stockSnap] = await Promise.all([
+  const [prodSnap, stockSnap, supSnap] = await Promise.all([
     db.collection('products').orderBy('name').get(),
-    db.collection('stock').doc(restaurantId).collection('products').get()
+    db.collection('stock').doc(restaurantId).collection('products').get(),
+    db.collection('suppliers').get()
   ]);
 
   const stockMap = {};
   stockSnap.docs.forEach(d => { stockMap[d.id] = d.data(); });
+  const suppliersMap = {};
+  supSnap.docs.forEach(d => { suppliersMap[d.id] = d.data().name; });
 
   const allowedCats = userData.categories || []; // empty = all
 
@@ -497,6 +500,8 @@ app.get('/api/inv/stock/:restaurantId', requireAuth, async (req, res) => {
       name: d.data().name,
       category: d.data().category || '',
       unit: d.data().unit || 'unidad',
+      supplierIds:   d.data().supplierIds || [],
+      supplierNames: (d.data().supplierIds || []).map(id => suppliersMap[id] || id),
       quantity:    stockMap[d.id]?.quantity    ?? null,
       minQuantity: stockMap[d.id]?.minQuantity ?? null,
       lastUpdated: stockMap[d.id]?.lastUpdated ?? null,
@@ -542,6 +547,7 @@ app.post('/api/inv/inventories/:restaurantId', requireAuth, async (req, res) => 
   }
 
   // 1. Save historical record
+  const allSupplierIds = [...new Set(items.flatMap(item => item.supplierIds || []))];
   const record = {
     restaurantId,
     date,
@@ -549,6 +555,7 @@ app.post('/api/inv/inventories/:restaurantId', requireAuth, async (req, res) => 
     createdBy:      req.email,
     createdByName:  userData.name || req.email,
     itemCount:      items.length,
+    supplierIds:    allSupplierIds,
     items
   };
   const ref = await db.collection('inventoryRecords').add(record);
@@ -591,7 +598,8 @@ app.get('/api/inv/inventories/:restaurantId', requireAuth, async (req, res) => {
     createdByName: d.data().createdByName,
     createdBy:     d.data().createdBy,
     itemCount:     d.data().itemCount,
-    createdAt:     d.data().createdAt
+    createdAt:     d.data().createdAt,
+    supplierIds:   d.data().supplierIds || []
   }));
 
   res.json({ records });
@@ -607,9 +615,31 @@ app.get('/api/inv/inventories/:restaurantId/:recordId', requireAuth, async (req,
     return res.status(403).json({ error: 'Sin acceso a este local' });
   }
 
-  const doc = await db.collection('inventoryRecords').doc(recordId).get();
+  const [doc, supSnap] = await Promise.all([
+    db.collection('inventoryRecords').doc(recordId).get(),
+    db.collection('suppliers').get()
+  ]);
   if (!doc.exists) return res.status(404).json({ error: 'Registro no encontrado' });
-  res.json({ id: doc.id, ...doc.data() });
+
+  const suppliersMap = {};
+  supSnap.docs.forEach(d => { suppliersMap[d.id] = d.data().name; });
+
+  const data = doc.data();
+  const itemsWithoutSupplier = (data.items || []).filter(i => !i.supplierIds);
+  let productMap = {};
+  if (itemsWithoutSupplier.length) {
+    const prodDocs = await Promise.all(
+      [...new Set(itemsWithoutSupplier.map(i => i.productId))].map(id => db.collection('products').doc(id).get())
+    );
+    prodDocs.forEach(d => { if (d.exists) productMap[d.id] = d.data(); });
+  }
+
+  const enrichedItems = (data.items || []).map(item => {
+    const supIds = item.supplierIds?.length ? item.supplierIds : (productMap[item.productId]?.supplierIds || []);
+    return { ...item, supplierIds: supIds, supplierNames: supIds.map(id => suppliersMap[id] || id) };
+  });
+
+  res.json({ id: doc.id, ...data, items: enrichedItems });
 });
 
 // Añadir cantidad al stock existente

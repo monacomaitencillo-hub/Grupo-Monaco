@@ -263,6 +263,7 @@
 
     /* Historial inventarios */
     .hist-rest-sel { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+    .hist-filters  { background: #111; border: 1px solid #1c1c1c; border-radius: 10px; padding: 14px 16px; margin-bottom: 16px; }
     .hist-record   { background: #1a1a1a; border: 1px solid #222; border-radius: 10px; padding: 16px 20px; margin-bottom: 10px; cursor: pointer; transition: border-color .15s; display: flex; align-items: center; gap: 16px; }
     .hist-record:hover { border-color: #333; }
     .hist-date     { font-size: 15px; font-weight: 600; color: #fff; min-width: 110px; }
@@ -1332,12 +1333,15 @@ async function guardarInventario(e) {
   const items  = [];
   inputs.forEach(inp => {
     if (inp.value !== '') {
+      const stockItem = addStockItems.find(s => s.id === inp.dataset.product);
       items.push({
-        productId: inp.dataset.product,
-        name:      inp.dataset.name,
-        category:  inp.dataset.category,
-        unit:      inp.dataset.unit,
-        quantity:  Number(inp.value)
+        productId:     inp.dataset.product,
+        name:          inp.dataset.name,
+        category:      inp.dataset.category,
+        unit:          inp.dataset.unit,
+        quantity:      Number(inp.value),
+        supplierIds:   stockItem?.supplierIds   || [],
+        supplierNames: stockItem?.supplierNames || []
       });
     }
   });
@@ -1525,7 +1529,10 @@ async function delProducto(id, name) {
 }
 
 // ── Historial de inventarios ───────────────────────────────
-let histRestId = null;
+let histRestId        = null;
+let histSupplierFilter = '';
+let histAllRecords    = [];
+let histAllSuppliers  = [];
 
 async function renderInvHistorial() {
   const el = document.getElementById('inv-historial');
@@ -1539,6 +1546,10 @@ async function renderInvHistorial() {
         <button class="stock-rest-btn ${r.id === histRestId ? 'active' : ''}"
           onclick="selectHistRest('${r.id}')">${r.name}</button>`).join('')}
     </div>
+    <div class="hist-filters" id="hist-filters" style="display:none">
+      <div style="font-size:11px;color:#444;text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px">Filtrar por proveedor</div>
+      <div id="hist-supplier-pills"></div>
+    </div>
     <div id="hist-list"><div style="color:#555;font-size:13px">Cargando...</div></div>`;
 
   loadHistList();
@@ -1546,10 +1557,50 @@ async function renderInvHistorial() {
 
 function selectHistRest(id) {
   histRestId = id;
+  histSupplierFilter = '';
   document.querySelectorAll('.hist-rest-sel .stock-rest-btn').forEach(b => {
     b.classList.toggle('active', b.textContent.trim() === restaurants.find(r => r.id === id)?.name);
   });
   loadHistList();
+}
+
+function setHistSupplierFilter(supplierId) {
+  histSupplierFilter = histSupplierFilter === supplierId ? '' : supplierId;
+  renderHistSupplierPills();
+  renderHistRecords();
+}
+
+function renderHistSupplierPills() {
+  const el = document.getElementById('hist-supplier-pills');
+  if (!el) return;
+  el.innerHTML = histAllSuppliers.map(s => `
+    <button onclick="setHistSupplierFilter('${s.id}')"
+      style="margin:0 6px 6px 0;padding:5px 12px;border-radius:20px;font-size:12px;cursor:pointer;transition:all .15s;
+             background:${histSupplierFilter===s.id?'#fff':'transparent'};
+             color:${histSupplierFilter===s.id?'#000':'#555'};
+             border:1px solid ${histSupplierFilter===s.id?'#fff':'#2a2a2a'}">${s.name}</button>`).join('');
+}
+
+function renderHistRecords() {
+  const el = document.getElementById('hist-list');
+  if (!el) return;
+  const filtered = histSupplierFilter
+    ? histAllRecords.filter(r => (r.supplierIds || []).includes(histSupplierFilter))
+    : histAllRecords;
+
+  if (!filtered.length) {
+    el.innerHTML = `<div style="color:#444;font-size:13px;padding:20px 0">${histSupplierFilter ? 'Sin inventarios con este proveedor.' : 'Sin inventarios registrados aún.'}</div>`;
+    return;
+  }
+
+  el.innerHTML = filtered.map(r => `
+    <div class="hist-record" onclick="toggleHistDetail('${r.id}')">
+      <div class="hist-date">${r.date}</div>
+      <div class="hist-meta">${r.createdByName || r.createdBy}</div>
+      <div class="hist-count">${r.itemCount} producto${r.itemCount !== 1 ? 's' : ''}</div>
+      <div style="color:#333;font-size:12px">▾</div>
+    </div>
+    <div id="hd-${r.id}" style="display:none"></div>`).join('');
 }
 
 async function loadHistList() {
@@ -1557,22 +1608,20 @@ async function loadHistList() {
   if (!el) return;
   el.innerHTML = '<div style="color:#555;font-size:13px">Cargando...</div>';
 
-  const res     = await apiFetch(`/api/inv/inventories/${histRestId}`);
-  const records = (await res.json()).records || [];
+  const [recRes, supRes] = await Promise.all([
+    apiFetch(`/api/inv/inventories/${histRestId}`),
+    apiFetch('/api/inv/suppliers')
+  ]);
+  histAllRecords   = (await recRes.json()).records || [];
+  histAllSuppliers = (await supRes.json()).suppliers || [];
 
-  if (!records.length) {
-    el.innerHTML = '<div style="color:#444;font-size:13px;padding:20px 0">Sin inventarios registrados aún.</div>';
-    return;
+  const filtersEl = document.getElementById('hist-filters');
+  if (filtersEl && histAllSuppliers.length) {
+    filtersEl.style.display = 'block';
+    renderHistSupplierPills();
   }
 
-  el.innerHTML = records.map(r => `
-    <div class="hist-record" onclick="toggleHistDetail('${r.id}')">
-      <div class="hist-date">${r.date}</div>
-      <div class="hist-meta">${r.createdByName || r.createdBy}</div>
-      <div class="hist-count">${r.itemCount} productos</div>
-      <div style="color:#333;font-size:12px">▾</div>
-    </div>
-    <div id="hd-${r.id}" style="display:none"></div>`).join('');
+  renderHistRecords();
 }
 
 async function toggleHistDetail(id) {
@@ -1603,11 +1652,17 @@ async function toggleHistDetail(id) {
       ${Object.entries(byCategory).map(([cat, items]) => `
         <div style="margin-bottom:16px">
           <div style="font-size:11px;color:#444;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">${cat}</div>
-          ${items.map(item => `
-            <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #1a1a1a;font-size:13px">
-              <span style="color:#ccc">${item.name}</span>
+          ${items.map(item => {
+            const supplier = item.supplierNames?.length ? item.supplierNames.join(', ') : null;
+            return `
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #1a1a1a;font-size:13px">
+              <div>
+                <span style="color:#ccc">${item.name}</span>
+                ${supplier ? `<span style="margin-left:8px;font-size:11px;color:#3a3a3a">${supplier}</span>` : ''}
+              </div>
               <span style="color:#fff;font-weight:600">${item.quantity} <span style="color:#444;font-weight:400">${item.unit}</span></span>
-            </div>`).join('')}
+            </div>`;
+          }).join('')}
         </div>`).join('')}
     </div>`;
 }
