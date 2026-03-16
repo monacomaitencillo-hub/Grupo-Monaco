@@ -1,6 +1,18 @@
-const express = require('express');
-const fetch   = require('node-fetch');
-const admin   = require('firebase-admin');
+const express        = require('express');
+const fetch          = require('node-fetch');
+const admin          = require('firebase-admin');
+const multer         = require('multer');
+const fs             = require('fs');
+const os             = require('os');
+const path           = require('path');
+const { randomUUID } = require('crypto');
+const upload = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => cb(null, os.tmpdir()),
+    filename:    (req, file, cb) => cb(null, `pdf_${Date.now()}_${file.originalname}`)
+  }),
+  limits: { fileSize: 500 * 1024 * 1024 }
+});
 
 let serviceAccount;
 if (process.env.FIREBASE_SERVICE_ACCOUNT) {
@@ -14,8 +26,12 @@ if (process.env.FIREBASE_SERVICE_ACCOUNT) {
   }
 }
 
-admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
-const db = admin.firestore();
+admin.initializeApp({
+  credential:    admin.credential.cert(serviceAccount),
+  storageBucket: 'fudo-2cfb7.firebasestorage.app'
+});
+const db     = admin.firestore();
+const bucket = admin.storage().bucket();
 
 const app = express();
 app.use(express.json());
@@ -28,10 +44,56 @@ const FUDO_AUTH = 'https://auth.fu.do/authenticate';
 const FUDO_API  = 'https://api.fu.do/v1alpha1';
 
 // ── Caches ────────────────────────────────────────────────
-const fudoTokenCache   = {}; // { [restaurantId]: { token, cachedAt } }
-const summaryCache     = {}; // { [key]: { data, cachedAt } }
-const TOKEN_TTL        = 7 * 60 * 60 * 1000; // 7h
-const SUMMARY_TTL      = 10 * 60 * 1000;     // 10 min
+const fudoTokenCache       = {}; // { [restaurantId]: { token, cachedAt } }
+const summaryCache         = {}; // { [key]: { data, cachedAt } }
+const TOKEN_TTL            = 7 * 60 * 60 * 1000; // 7h
+const SUMMARY_TTL          = 10 * 60 * 1000;     // 10 min (in-memory)
+const SALES_CACHE_TTL_TODAY = 15 * 60 * 1000;    // 15 min for ranges including today
+
+function getTodayChile() {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Santiago',
+    year: 'numeric', month: '2-digit', day: '2-digit'
+  }).format(new Date());
+}
+
+async function getSalesCached(restaurantId, from, to) {
+  const today = getTodayChile();
+  const includesToday = !to || to >= today;
+  const docId = `${from || 'null'}_${to || 'null'}`;
+  try {
+    const ref = db.collection('sales_cache').doc(restaurantId).collection('ranges').doc(docId);
+    const snap = await ref.get();
+    if (!snap.exists) return null;
+    const { data, cachedAt } = snap.data();
+    if (!includesToday) {
+      console.log(`Firestore cache hit (past): ${restaurantId} ${from}-${to}`);
+      return data;
+    }
+    const age = Date.now() - new Date(cachedAt).getTime();
+    if (age < SALES_CACHE_TTL_TODAY) {
+      console.log(`Firestore cache hit (${Math.round(age/1000)}s old): ${restaurantId} ${from}-${to}`);
+      return data;
+    }
+    return null; // stale
+  } catch(e) {
+    console.error('getSalesCached error:', e.message);
+    return null;
+  }
+}
+
+async function setSalesCache(restaurantId, from, to, data) {
+  const docId = `${from || 'null'}_${to || 'null'}`;
+  try {
+    const ref = db.collection('sales_cache').doc(restaurantId).collection('ranges').doc(docId);
+    // Cap topProducts to avoid Firestore 1MB document limit
+    const trimmed = { ...data, topProducts: (data.topProducts || []).slice(0, 200) };
+    await ref.set({ data: trimmed, cachedAt: new Date().toISOString(), from: from || null, to: to || null });
+    console.log(`✓ Firestore cache saved: ${restaurantId} ${from}-${to} (${(data.topProducts||[]).length} products, ${(data.byDay||[]).length} days)`);
+  } catch(e) {
+    console.error('setSalesCache error:', e.message);
+  }
+}
 
 async function getFudoToken(restaurantId) {
   const cached = fudoTokenCache[restaurantId];
@@ -286,24 +348,50 @@ app.get('/api/summary/:restaurantId', requireAuth, async (req, res) => {
       return res.status(403).json({ error: 'Sin acceso a este local' });
     }
 
-    const from = req.query.from || null;
-    const to   = req.query.to   || null;
+    const from  = req.query.from  || null;
+    const to    = req.query.to    || null;
+    const force = req.query.force === 'true';
     const cacheKey = `${restaurantId}|${from}|${to}`;
 
-    const cached = summaryCache[cacheKey];
-    if (cached && (Date.now() - cached.cachedAt) < SUMMARY_TTL) {
-      console.log(`Cache hit: ${cacheKey}`);
-      return res.json(cached.data);
+    if (!force) {
+      // 1. In-memory cache (fastest, same process)
+      const memCached = summaryCache[cacheKey];
+      if (memCached && (Date.now() - memCached.cachedAt) < SUMMARY_TTL) {
+        console.log(`Memory cache hit: ${cacheKey}`);
+        return res.json(memCached.data);
+      }
+      // 2. Firestore cache (persists across restarts and Vercel cold starts)
+      const fsCached = await getSalesCached(restaurantId, from, to);
+      if (fsCached) {
+        summaryCache[cacheKey] = { data: fsCached, cachedAt: Date.now() };
+        return res.json(fsCached);
+      }
     }
 
     const auth    = await getFudoToken(restaurantId);
     const summary = await buildSummary(auth, from, to);
     summaryCache[cacheKey] = { data: summary, cachedAt: Date.now() };
+    setSalesCache(restaurantId, from, to, summary); // async, don't await
     res.json(summary);
   } catch(e) {
     console.error(e);
     res.status(500).json({ error: e.message });
   }
+});
+
+// ── Admin: cache management ───────────────────────────────
+app.delete('/api/admin/sales-cache/:restaurantId', requireAuth, async (req, res) => {
+  if (!await isAdmin(req.uid)) return res.status(403).json({ error: 'Solo administradores' });
+  const { restaurantId } = req.params;
+  try {
+    const snap = await db.collection('sales_cache').doc(restaurantId).collection('ranges').get();
+    const batch = db.batch();
+    snap.docs.forEach(d => batch.delete(d.ref));
+    await batch.commit();
+    // Also clear in-memory
+    Object.keys(summaryCache).forEach(k => { if (k.startsWith(restaurantId + '|')) delete summaryCache[k]; });
+    res.json({ ok: true, deleted: snap.size });
+  } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
 // ── Admin: restaurants ────────────────────────────────────
@@ -787,6 +875,94 @@ app.delete('/api/cierres/:id', requireAuth, async (req, res) => {
   await db.collection('ingresos').doc(req.params.id).delete();
   if (restId) delete cierresCache[restId]; // invalidar caché
   res.json({ ok: true });
+});
+
+// ── Umbrales por categoría ────────────────────────────────
+app.get('/api/settings/thresholds', requireAuth, async (req, res) => {
+  const doc = await db.collection('settings').doc('categoryThresholds').get();
+  res.json({ thresholds: doc.exists ? doc.data() : {} });
+});
+
+app.put('/api/settings/thresholds', requireAuth, async (req, res) => {
+  if (!await isAdmin(req.uid)) return res.status(403).json({ error: 'Solo administradores' });
+  await db.collection('settings').doc('categoryThresholds').set(req.body);
+  res.json({ ok: true });
+});
+
+// ── Manuales / PDFs (Firebase Storage) ───────────────────
+app.get('/api/manuals', requireAuth, async (req, res) => {
+  try {
+    const snap = await db.collection('manuals').orderBy('createdAt', 'desc').get();
+    res.json({ manuals: snap.docs.map(d => ({ id: d.id, ...d.data() })) });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/manuals/:id/file', requireAuth, async (req, res) => {
+  try {
+    const doc = await db.collection('manuals').doc(req.params.id).get();
+    if (!doc.exists) return res.status(404).json({ error: 'No encontrado' });
+    const { fileName, title, size } = doc.data();
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(title)}.pdf"`);
+    if (size) res.setHeader('Content-Length', size);
+    bucket.file(fileName).createReadStream()
+      .on('error', e => res.status(500).end())
+      .pipe(res);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/manuals', requireAuth, (req, res, next) => {
+  upload.single('pdf')(req, res, err => {
+    if (err) return res.status(400).json({ error: err.message });
+    next();
+  });
+}, async (req, res) => {
+  try {
+    if (!await isAdmin(req.uid)) return res.status(403).json({ error: 'Solo administradores' });
+    if (!req.file) return res.status(400).json({ error: 'No se recibió archivo' });
+    const { title, restaurantId } = req.body;
+    if (!title) return res.status(400).json({ error: 'Título requerido' });
+
+    const fileName = `manuals/${Date.now()}_${req.file.originalname.replace(/[^a-zA-Z0-9._-]/g,'_')}`;
+    await new Promise((resolve, reject) => {
+      const ws = bucket.file(fileName).createWriteStream({ contentType: 'application/pdf', resumable: true });
+      fs.createReadStream(req.file.path).on('error', reject).pipe(ws).on('error', reject).on('finish', resolve);
+    });
+    fs.unlink(req.file.path, () => {});
+
+    const ref = await db.collection('manuals').add({
+      title, fileName, size: req.file.size,
+      restaurantId: restaurantId || null,
+      createdAt: new Date().toISOString(),
+      createdBy: req.uid
+    });
+    res.json({ id: ref.id });
+  } catch(e) {
+    if (req.file?.path) fs.unlink(req.file.path, () => {});
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.put('/api/manuals/:id', requireAuth, async (req, res) => {
+  try {
+    if (!await isAdmin(req.uid)) return res.status(403).json({ error: 'Solo administradores' });
+    const { title, restaurantId } = req.body;
+    if (!title) return res.status(400).json({ error: 'Título requerido' });
+    await db.collection('manuals').doc(req.params.id).update({ title, restaurantId: restaurantId || null });
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/api/manuals/:id', requireAuth, async (req, res) => {
+  try {
+    if (!await isAdmin(req.uid)) return res.status(403).json({ error: 'Solo administradores' });
+    const doc = await db.collection('manuals').doc(req.params.id).get();
+    if (!doc.exists) return res.status(404).json({ error: 'No encontrado' });
+    const { fileName } = doc.data();
+    try { await bucket.file(fileName).delete(); } catch {}
+    await db.collection('manuals').doc(req.params.id).delete();
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
 module.exports = app;
