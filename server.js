@@ -57,42 +57,197 @@ function getTodayChile() {
   }).format(new Date());
 }
 
-async function getSalesCached(restaurantId, from, to) {
-  const today = getTodayChile();
-  const includesToday = !to || to >= today;
-  const docId = `${from || 'null'}_${to || 'null'}`;
+// Per-day cache helpers
+// sales_cache/{restaurantId}/days/{YYYY-MM-DD}
+
+function getDaysInRange(from, to) {
+  const days = [];
+  const d   = new Date(from + 'T12:00:00Z');
+  const end = new Date(to   + 'T12:00:00Z');
+  while (d <= end) {
+    days.push(d.toISOString().slice(0, 10));
+    d.setDate(d.getDate() + 1);
+  }
+  return days;
+}
+
+async function getDaysCached(restaurantId, days, today) {
+  if (!days.length) return {};
+  const refs = days.map(d =>
+    db.collection('sales_cache').doc(restaurantId).collection('days').doc(d)
+  );
+  const snaps = await db.getAll(...refs);
+  const result = {};
+  snaps.forEach((snap, i) => {
+    if (!snap.exists) return;
+    result[days[i]] = snap.data(); // días pasados Y hoy: siempre devolver si existe
+  });
+  return result;
+}
+
+// Devuelve true si hoy está en cache pero viejo (necesita refresh en background)
+function todayIsStale(dayDocs, today) {
+  if (!dayDocs[today]) return false;
+  return (Date.now() - new Date(dayDocs[today].cachedAt).getTime()) > SALES_CACHE_TTL_TODAY;
+}
+
+async function fetchTodayFromFudo(auth, today) {
+  // Obtener lookups necesarios para nombres
+  const [pmData, catData, prodData] = await Promise.all([
+    fetchFudoPage(auth, `${FUDO_API}/payment-methods`),
+    fetchAll(auth, 'product-categories'),
+    fetchAll(auth, 'products')
+  ]);
+
+  const paymentMethods = {};
+  (pmData.data || []).forEach(pm => { paymentMethods[pm.id] = pm.attributes.name; });
+
+  const categories = {};
+  catData.forEach(c => { categories[c.id] = c.attributes.name; });
+
+  const products = {};
+  prodData.forEach(p => {
+    const catId = p.relationships?.productCategory?.data?.id || null;
+    products[p.id] = {
+      name:         p.attributes.name,
+      categoryName: catId ? (categories[catId] || 'Sin categoría') : 'Sin categoría'
+    };
+  });
+
+  // Traer solo ventas de hoy usando filtro de fecha
+  const dateFilter = `filter%5BcreatedAt%5D%5Bfrom%5D=${today}T00%3A00%3A00&filter%5BcreatedAt%5D%5Bto%5D=${today}T23%3A59%3A59`;
+  let allSales = [], allIncluded = [], page = 1, keepGoing = true;
+  while (keepGoing) {
+    const salesData = await fetchFudoPage(auth,
+      `${FUDO_API}/sales?${dateFilter}&page%5Bsize%5D=250&page%5Bnumber%5D=${page}&include=payments,tips,items`
+    );
+    const batch = salesData.data || [];
+    allSales    = allSales.concat(batch);
+    allIncluded = allIncluded.concat(salesData.included || []);
+    keepGoing   = batch.length === 250;
+    page++;
+  }
+  console.log(`Fudo hoy (${today}): ${allSales.length} ventas en ${page - 1} página(s)`);
+
+  const paymentLookup = {}, tipLookup = {}, itemLookup = {};
+  allIncluded.forEach(inc => {
+    if (inc.type === 'Payment') {
+      paymentLookup[inc.id] = { amount: inc.attributes.amount || 0, canceled: inc.attributes.canceled, methodId: inc.relationships?.paymentMethod?.data?.id };
+    } else if (inc.type === 'Tip') {
+      tipLookup[inc.id] = inc.attributes.amount || 0;
+    } else if (inc.type === 'Item') {
+      const prod = products[inc.relationships?.product?.data?.id];
+      itemLookup[inc.id] = {
+        name: prod?.name || inc.attributes.name || 'Producto',
+        categoryName: prod?.categoryName || 'Sin categoría',
+        quantity: inc.attributes.quantity || 1,
+        price:    inc.attributes.price    || 0,
+        canceled: inc.attributes.canceled || false
+      };
+    }
+  });
+
+  const dayData = { total: 0, tips: 0, ordersCount: 0, byPayMethod: {}, byType: {}, products: {} };
+  allSales.forEach(sale => {
+    if (sale.attributes.saleState !== 'CLOSED') return;
+    const amount = sale.attributes.total || 0;
+    const tips   = (sale.relationships?.tips?.data || []).reduce((s, r) => s + (tipLookup[r.id] || 0), 0);
+    dayData.total       += amount;
+    dayData.tips        += tips;
+    dayData.ordersCount += 1;
+    const stype = sale.attributes.saleType || 'OTHER';
+    if (!dayData.byType[stype]) dayData.byType[stype] = { count: 0, revenue: 0 };
+    dayData.byType[stype].count++;
+    dayData.byType[stype].revenue += amount;
+    (sale.relationships?.payments?.data || []).forEach(r => {
+      const pay = paymentLookup[r.id];
+      if (pay && !pay.canceled) {
+        const m = paymentMethods[pay.methodId] || 'Otro';
+        dayData.byPayMethod[m] = (dayData.byPayMethod[m] || 0) + pay.amount;
+      }
+    });
+    (sale.relationships?.items?.data || []).forEach(r => {
+      const item = itemLookup[r.id];
+      if (!item || item.canceled) return;
+      if (!dayData.products[item.name]) dayData.products[item.name] = { qty: 0, revenue: 0, category: item.categoryName };
+      dayData.products[item.name].qty     += item.quantity;
+      dayData.products[item.name].revenue += item.price * item.quantity;
+    });
+  });
+
+  // Convertir products a array
+  dayData.products = Object.entries(dayData.products)
+    .map(([name, v]) => ({ name, qty: v.qty, revenue: v.revenue, category: v.category }));
+
+  return dayData;
+}
+
+async function refreshTodayInBackground(restaurantId, today) {
   try {
-    const ref = db.collection('sales_cache').doc(restaurantId).collection('ranges').doc(docId);
-    const snap = await ref.get();
-    if (!snap.exists) return null;
-    const { data, cachedAt } = snap.data();
-    if (!includesToday) {
-      console.log(`Firestore cache hit (past): ${restaurantId} ${from}-${to}`);
-      return data;
-    }
-    const age = Date.now() - new Date(cachedAt).getTime();
-    if (age < SALES_CACHE_TTL_TODAY) {
-      console.log(`Firestore cache hit (${Math.round(age/1000)}s old): ${restaurantId} ${from}-${to}`);
-      return data;
-    }
-    return null; // stale
+    console.log(`Background refresh hoy (${today}) para ${restaurantId}...`);
+    const auth    = await getFudoToken(restaurantId);
+    const dayData = await fetchTodayFromFudo(auth, today);
+    await storeDaysCache(restaurantId, { [today]: dayData });
+    Object.keys(summaryCache).forEach(k => { if (k.startsWith(restaurantId + '|')) delete summaryCache[k]; });
+    console.log(`✓ Refresh completado para ${today} (${dayData.ordersCount} ventas)`);
   } catch(e) {
-    console.error('getSalesCached error:', e.message);
-    return null;
+    console.error('refreshTodayInBackground error:', e.message);
   }
 }
 
-async function setSalesCache(restaurantId, from, to, data) {
-  const docId = `${from || 'null'}_${to || 'null'}`;
+async function storeDaysCache(restaurantId, perDay) {
+  const entries = Object.entries(perDay);
+  if (!entries.length) return;
+  const batch    = db.batch();
+  const cachedAt = new Date().toISOString();
+  entries.forEach(([fecha, dayData]) => {
+    const ref = db.collection('sales_cache').doc(restaurantId).collection('days').doc(fecha);
+    batch.set(ref, { ...dayData, cachedAt });
+  });
   try {
-    const ref = db.collection('sales_cache').doc(restaurantId).collection('ranges').doc(docId);
-    // Cap topProducts to avoid Firestore 1MB document limit
-    const trimmed = { ...data, topProducts: (data.topProducts || []).slice(0, 200) };
-    await ref.set({ data: trimmed, cachedAt: new Date().toISOString(), from: from || null, to: to || null });
-    console.log(`✓ Firestore cache saved: ${restaurantId} ${from}-${to} (${(data.topProducts||[]).length} products, ${(data.byDay||[]).length} days)`);
+    await batch.commit();
+    console.log(`✓ Guardados ${entries.length} día(s) en Firestore cache (${restaurantId})`);
   } catch(e) {
-    console.error('setSalesCache error:', e.message);
+    console.error('storeDaysCache error:', e.message);
   }
+}
+
+function assembleFromDayCache(dayDocs, days) {
+  let totalRevenue = 0, totalTips = 0, totalOrders = 0;
+  const byDayArr = [], byPayMethod = {}, byType = {}, byProductMap = {};
+  for (const fecha of days) {
+    const d = dayDocs[fecha];
+    if (!d) continue;
+    totalRevenue += d.total      || 0;
+    totalTips    += d.tips       || 0;
+    totalOrders  += d.ordersCount|| 0;
+    byDayArr.push({ date: fecha, count: d.ordersCount || 0, revenue: d.total || 0, tips: d.tips || 0 });
+    for (const [k, v] of Object.entries(d.byPayMethod || {})) {
+      byPayMethod[k] = (byPayMethod[k] || 0) + v;
+    }
+    for (const [k, v] of Object.entries(d.byType || {})) {
+      if (!byType[k]) byType[k] = { count: 0, revenue: 0 };
+      byType[k].count   += v.count   || 0;
+      byType[k].revenue += v.revenue || 0;
+    }
+    for (const p of (d.products || [])) {
+      if (!byProductMap[p.name]) byProductMap[p.name] = { qty: 0, revenue: 0, category: p.category };
+      byProductMap[p.name].qty     += p.qty     || 0;
+      byProductMap[p.name].revenue += p.revenue || 0;
+    }
+  }
+  const topProducts = Object.entries(byProductMap)
+    .map(([name, v]) => ({ name, qty: v.qty, revenue: v.revenue, category: v.category }))
+    .sort((a, b) => b.qty - a.qty);
+  const presentDays = days.filter(d => dayDocs[d]);
+  return {
+    totalRevenue,
+    totalFromPayments: Object.values(byPayMethod).reduce((s, v) => s + v, 0),
+    totalTips, totalOrders,
+    avgTicket: totalOrders > 0 ? totalRevenue / totalOrders : 0,
+    dateRange: { from: presentDays[0] || null, to: presentDays[presentDays.length - 1] || null },
+    byDay: byDayArr, byPayMethod, byType, topProducts
+  };
 }
 
 async function getFudoToken(restaurantId) {
@@ -131,7 +286,13 @@ async function requireAuth(req, res, next) {
 
 async function isAdmin(uid) {
   const doc = await db.collection('users').doc(uid).get();
-  return doc.exists && doc.data().role === 'admin';
+  return doc.exists && doc.data().role === 'superadmin';
+}
+
+async function isEditor(uid) {
+  const doc = await db.collection('users').doc(uid).get();
+  const role = doc.exists && doc.data().role;
+  return role === 'admin' || role === 'superadmin';
 }
 
 // ── Fudo helpers ──────────────────────────────────────────
@@ -234,66 +395,65 @@ async function buildSummary(auth, dateFrom, dateTo) {
     }).format(new Date(isoStr));
   }
 
-  const byDay = {}, byPayMethod = {}, byType = {}, byProduct = {};
-  let totalRevenue = 0, totalTips = 0, totalOrders = 0;
+  // ── Paso 1: acumular TODOS los días de Fudo en perDay (sin filtro de fecha) ──
+  const perDay = {};
 
   allSales.forEach(sale => {
     const attrs = sale.attributes;
     if (!attrs.createdAt || attrs.saleState !== 'CLOSED') return;
-    const day = toChileDate(attrs.createdAt);
-    if (dateFrom && day < dateFrom) return;
-    if (dateTo   && day > dateTo)   return;
-
+    const day    = toChileDate(attrs.createdAt);
     const amount = attrs.total || 0;
     const tips   = (sale.relationships?.tips?.data || [])
       .reduce((s, r) => s + (tipLookup[r.id] || 0), 0);
 
-    totalRevenue += amount;
-    totalTips    += tips;
-    totalOrders++;
-
-    if (!byDay[day]) byDay[day] = { count: 0, revenue: 0, tips: 0 };
-    byDay[day].count++;
-    byDay[day].revenue += amount;
-    byDay[day].tips    += tips;
+    if (!perDay[day]) perDay[day] = { total: 0, tips: 0, ordersCount: 0, byPayMethod: {}, byType: {}, products: {} };
+    perDay[day].total       += amount;
+    perDay[day].tips        += tips;
+    perDay[day].ordersCount += 1;
 
     const stype = attrs.saleType || 'OTHER';
-    if (!byType[stype]) byType[stype] = { count: 0, revenue: 0 };
-    byType[stype].count++;
-    byType[stype].revenue += amount;
+    if (!perDay[day].byType[stype]) perDay[day].byType[stype] = { count: 0, revenue: 0 };
+    perDay[day].byType[stype].count++;
+    perDay[day].byType[stype].revenue += amount;
 
     (sale.relationships?.payments?.data || []).forEach(payRef => {
       const pay = paymentLookup[payRef.id];
       if (pay && !pay.canceled) {
-        const methodName = paymentMethods[pay.methodId] || 'Otro';
-        if (!byPayMethod[methodName]) byPayMethod[methodName] = 0;
-        byPayMethod[methodName] += pay.amount;
+        const m = paymentMethods[pay.methodId] || 'Otro';
+        if (!perDay[day].byPayMethod[m]) perDay[day].byPayMethod[m] = 0;
+        perDay[day].byPayMethod[m] += pay.amount;
       }
     });
 
     (sale.relationships?.items?.data || []).forEach(itemRef => {
       const item = itemLookup[itemRef.id];
       if (!item || item.canceled) return;
-      const key = item.name;
-      if (!byProduct[key]) byProduct[key] = { qty: 0, revenue: 0, categoryName: item.categoryName };
-      byProduct[key].qty     += item.quantity;
-      byProduct[key].revenue += item.price * item.quantity;
+      if (!perDay[day].products[item.name]) perDay[day].products[item.name] = { qty: 0, revenue: 0, category: item.categoryName };
+      perDay[day].products[item.name].qty     += item.quantity;
+      perDay[day].products[item.name].revenue += item.price * item.quantity;
     });
   });
 
-  const days = Object.keys(byDay).sort();
-  const totalFromPayments = Object.values(byPayMethod).reduce((s, v) => s + v, 0);
-  const topProducts = Object.entries(byProduct)
-    .map(([name, v]) => ({ name, qty: v.qty, revenue: v.revenue, category: v.categoryName }))
-    .sort((a, b) => b.qty - a.qty);
+  // ── Paso 2: convertir products a array ──
+  const perDayFinal = {};
+  for (const [fecha, d] of Object.entries(perDay)) {
+    perDayFinal[fecha] = {
+      total: d.total, tips: d.tips, ordersCount: d.ordersCount,
+      byPayMethod: d.byPayMethod, byType: d.byType,
+      products: Object.entries(d.products)
+        .map(([name, v]) => ({ name, qty: v.qty, revenue: v.revenue, category: v.category }))
+    };
+  }
 
-  return {
-    totalRevenue, totalFromPayments, totalTips, totalOrders,
-    avgTicket: totalOrders > 0 ? totalRevenue / totalOrders : 0,
-    dateRange: { from: days[0] || null, to: days[days.length - 1] || null },
-    byDay:    days.map(d => ({ date: d, count: byDay[d].count, revenue: byDay[d].revenue, tips: byDay[d].tips })),
-    byPayMethod, byType, topProducts
-  };
+  // ── Paso 3: armar resumen del rango pedido desde perDayFinal ──
+  const rangeDays = Object.keys(perDayFinal)
+    .filter(d => (!dateFrom || d >= dateFrom) && (!dateTo || d <= dateTo))
+    .sort();
+
+  const summary = assembleFromDayCache(perDayFinal, rangeDays);
+  console.log(`Fudo → ${Object.keys(perDayFinal).length} días totales, mostrando ${rangeDays.length} días (${dateFrom}-${dateTo})`);
+
+  return { ...summary, perDay: perDayFinal };
 }
 
 // ── API: restaurants for current user ────────────────────
@@ -339,6 +499,7 @@ app.get('/api/restaurants', requireAuth, async (req, res) => {
 
 // ── API: summary for one restaurant ──────────────────────
 app.get('/api/summary/:restaurantId', requireAuth, async (req, res) => {
+  res.set('Cache-Control', 'no-store');
   const { restaurantId } = req.params;
   try {
     const userDoc = await db.collection('users').doc(req.uid).get();
@@ -348,31 +509,73 @@ app.get('/api/summary/:restaurantId', requireAuth, async (req, res) => {
       return res.status(403).json({ error: 'Sin acceso a este local' });
     }
 
-    const from  = req.query.from  || null;
-    const to    = req.query.to    || null;
-    const force = req.query.force === 'true';
+    const today    = getTodayChile();
+    const from     = req.query.from  || null;
+    const to       = req.query.to    || null;
+    const force    = req.query.force === 'true';
     const cacheKey = `${restaurantId}|${from}|${to}`;
 
     if (!force) {
-      // 1. In-memory cache (fastest, same process)
+      // 1. In-memory (mismo proceso, más rápido)
       const memCached = summaryCache[cacheKey];
       if (memCached && (Date.now() - memCached.cachedAt) < SUMMARY_TTL) {
         console.log(`Memory cache hit: ${cacheKey}`);
         return res.json(memCached.data);
       }
-      // 2. Firestore cache (persists across restarts and Vercel cold starts)
-      const fsCached = await getSalesCached(restaurantId, from, to);
-      if (fsCached) {
-        summaryCache[cacheKey] = { data: fsCached, cachedAt: Date.now() };
-        return res.json(fsCached);
+
+      // 2. Sin fechas ("Todo") → leer todos los días de Firestore
+      if (!from && !to) {
+        const snap = await db.collection('sales_cache').doc(restaurantId).collection('days').get();
+        if (!snap.empty) {
+          const dayDocs = {};
+          snap.docs.forEach(d => { dayDocs[d.id] = d.data(); });
+          const days = Object.keys(dayDocs).sort();
+          console.log(`Firestore all-time hit: ${days.length} días para ${restaurantId}`);
+          const assembled = assembleFromDayCache(dayDocs, days);
+          summaryCache[cacheKey] = { data: assembled, cachedAt: Date.now() };
+          if (todayIsStale(dayDocs, today)) refreshTodayInBackground(restaurantId, today);
+          return res.json(assembled);
+        }
+        // Sin cache → caer a Fudo
+      }
+      // 2. Firestore per-day cache
+      if (from && to) {
+        const days        = getDaysInRange(from, to);
+        const dayDocs     = await getDaysCached(restaurantId, days, today);
+        const missingDays = days.filter(d => !dayDocs[d]);
+
+        if (missingDays.length === 0) {
+          // Todos los días están en Firestore → responder al instante
+          console.log(`Firestore cache hit: ${restaurantId} ${from}-${to} (${days.length} días)`);
+          const assembled = assembleFromDayCache(dayDocs, days);
+          summaryCache[cacheKey] = { data: assembled, cachedAt: Date.now() };
+          // Si hoy está viejo, refrescar en background sin bloquear la respuesta
+          if (todayIsStale(dayDocs, today)) refreshTodayInBackground(restaurantId, today);
+          return res.json(assembled);
+        }
+
+        // Solo falta hoy → devolver pasado al instante + refrescar hoy en background
+        const missingPastDays = missingDays.filter(d => d < today);
+        if (missingPastDays.length === 0 && Object.keys(dayDocs).length > 0) {
+          console.log(`Pasado en Firestore (${Object.keys(dayDocs).length} días), solo falta hoy → background refresh`);
+          const assembled = assembleFromDayCache(dayDocs, days);
+          summaryCache[cacheKey] = { data: assembled, cachedAt: Date.now() };
+          refreshTodayInBackground(restaurantId, today); // no bloqueante
+          return res.json(assembled);
+        }
+
+        // Faltan días pasados → primera vez o cache borrado → fetch completo desde Fudo
+        console.log(`Faltan días pasados: ${missingPastDays.join(', ')} → fetch completo desde Fudo`);
       }
     }
 
+    // Fetch completo desde Fudo (guarda TODOS los días históricos)
     const auth    = await getFudoToken(restaurantId);
     const summary = await buildSummary(auth, from, to);
-    summaryCache[cacheKey] = { data: summary, cachedAt: Date.now() };
-    setSalesCache(restaurantId, from, to, summary); // async, don't await
-    res.json(summary);
+    const { perDay, ...clientSummary } = summary;
+    summaryCache[cacheKey] = { data: clientSummary, cachedAt: Date.now() };
+    if (perDay && Object.keys(perDay).length) storeDaysCache(restaurantId, perDay);
+    res.json(clientSummary);
   } catch(e) {
     console.error(e);
     res.status(500).json({ error: e.message });
@@ -384,7 +587,7 @@ app.delete('/api/admin/sales-cache/:restaurantId', requireAuth, async (req, res)
   if (!await isAdmin(req.uid)) return res.status(403).json({ error: 'Solo administradores' });
   const { restaurantId } = req.params;
   try {
-    const snap = await db.collection('sales_cache').doc(restaurantId).collection('ranges').get();
+    const snap = await db.collection('sales_cache').doc(restaurantId).collection('days').get();
     const batch = db.batch();
     snap.docs.forEach(d => batch.delete(d.ref));
     await batch.commit();
@@ -490,7 +693,7 @@ app.get('/api/inv/suppliers', requireAuth, async (req, res) => {
 });
 
 app.post('/api/inv/suppliers', requireAuth, async (req, res) => {
-  if (!await isAdmin(req.uid)) return res.status(403).json({ error: 'Solo administradores' });
+  if (!await isEditor(req.uid)) return res.status(403).json({ error: 'Sin permisos' });
   const { name, phone, email, notes } = req.body;
   if (!name) return res.status(400).json({ error: 'Nombre requerido' });
   const ref = await db.collection('suppliers').add({ name, phone: phone||'', email: email||'', notes: notes||'' });
@@ -498,14 +701,14 @@ app.post('/api/inv/suppliers', requireAuth, async (req, res) => {
 });
 
 app.put('/api/inv/suppliers/:id', requireAuth, async (req, res) => {
-  if (!await isAdmin(req.uid)) return res.status(403).json({ error: 'Solo administradores' });
+  if (!await isEditor(req.uid)) return res.status(403).json({ error: 'Sin permisos' });
   const { name, phone, email, notes } = req.body;
   await db.collection('suppliers').doc(req.params.id).update({ name, phone: phone||'', email: email||'', notes: notes||'' });
   res.json({ ok: true });
 });
 
 app.delete('/api/inv/suppliers/:id', requireAuth, async (req, res) => {
-  if (!await isAdmin(req.uid)) return res.status(403).json({ error: 'Solo administradores' });
+  if (!await isEditor(req.uid)) return res.status(403).json({ error: 'Sin permisos' });
   await db.collection('suppliers').doc(req.params.id).delete();
   res.json({ ok: true });
 });
@@ -533,7 +736,7 @@ app.get('/api/inv/products', requireAuth, async (req, res) => {
 });
 
 app.post('/api/inv/products', requireAuth, async (req, res) => {
-  if (!await isAdmin(req.uid)) return res.status(403).json({ error: 'Solo administradores' });
+  if (!await isEditor(req.uid)) return res.status(403).json({ error: 'Sin permisos' });
   const { name, category, unit, supplierIds, restaurantIds, restaurantSections } = req.body;
   if (!name) return res.status(400).json({ error: 'Nombre requerido' });
   const ref = await db.collection('products').add({
@@ -545,7 +748,7 @@ app.post('/api/inv/products', requireAuth, async (req, res) => {
 });
 
 app.put('/api/inv/products/:id', requireAuth, async (req, res) => {
-  if (!await isAdmin(req.uid)) return res.status(403).json({ error: 'Solo administradores' });
+  if (!await isEditor(req.uid)) return res.status(403).json({ error: 'Sin permisos' });
   const { name, category, unit, supplierIds, restaurantIds, restaurantSections } = req.body;
   await db.collection('products').doc(req.params.id).update({
     name, category: category||'', unit: unit||'unidad',
@@ -556,7 +759,7 @@ app.put('/api/inv/products/:id', requireAuth, async (req, res) => {
 });
 
 app.delete('/api/inv/products/:id', requireAuth, async (req, res) => {
-  if (!await isAdmin(req.uid)) return res.status(403).json({ error: 'Solo administradores' });
+  if (!await isEditor(req.uid)) return res.status(403).json({ error: 'Sin permisos' });
   await db.collection('products').doc(req.params.id).delete();
   res.json({ ok: true });
 });
@@ -869,7 +1072,7 @@ app.put('/api/cierres/:id', requireAuth, async (req, res) => {
 });
 
 app.delete('/api/cierres/:id', requireAuth, async (req, res) => {
-  if (!await isAdmin(req.uid)) return res.status(403).json({ error: 'Solo administradores' });
+  if (!await isEditor(req.uid)) return res.status(403).json({ error: 'Sin permisos' });
   const doc = await db.collection('ingresos').doc(req.params.id).get();
   const restId = doc.exists ? doc.data().restaurantId : null;
   await db.collection('ingresos').doc(req.params.id).delete();
@@ -884,7 +1087,7 @@ app.get('/api/settings/thresholds', requireAuth, async (req, res) => {
 });
 
 app.put('/api/settings/thresholds', requireAuth, async (req, res) => {
-  if (!await isAdmin(req.uid)) return res.status(403).json({ error: 'Solo administradores' });
+  if (!await isEditor(req.uid)) return res.status(403).json({ error: 'Sin permisos' });
   await db.collection('settings').doc('categoryThresholds').set(req.body);
   res.json({ ok: true });
 });
@@ -918,7 +1121,7 @@ app.post('/api/manuals', requireAuth, (req, res, next) => {
   });
 }, async (req, res) => {
   try {
-    if (!await isAdmin(req.uid)) return res.status(403).json({ error: 'Solo administradores' });
+    if (!await isEditor(req.uid)) return res.status(403).json({ error: 'Sin permisos' });
     if (!req.file) return res.status(400).json({ error: 'No se recibió archivo' });
     const { title, restaurantId } = req.body;
     if (!title) return res.status(400).json({ error: 'Título requerido' });
@@ -945,7 +1148,7 @@ app.post('/api/manuals', requireAuth, (req, res, next) => {
 
 app.put('/api/manuals/:id', requireAuth, async (req, res) => {
   try {
-    if (!await isAdmin(req.uid)) return res.status(403).json({ error: 'Solo administradores' });
+    if (!await isEditor(req.uid)) return res.status(403).json({ error: 'Sin permisos' });
     const { title, restaurantId } = req.body;
     if (!title) return res.status(400).json({ error: 'Título requerido' });
     await db.collection('manuals').doc(req.params.id).update({ title, restaurantId: restaurantId || null });
@@ -955,7 +1158,7 @@ app.put('/api/manuals/:id', requireAuth, async (req, res) => {
 
 app.delete('/api/manuals/:id', requireAuth, async (req, res) => {
   try {
-    if (!await isAdmin(req.uid)) return res.status(403).json({ error: 'Solo administradores' });
+    if (!await isEditor(req.uid)) return res.status(403).json({ error: 'Sin permisos' });
     const doc = await db.collection('manuals').doc(req.params.id).get();
     if (!doc.exists) return res.status(404).json({ error: 'No encontrado' });
     const { fileName } = doc.data();

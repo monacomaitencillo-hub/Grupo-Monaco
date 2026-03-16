@@ -174,13 +174,18 @@
     .main { padding: 24px 28px; max-width: 1100px; margin: 0 auto; }
 
     /* FILTERS */
-    .filters { display: flex; align-items: center; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+    .filters { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
     .filter-btn { padding: 6px 14px; border-radius: 20px; border: 1px solid #2a2a2a; background: transparent; color: #666; font-size: 13px; cursor: pointer; transition: all .15s; white-space: nowrap; }
     .filter-btn.active           { background: #ff5023; border-color: #ff5023; color: #fff; }
     .filter-btn:hover:not(.active) { border-color: #444; color: #ccc; }
     .date-sep { flex: 1; min-width: 8px; }
     .filters input[type="date"] { padding: 6px 10px; background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 8px; color: #aaa; font-size: 13px; outline: none; cursor: pointer; }
     .filters input[type="date"]:focus { border-color: #ff5023; }
+    .month-filters { display: flex; align-items: center; gap: 6px; margin-bottom: 20px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
+    .month-filters::-webkit-scrollbar { display: none; }
+    .month-btn { padding: 4px 12px; border-radius: 20px; border: 1px solid #222; background: transparent; color: #555; font-size: 12px; cursor: pointer; transition: all .15s; white-space: nowrap; flex-shrink: 0; }
+    .month-btn.active           { background: #ff5023; border-color: #ff5023; color: #fff; }
+    .month-btn:hover:not(.active) { border-color: #333; color: #aaa; }
 
     /* STATS */
     .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 20px; }
@@ -304,9 +309,10 @@
     .prod-filter-clear { background: none; border: 1px solid #333; border-radius: 8px; color: #555; font-size: 12px; padding: 6px 10px; cursor: pointer; }
     .prod-filter-clear:hover { border-color: #555; color: #aaa; }
 
-    .role-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
-    .role-admin { background: #2a1800; color: #ff5023; }
-    .role-user  { background: #1a1a2a; color: #666; }
+    .role-badge      { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+    .role-superadmin { background: #1a0a2a; color: #c084fc; }
+    .role-admin      { background: #2a1800; color: #ff5023; }
+    .role-user       { background: #1a1a2a; color: #666; }
 
     .inline-error { color: #f87171; font-size: 12px; margin-top: 6px; }
     .inline-ok    { color: #4ade80; font-size: 12px; margin-top: 6px; }
@@ -466,15 +472,23 @@
 
   <div class="main">
     <div class="filters">
-      <button class="filter-btn active" data-range="today" onclick="setRange(this)">Hoy</button>
-      <button class="filter-btn" data-range="7d"          onclick="setRange(this)">7 días</button>
-      <button class="filter-btn" data-range="30d"         onclick="setRange(this)">30 días</button>
-      <button class="filter-btn" data-range="mtd"         onclick="setRange(this)">Este mes</button>
-      <button class="filter-btn" data-range="all"         onclick="setRange(this)">Todo</button>
+      <button class="filter-btn" data-range="today" onclick="setRange(this)">Hoy</button>
+      <button class="filter-btn" data-range="7d"    onclick="setRange(this)">7 días</button>
+      <button class="filter-btn" data-range="all"   onclick="setRange(this)">Todo</button>
       <div class="date-sep"></div>
       <input type="date" id="inp-from" onchange="setRange(null)">
       <span style="color:#444">—</span>
       <input type="date" id="inp-to" onchange="setRange(null)">
+    </div>
+    <!-- Año -->
+    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:6px" id="ventas-year-row">
+      <span style="font-size:11px;color:#444;text-transform:uppercase;letter-spacing:.4px;min-width:40px">Año</span>
+    </div>
+    <!-- Mes -->
+    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:20px" id="ventas-month-row">
+      <span style="font-size:11px;color:#444;text-transform:uppercase;letter-spacing:.4px;min-width:40px">Mes</span>
+      ${[['Ene',1],['Feb',2],['Mar',3],['Abr',4],['May',5],['Jun',6],['Jul',7],['Ago',8],['Sep',9],['Oct',10],['Nov',11],['Dic',12]].map(([l,n]) =>
+        `<button class="month-btn" data-month="${n}" onclick="toggleVentasMonth(${n},this)">${l}</button>`).join('')}
     </div>
 
     <div id="content" style="display:none">
@@ -512,13 +526,20 @@
   <div style="flex:1;padding:32px 28px;max-width:1100px;width:100%;margin:0 auto">
     <div id="cierres-rest-sel" style="display:flex;gap:8px;margin-bottom:24px;flex-wrap:wrap"></div>
     <div id="cierres-tab-registros">
+      <div class="month-filters" id="cierres-month-filters" style="margin-bottom:16px"></div>
       <div id="cierres-list"></div>
     </div>
     <div id="cierres-tab-analitica" style="display:none">
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px">
-        <span style="font-size:12px;color:#555;text-transform:uppercase;letter-spacing:.5px">Año</span>
-        <select class="analytics-year-sel" id="analytics-year" onchange="loadAnalyticsData()"></select>
-        <span id="analytics-count" style="font-size:12px;color:#333;margin-left:8px"></span>
+      <div style="margin-bottom:20px">
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+          <span style="font-size:11px;color:#444;text-transform:uppercase;letter-spacing:.4px;min-width:40px">Año</span>
+          <div id="analytics-year-btns" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+          <span style="font-size:11px;color:#444;text-transform:uppercase;letter-spacing:.4px;min-width:40px">Mes</span>
+          <div id="analytics-month-btns" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+        </div>
+        <span id="analytics-count" style="font-size:12px;color:#333;display:block;margin-top:8px"></span>
       </div>
       <div class="analytics-grid" id="analytics-grid"></div>
     </div>
@@ -581,6 +602,19 @@
       <button class="btn-new" onclick="saveCierre()">Guardar cierre</button>
       <button class="btn-cancel" onclick="closeModal('modal-cierre')">Cancelar</button>
     </div>
+  </div>
+</div>
+
+<!-- ── USUARIOS ── -->
+<div id="usuarios-module" style="display:none;flex-direction:column;min-height:100vh">
+  <div class="inv-topbar">
+    <button onclick="goToHub()" style="background:transparent;border:none;color:#555;font-size:18px;cursor:pointer;padding:0 12px 0 0;line-height:1">←</button>
+    <span style="font-size:14px;font-weight:600;color:#fff">Usuarios</span>
+    <button class="btn-new" style="margin-left:auto" onclick="usuariosShowForm()">+ Nuevo usuario</button>
+  </div>
+  <div style="flex:1;padding:32px 28px;max-width:1000px;width:100%;margin:0 auto">
+    <div id="usuarios-form-wrap" style="display:none;margin-bottom:32px"></div>
+    <div id="usuarios-list"></div>
   </div>
 </div>
 
@@ -689,7 +723,8 @@ const auth = firebase.auth();
 
 // ── State ─────────────────────────────────────────────────
 let restaurants    = [];  // [{ id, name }]
-let activeRestId   = null;
+let activeRestId   = null;  // último seleccionado (compatibilidad)
+let activeRestIds  = [];    // seleccionados actualmente (multi)
 let userRole       = null;
 let userModules    = ['ventas'];
 let userCategories = [];
@@ -751,12 +786,12 @@ document.addEventListener('keydown', e => {
 
 async function doLogout() {
   await auth.signOut();
-  restaurants = []; activeRestId = null; userRole = null; currentView = 'resumen';
+  restaurants = []; activeRestId = null; activeRestIds = []; userRole = null; currentView = 'resumen';
   document.getElementById('hub').style.display       = 'none';
   document.getElementById('dashboard').style.display = 'none';
 }
 
-const ALL_MODULES_EL = ['hub','dashboard','inventario','add-stock-module','cierres-module','pdf-upload-module','pdf-view-module'];
+const ALL_MODULES_EL = ['hub','dashboard','inventario','add-stock-module','cierres-module','pdf-upload-module','pdf-view-module','usuarios-module'];
 function hideAll() { ALL_MODULES_EL.forEach(id => { const el = document.getElementById(id); if(el) el.style.display = 'none'; }); }
 
 function goTo(module) {
@@ -774,7 +809,7 @@ function goTo(module) {
   } else if (module === 'inventario') {
     document.getElementById('inventario').style.display = 'flex';
     invTab = 'historial';
-    document.getElementById('itab-alertas').style.display = userRole === 'admin' ? '' : 'none';
+    document.getElementById('itab-alertas').style.display = userRole === 'superadmin' ? '' : 'none';
     ['historial','productos','proveedores','alertas'].forEach(t => {
       document.getElementById(`itab-${t}`).classList.toggle('active', t === 'historial');
       document.getElementById(`inv-${t}`).style.display = t === 'historial' ? 'block' : 'none';
@@ -782,9 +817,8 @@ function goTo(module) {
     renderInvHistorial();
   } else if (module === 'usuarios') {
     hideAll();
-    document.getElementById('hub').style.display = 'flex';
-    openAdmin();
-    switchAdminTab('usuarios');
+    document.getElementById('usuarios-module').style.display = 'flex';
+    initUsuariosPage();
   } else if (module === 'cierres') {
     document.getElementById('cierres-module').style.display = 'flex';
     initCierresModule();
@@ -819,8 +853,9 @@ async function initDashboard() {
     userModules    = data.modules    || ['ventas'];
     userCategories = data.categories || [];
     activeRestId   = restaurants[0]?.id || null;
+    activeRestIds  = activeRestId ? [activeRestId] : [];
 
-    document.getElementById('btn-admin').style.display = userRole === 'admin' ? 'flex' : 'none';
+    document.getElementById('btn-admin').style.display = userRole === 'superadmin' ? 'flex' : 'none';
     const rawName = data.name || data.email || '';
     const displayName = rawName.includes('@') ? rawName.split('@')[0] : rawName;
     document.getElementById('hub-user-name').textContent = displayName;
@@ -845,27 +880,92 @@ async function initDashboard() {
 // ── Tabs ───────────────────────────────────────────────────
 function renderTabs() {
   document.getElementById('rest-tabs').innerHTML = restaurants.map(r => `
-    <div class="rest-tab ${r.id === activeRestId ? 'active' : ''}" onclick="switchRestaurant('${r.id}')">
+    <div class="rest-tab ${activeRestIds.includes(r.id) ? 'active' : ''}" onclick="toggleRestaurant('${r.id}')">
       <div class="dot"></div>
       <span>${r.name}</span>
     </div>
   `).join('');
 }
 
-function switchRestaurant(id) {
-  activeRestId = id;
-  applyDefaultRange();
+function toggleRestaurant(id) {
+  if (currentView === 'resumen') {
+    // En resumen: selección única
+    activeRestId  = id;
+    activeRestIds = [id];
+  } else {
+    // En individual: multi-selección
+    if (activeRestIds.includes(id)) {
+      if (activeRestIds.length === 1) return; // al menos uno siempre seleccionado
+      activeRestIds = activeRestIds.filter(x => x !== id);
+    } else {
+      activeRestIds = [...activeRestIds, id];
+    }
+    activeRestId = activeRestIds[activeRestIds.length - 1];
+  }
   renderTabs();
   if (currentView === 'resumen') loadResumen();
   else loadSummary();
 }
 
+function switchRestaurant(id) { toggleRestaurant(id); }
+
+let ventasSelYears  = new Set();
+let ventasSelMonths = new Set();
+
 function applyDefaultRange() {
+  ventasSelYears.clear();
+  ventasSelMonths.clear();
+  // Por defecto: año actual
+  const y = new Date().getFullYear().toString();
+  ventasSelYears.add(y);
   document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-  document.querySelector('[data-range="today"]').classList.add('active');
-  document.getElementById('inp-from').value = getToday();
-  document.getElementById('inp-to').value   = getToday();
+  document.getElementById('inp-from').value = '';
+  document.getElementById('inp-to').value   = '';
+  renderVentasYearRow();
+  updateVentasDateRange();
 }
+
+function renderVentasYearRow() {
+  const thisYear = new Date().getFullYear();
+  const years = [];
+  for (let y = thisYear; y >= thisYear - 3; y--) years.push(y.toString());
+  const row = document.getElementById('ventas-year-row');
+  const btns = years.map(y =>
+    `<button class="month-btn ${ventasSelYears.has(y) ? 'active' : ''}"
+      onclick="toggleVentasYear('${y}',this)">${y}</button>`).join('');
+  // Conservar el label
+  row.innerHTML = `<span style="font-size:11px;color:#444;text-transform:uppercase;letter-spacing:.4px;min-width:40px">Año</span>${btns}`;
+}
+
+function toggleVentasYear(y, btn) {
+  ventasSelYears.has(y) ? ventasSelYears.delete(y) : ventasSelYears.add(y);
+  btn.classList.toggle('active', ventasSelYears.has(y));
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  updateVentasDateRange();
+}
+
+function toggleVentasMonth(m, btn) {
+  ventasSelMonths.has(m) ? ventasSelMonths.delete(m) : ventasSelMonths.add(m);
+  btn.classList.toggle('active', ventasSelMonths.has(m));
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  updateVentasDateRange();
+}
+
+function updateVentasDateRange() {
+  // Calcular from/to a partir de años+meses seleccionados
+  const years  = ventasSelYears.size  > 0 ? [...ventasSelYears].map(Number).sort()  : [new Date().getFullYear()];
+  const months = ventasSelMonths.size > 0 ? [...ventasSelMonths].map(Number).sort() : null;
+  const minYear = years[0], maxYear = years[years.length-1];
+  const minMonth = months ? months[0]         : 1;
+  const maxMonth = months ? months[months.length-1] : 12;
+  const from = `${minYear}-${String(minMonth).padStart(2,'0')}-01`;
+  const lastDay = new Date(maxYear, maxMonth, 0).getDate();
+  const to   = `${maxYear}-${String(maxMonth).padStart(2,'0')}-${String(lastDay).padStart(2,'0')}`;
+  document.getElementById('inp-from').value = from;
+  document.getElementById('inp-to').value   = to;
+  if (currentView === 'resumen') loadResumen(); else loadSummary();
+}
+
 
 // ── View toggle ────────────────────────────────────────────
 function setView(view) {
@@ -886,20 +986,64 @@ function monthStart() { const t = getToday(); return t.substring(0,7) + '-01'; }
 function setRange(btn) {
   if (btn) {
     document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.month-btn').forEach(b => b.classList.remove('active'));
+    ventasSelYears.clear(); ventasSelMonths.clear();
+    renderVentasYearRow();
     btn.classList.add('active');
     const r = btn.dataset.range, today = getToday();
-    const from = r === 'today' ? today : r === '7d' ? daysAgo(6) : r === '30d' ? daysAgo(29) : r === 'mtd' ? monthStart() : '';
+    const from = r === 'today' ? today : r === '7d' ? daysAgo(6) : '';
     document.getElementById('inp-from').value = from;
-    document.getElementById('inp-to').value   = r === 'all' ? '' : today;
+    document.getElementById('inp-to').value   = r === 'all' ? '' : r === 'today' ? today : daysAgo(1);
   } else {
     document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.month-btn').forEach(b => b.classList.remove('active'));
   }
   currentView === 'resumen' ? loadResumen() : loadSummary();
 }
 
+// ── Merge summaries from multiple restaurants ──────────────
+function mergeSummaries(summaries) {
+  if (summaries.length === 1) return summaries[0];
+  let totalRevenue = 0, totalFromPayments = 0, totalTips = 0, totalOrders = 0;
+  const byDayMap = {}, byPayMethod = {}, byType = {}, byProductMap = {};
+  for (const s of summaries) {
+    totalRevenue      += s.totalRevenue      || 0;
+    totalFromPayments += s.totalFromPayments || 0;
+    totalTips         += s.totalTips         || 0;
+    totalOrders       += s.totalOrders       || 0;
+    for (const d of (s.byDay || [])) {
+      if (!byDayMap[d.date]) byDayMap[d.date] = { date: d.date, count: 0, revenue: 0, tips: 0 };
+      byDayMap[d.date].count   += d.count   || 0;
+      byDayMap[d.date].revenue += d.revenue || 0;
+      byDayMap[d.date].tips    += d.tips    || 0;
+    }
+    for (const [k, v] of Object.entries(s.byPayMethod || {})) byPayMethod[k] = (byPayMethod[k] || 0) + v;
+    for (const [k, v] of Object.entries(s.byType || {})) {
+      if (!byType[k]) byType[k] = { count: 0, revenue: 0 };
+      byType[k].count   += v.count   || 0;
+      byType[k].revenue += v.revenue || 0;
+    }
+    for (const p of (s.topProducts || [])) {
+      if (!byProductMap[p.name]) byProductMap[p.name] = { qty: 0, revenue: 0, category: p.category };
+      byProductMap[p.name].qty     += p.qty     || 0;
+      byProductMap[p.name].revenue += p.revenue || 0;
+    }
+  }
+  const byDay = Object.values(byDayMap).sort((a, b) => a.date.localeCompare(b.date));
+  const topProducts = Object.entries(byProductMap)
+    .map(([name, v]) => ({ name, qty: v.qty, revenue: v.revenue, category: v.category }))
+    .sort((a, b) => b.qty - a.qty);
+  return {
+    totalRevenue, totalFromPayments, totalTips, totalOrders,
+    avgTicket: totalOrders > 0 ? totalRevenue / totalOrders : 0,
+    dateRange: { from: byDay[0]?.date || null, to: byDay[byDay.length-1]?.date || null },
+    byDay, byPayMethod, byType, topProducts
+  };
+}
+
 // ── Load summary (individual) ──────────────────────────────
 async function loadSummary() {
-  if (!activeRestId) {
+  if (!activeRestIds.length) {
     document.getElementById('content').innerHTML =
       '<div class="loading"><span style="color:#555">No hay locales asignados</span></div>';
     return;
@@ -913,12 +1057,14 @@ async function loadSummary() {
   const qs   = new URLSearchParams();
   if (from) qs.set('from', from);
   if (to)   qs.set('to', to);
+  const qsStr = qs.toString() ? '?' + qs : '';
 
   try {
-    const res  = await apiFetch(`/api/summary/${activeRestId}${qs.toString() ? '?' + qs : ''}`);
-    const data = await res.json();
-    if (data.error) throw new Error(data.error);
-    render(data);
+    const results = await Promise.all(
+      activeRestIds.map(id => apiFetch(`/api/summary/${id}${qsStr}`).then(r => r.json()))
+    );
+    for (const d of results) if (d.error) throw new Error(d.error);
+    render(mergeSummaries(results));
   } catch(e) {
     document.getElementById('content').innerHTML =
       `<div class="loading"><span style="color:#f87171">Error: ${e.message}</span></div>`;
@@ -1353,6 +1499,7 @@ async function renderAdminUsuarios() {
           <select id="fu-role">
             <option value="user">Usuario</option>
             <option value="admin">Administrador</option>
+            <option value="superadmin">Superadministrador</option>
           </select>
         </div>
         <div>
@@ -1388,7 +1535,7 @@ async function renderAdminUsuarios() {
                 <div class="admin-item-name">${u.name || u.email}</div>
                 <div class="admin-item-sub">${u.email}</div>
               </div>
-              <span class="role-badge ${u.role === 'admin' ? 'role-admin' : 'role-user'}">${u.role === 'admin' ? 'Admin' : 'Usuario'}</span>
+              <span class="role-badge ${u.role === 'superadmin' ? 'role-superadmin' : u.role === 'admin' ? 'role-admin' : 'role-user'}">${u.role === 'superadmin' ? 'Superadmin' : u.role === 'admin' ? 'Admin' : 'Usuario'}</span>
               <button class="btn-edit" onclick="editPermisos('${u.uid}','${(u.name||u.email).replace(/'/g,"\\'")}')">Permisos</button>
               <button class="btn-del"  onclick="delUsuario('${u.uid}','${(u.name||u.email).replace(/'/g,"\\'")}')">Eliminar</button>
             </div>`).join('')}
@@ -1456,7 +1603,13 @@ async function editPermisos(uid, name) {
     <div class="admin-section">
       <h3>Permisos de ${name}</h3>
       <div class="admin-form">
-        <div class="field-label">Acceso a locales</div>
+        <div class="field-label">Rol</div>
+        <select id="ep-role" style="background:#111;border:1px solid #222;color:#fff;padding:6px 10px;border-radius:6px;font-size:13px">
+          <option value="user"       ${user.role === 'user'       || !user.role ? 'selected' : ''}>Usuario</option>
+          <option value="admin"      ${user.role === 'admin'      ? 'selected' : ''}>Administrador</option>
+          <option value="superadmin" ${user.role === 'superadmin' ? 'selected' : ''}>Superadministrador</option>
+        </select>
+        <div class="field-label" style="margin-top:12px">Acceso a locales</div>
         <div class="rest-checkboxes" id="edit-rests">${checks}</div>
         <div class="field-label" style="margin-top:12px">Módulos permitidos</div>
         <div class="rest-checkboxes">
@@ -1478,16 +1631,241 @@ async function editPermisos(uid, name) {
 }
 
 async function savePermisos(uid) {
+  const role          = document.getElementById('ep-role').value;
   const restaurantIds = [...document.querySelectorAll('#edit-rests input:checked')].map(c => c.value);
   const modules       = [...document.querySelectorAll('.ep-module:checked')].map(c => c.value);
   const categories    = [...document.querySelectorAll('#edit-cats input:checked')].map(c => c.value);
   const msg = document.getElementById('ep-msg');
   try {
-    const res  = await apiFetch(`/api/admin/users/${uid}`, { method: 'PUT', body: JSON.stringify({ restaurantIds, modules, categories }) });
+    const res  = await apiFetch(`/api/admin/users/${uid}`, { method: 'PUT', body: JSON.stringify({ role, restaurantIds, modules, categories }) });
     const data = await res.json();
     if (data.error) throw new Error(data.error);
     msg.className = 'inline-ok'; msg.textContent = 'Guardado';
     setTimeout(() => renderAdminUsuarios(), 500);
+  } catch(e) {
+    msg.className = 'inline-error'; msg.textContent = e.message;
+  }
+}
+
+// ── Página de Usuarios ──────────────────────────────────────
+let _upRests = [];
+let _upUsers = [];
+
+async function initUsuariosPage() {
+  const listEl = document.getElementById('usuarios-list');
+  const formEl = document.getElementById('usuarios-form-wrap');
+  formEl.style.display = 'none';
+  listEl.innerHTML = '<div style="color:#555;font-size:13px;padding:20px 0">Cargando...</div>';
+
+  const [usersRes, restsRes] = await Promise.all([
+    apiFetch('/api/admin/users'),
+    apiFetch('/api/admin/restaurants')
+  ]);
+  _upUsers = (await usersRes.json()).users || [];
+  _upRests = (await restsRes.json()).restaurants || [];
+
+  window._adminUsers = _upUsers;
+  window._adminRests = _upRests;
+
+  renderUsuariosPage();
+}
+
+function renderUsuariosPage() {
+  const listEl = document.getElementById('usuarios-list');
+  const restMap = Object.fromEntries(_upRests.map(r => [r.id, r.name]));
+  const MODULE_NAMES = {
+    ventas: 'Ventas', stock: 'Añadir stock', inventario: 'Inventario',
+    cierres: 'Cierres de caja', 'pdf-view': 'Ver Manual', usuarios: 'Usuarios'
+  };
+  const roleLabel = r => r === 'superadmin' ? 'Superadmin' : r === 'admin' ? 'Admin' : 'Usuario';
+  const roleClass = r => r === 'superadmin' ? 'role-superadmin' : r === 'admin' ? 'role-admin' : 'role-user';
+
+  if (!_upUsers.length) {
+    listEl.innerHTML = '<div style="color:#444;font-size:13px">Sin usuarios registrados.</div>';
+    return;
+  }
+
+  listEl.innerHTML = _upUsers.map(u => {
+    const rests   = (u.restaurantIds || []).map(id => restMap[id] || id);
+    const mods    = u.role === 'superadmin' ? Object.values(MODULE_NAMES) : (u.modules || []).map(m => MODULE_NAMES[m] || m);
+    const isSuper = u.role === 'superadmin' || u.role === 'admin';
+    return `
+    <div style="background:#111;border:1px solid #1e1e1e;border-radius:10px;padding:18px 20px;margin-bottom:12px">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:${isSuper ? 14 : 10}px">
+        <div style="flex:1">
+          <div style="font-size:14px;font-weight:600;color:#fff">${u.name || u.email}</div>
+          <div style="font-size:12px;color:#555;margin-top:2px">${u.email}</div>
+        </div>
+        <span class="role-badge ${roleClass(u.role)}">${roleLabel(u.role)}</span>
+        <button class="btn-edit" onclick="usuariosEditUser('${u.uid}','${(u.name||u.email).replace(/'/g,"\\'")}')">Editar</button>
+        <button class="btn-del"  onclick="delUsuario('${u.uid}','${(u.name||u.email).replace(/'/g,"\\'")}')">Eliminar</button>
+      </div>
+      <div style="display:flex;gap:24px;flex-wrap:wrap">
+        <div>
+          <div style="font-size:10px;color:#444;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Locales</div>
+          <div style="display:flex;flex-wrap:wrap;gap:5px">
+            ${u.role === 'superadmin'
+              ? '<span style="font-size:12px;color:#666;font-style:italic">Todos</span>'
+              : rests.length
+                ? rests.map(n => `<span class="tag">${n}</span>`).join('')
+                : '<span style="font-size:12px;color:#444">—</span>'
+            }
+          </div>
+        </div>
+        <div>
+          <div style="font-size:10px;color:#444;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Módulos</div>
+          <div style="display:flex;flex-wrap:wrap;gap:5px">
+            ${u.role === 'superadmin'
+              ? '<span style="font-size:12px;color:#666;font-style:italic">Todos</span>'
+              : mods.length
+                ? mods.map(m => `<span class="tag">${m}</span>`).join('')
+                : '<span style="font-size:12px;color:#444">—</span>'
+            }
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function usuariosShowForm() {
+  const formEl = document.getElementById('usuarios-form-wrap');
+  const restChecks = _upRests.map(r => `
+    <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#aaa;cursor:pointer">
+      <input type="checkbox" class="nu-rest" value="${r.id}" style="accent-color:#ff5023"> ${r.name}
+    </label>`).join('');
+  const catChecks = await getCatChecks([]);
+
+  formEl.innerHTML = `
+    <div style="background:#111;border:1px solid #1e1e1e;border-radius:10px;padding:20px">
+      <div style="font-size:13px;font-weight:600;color:#fff;margin-bottom:16px">Nuevo usuario</div>
+      <div class="admin-form" id="form-user">
+        <div class="form-row">
+          <input type="text"     id="fu-name"  placeholder="Nombre">
+          <input type="email"    id="fu-email" placeholder="Email">
+        </div>
+        <div class="form-row">
+          <input type="password" id="fu-pass"  placeholder="Contraseña">
+          <select id="fu-role" style="background:#111;border:1px solid #222;color:#fff;padding:6px 10px;border-radius:6px;font-size:13px">
+            <option value="user">Usuario</option>
+            <option value="admin">Administrador</option>
+            <option value="superadmin">Superadministrador</option>
+          </select>
+        </div>
+        <div>
+          <div class="field-label">Acceso a locales</div>
+          <div class="rest-checkboxes" id="nu-rests">${restChecks}</div>
+        </div>
+        <div>
+          <div class="field-label">Módulos permitidos</div>
+          <div class="rest-checkboxes">
+            <label><input type="checkbox" class="nu-module" value="ventas" checked> Ventas</label>
+            <label><input type="checkbox" class="nu-module" value="stock"> Añadir stock</label>
+            <label><input type="checkbox" class="nu-module" value="inventario"> Inventario</label>
+            <label><input type="checkbox" class="nu-module" value="cierres"> Cierres de caja</label>
+            <label><input type="checkbox" class="nu-module" value="pdf-view"> Ver Manual</label>
+          </div>
+        </div>
+        <div>
+          <div class="field-label">Categorías de inventario (vacío = todas)</div>
+          <div class="rest-checkboxes" id="nu-cats">${catChecks}</div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn-add" onclick="addUsuarioPage()">Crear usuario</button>
+          <button class="btn-add" style="background:#222" onclick="document.getElementById('usuarios-form-wrap').style.display='none'">Cancelar</button>
+        </div>
+        <div id="fu-msg"></div>
+      </div>
+    </div>`;
+  formEl.style.display = 'block';
+  formEl.scrollIntoView({ behavior: 'smooth' });
+}
+
+async function addUsuarioPage() {
+  const name  = document.getElementById('fu-name').value.trim();
+  const email = document.getElementById('fu-email').value.trim();
+  const pass  = document.getElementById('fu-pass').value;
+  const role  = document.getElementById('fu-role').value;
+  const restaurantIds = [...document.querySelectorAll('.nu-rest:checked')].map(c => c.value);
+  const modules       = [...document.querySelectorAll('.nu-module:checked')].map(c => c.value);
+  const categories    = [...document.querySelectorAll('.nu-cat:checked')].map(c => c.value);
+  const msg = document.getElementById('fu-msg');
+  if (!email || !pass) { msg.className = 'inline-error'; msg.textContent = 'Email y contraseña requeridos'; return; }
+  const btn = document.querySelector('#form-user .btn-add');
+  btn.disabled = true; btn.textContent = 'Creando...';
+  try {
+    const res  = await apiFetch('/api/admin/users', { method: 'POST', body: JSON.stringify({ email, password: pass, name, role, restaurantIds, modules, categories }) });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    document.getElementById('usuarios-form-wrap').style.display = 'none';
+    await initUsuariosPage();
+  } catch(e) {
+    msg.className = 'inline-error'; msg.textContent = e.message;
+  } finally {
+    btn.disabled = false; btn.textContent = 'Crear usuario';
+  }
+}
+
+async function usuariosEditUser(uid, name) {
+  // Reutiliza editPermisos pero con callback a initUsuariosPage
+  const user  = _upUsers.find(u => u.uid === uid);
+  const rests = _upRests;
+  if (!user) return;
+  const current = user.restaurantIds || [];
+  const checks  = rests.map(r => `
+    <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#aaa;cursor:pointer">
+      <input type="checkbox" value="${r.id}" ${current.includes(r.id) ? 'checked' : ''} style="accent-color:#ff5023"> ${r.name}
+    </label>`).join('');
+  const currentMods = user.modules    || ['ventas'];
+  const currentCats = user.categories || [];
+  const catChecks   = await getCatChecks(currentCats);
+  const formEl = document.getElementById('usuarios-form-wrap');
+
+  formEl.innerHTML = `
+    <div style="background:#111;border:1px solid #1e1e1e;border-radius:10px;padding:20px">
+      <div style="font-size:13px;font-weight:600;color:#fff;margin-bottom:16px">Editar: ${name}</div>
+      <div class="admin-form">
+        <div class="field-label">Rol</div>
+        <select id="ep-role" style="background:#111;border:1px solid #222;color:#fff;padding:6px 10px;border-radius:6px;font-size:13px">
+          <option value="user"       ${user.role === 'user' || !user.role ? 'selected' : ''}>Usuario</option>
+          <option value="admin"      ${user.role === 'admin'      ? 'selected' : ''}>Administrador</option>
+          <option value="superadmin" ${user.role === 'superadmin' ? 'selected' : ''}>Superadministrador</option>
+        </select>
+        <div class="field-label" style="margin-top:12px">Acceso a locales</div>
+        <div class="rest-checkboxes" id="edit-rests">${checks}</div>
+        <div class="field-label" style="margin-top:12px">Módulos permitidos</div>
+        <div class="rest-checkboxes">
+          <label><input type="checkbox" class="ep-module" value="ventas"      ${currentMods.includes('ventas')?'checked':''}> Ventas</label>
+          <label><input type="checkbox" class="ep-module" value="stock"       ${currentMods.includes('stock')?'checked':''}> Añadir stock</label>
+          <label><input type="checkbox" class="ep-module" value="inventario"  ${currentMods.includes('inventario')?'checked':''}> Inventario</label>
+          <label><input type="checkbox" class="ep-module" value="cierres"     ${currentMods.includes('cierres')?'checked':''}> Cierres de caja</label>
+          <label><input type="checkbox" class="ep-module" value="pdf-view"    ${currentMods.includes('pdf-view')?'checked':''}> Ver Manual</label>
+        </div>
+        <div class="field-label" style="margin-top:12px">Categorías de inventario (vacío = todas)</div>
+        <div class="rest-checkboxes" id="edit-cats">${catChecks}</div>
+        <div style="display:flex;gap:8px;margin-top:12px">
+          <button class="btn-add" onclick="savePermisosPage('${uid}')">Guardar</button>
+          <button class="btn-add" style="background:#222" onclick="document.getElementById('usuarios-form-wrap').style.display='none'">Cancelar</button>
+        </div>
+        <div id="ep-msg"></div>
+      </div>
+    </div>`;
+  formEl.style.display = 'block';
+  formEl.scrollIntoView({ behavior: 'smooth' });
+}
+
+async function savePermisosPage(uid) {
+  const role          = document.getElementById('ep-role').value;
+  const restaurantIds = [...document.querySelectorAll('#edit-rests input:checked')].map(c => c.value);
+  const modules       = [...document.querySelectorAll('.ep-module:checked')].map(c => c.value);
+  const categories    = [...document.querySelectorAll('#edit-cats input:checked')].map(c => c.value);
+  const msg = document.getElementById('ep-msg');
+  try {
+    const res  = await apiFetch(`/api/admin/users/${uid}`, { method: 'PUT', body: JSON.stringify({ role, restaurantIds, modules, categories }) });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    document.getElementById('usuarios-form-wrap').style.display = 'none';
+    await initUsuariosPage();
   } catch(e) {
     msg.className = 'inline-error'; msg.textContent = e.message;
   }
@@ -1648,8 +2026,8 @@ function renderSidebar() {
     { id: 'usuarios',    icon: '👥', name: 'Usuarios',        bg: 'linear-gradient(135deg,#c95e6b,#e07585)', adminOnly: true  },
   ];
   const visible = allModules.filter(m => {
-    if (m.adminOnly) return userRole === 'admin';
-    return userRole === 'admin' || userModules.includes(m.id);
+    if (m.adminOnly) return userRole === 'superadmin';
+    return userRole === 'superadmin' || userModules.includes(m.id);
   });
 
   document.getElementById('mob-sidebar-nav').innerHTML = visible.map(m => `
@@ -1680,8 +2058,8 @@ function renderHub() {
     { id: 'usuarios',    icon: '👥', name: 'Usuarios',        bg: 'linear-gradient(135deg,#c95e6b,#e07585)', adminOnly: true  },
   ];
   const visible = allModules.filter(m => {
-    if (m.adminOnly) return userRole === 'admin';
-    return userRole === 'admin' || userModules.includes(m.id);
+    if (m.adminOnly) return userRole === 'superadmin';
+    return userRole === 'superadmin' || userModules.includes(m.id);
   });
 
   document.getElementById('hub-grid').innerHTML = visible.map(m => `
@@ -1865,10 +2243,10 @@ async function renderInvProveedores() {
   el.innerHTML = `
     <div class="inv-toolbar">
       <h2>Proveedores</h2>
-      ${userRole === 'admin' ? '<button class="btn-new" onclick="openModalProveedor()">+ Nuevo proveedor</button>' : ''}
+      ${(userRole === 'admin' || userRole === 'superadmin') ? '<button class="btn-new" onclick="openModalProveedor()">+ Nuevo proveedor</button>' : ''}
     </div>
     <table class="inv-table">
-      <thead><tr><th>Nombre</th><th>Teléfono</th><th>Email</th><th>Notas</th>${userRole==='admin'?'<th></th>':''}</tr></thead>
+      <thead><tr><th>Nombre</th><th>Teléfono</th><th>Email</th><th>Notas</th>${(userRole==='admin'||userRole==='superadmin')?'<th></th>':''}</tr></thead>
       <tbody>
         ${invSuppliers.length === 0
           ? `<tr><td colspan="5" style="color:#444;padding:20px">Sin proveedores registrados</td></tr>`
@@ -1878,7 +2256,7 @@ async function renderInvProveedores() {
               <td>${s.phone || '—'}</td>
               <td>${s.email || '—'}</td>
               <td style="color:#555">${s.notes || '—'}</td>
-              ${userRole==='admin' ? `<td style="white-space:nowrap">
+              ${(userRole==='admin'||userRole==='superadmin') ? `<td style="white-space:nowrap">
                 <button class="btn-edit" onclick="openModalProveedor('${s.id}')">Editar</button>
                 <button class="btn-del"  onclick="delProveedor('${s.id}','${s.name.replace(/'/g,"\\'")}')">Eliminar</button>
               </td>` : ''}
@@ -1951,7 +2329,7 @@ function renderProdTable() {
   el.innerHTML = `
     <div class="inv-toolbar">
       <h2>Productos</h2>
-      ${userRole === 'admin' ? '<button class="btn-new" onclick="openModalProducto()">+ Nuevo producto</button>' : ''}
+      ${(userRole === 'admin' || userRole === 'superadmin') ? '<button class="btn-new" onclick="openModalProducto()">+ Nuevo producto</button>' : ''}
     </div>
     <div class="prod-filters">
       <select class="prod-filter-sel" onchange="prodFilterCat=this.value;renderProdTable()">
@@ -1966,7 +2344,7 @@ function renderProdTable() {
       <span style="margin-left:auto;font-size:12px;color:#444">${filtered.length} productos</span>
     </div>
     <table class="inv-table">
-      <thead><tr><th>Nombre</th><th>Categoría</th><th>Unidad</th><th>Proveedores</th>${userRole==='admin'?'<th></th>':''}</tr></thead>
+      <thead><tr><th>Nombre</th><th>Categoría</th><th>Unidad</th><th>Proveedores</th>${(userRole==='admin'||userRole==='superadmin')?'<th></th>':''}</tr></thead>
       <tbody>
         ${filtered.length === 0
           ? `<tr><td colspan="5" style="color:#444;padding:20px">Sin resultados</td></tr>`
@@ -1976,7 +2354,7 @@ function renderProdTable() {
               <td>${p.category || '—'}</td>
               <td><span class="tag">${p.unit}</span></td>
               <td>${(p.supplierNames||[]).map(s=>`<span class="tag">${s}</span>`).join(' ') || '<span style="color:#444">—</span>'}</td>
-              ${userRole==='admin' ? `<td style="white-space:nowrap">
+              ${(userRole==='admin'||userRole==='superadmin') ? `<td style="white-space:nowrap">
                 <button class="btn-edit" onclick="openModalProducto('${p.id}')">Editar</button>
                 <button class="btn-del"  onclick="delProducto('${p.id}','${p.name.replace(/'/g,"\\'")}')">Eliminar</button>
               </td>` : ''}
@@ -2344,62 +2722,161 @@ function closeModalIfOutside(e, id) { if (e.target.id === id) closeModal(id); }
 async function delUsuario(uid, name) {
   if (!confirm(`¿Eliminar el usuario "${name}"?`)) return;
   await apiFetch(`/api/admin/users/${uid}`, { method: 'DELETE' });
-  renderAdminUsuarios();
+  if (document.getElementById('usuarios-module').style.display !== 'none') {
+    await initUsuariosPage();
+  } else {
+    renderAdminUsuarios();
+  }
 }
 
 // ── Cierres de caja ────────────────────────────────────────
-let cierresRestId = null;
-let cierresData   = [];
+let cierresRestIds    = [];
+let cierresRestId     = null; // compat analítica
+let cierresData       = [];
+let cierresSelYears   = new Set();
+let cierresSelMonths  = new Set();
+
+const MONTH_LABELS = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 
 function initCierresModule() {
   if (!restaurants.length) return;
-  if (!cierresRestId) cierresRestId = restaurants[0].id;
-  const sel = document.getElementById('cierres-rest-sel');
-  sel.innerHTML = restaurants.map(r => `
-    <button class="stock-rest-btn ${r.id === cierresRestId ? 'active' : ''}"
-      onclick="selectCierresRest('${r.id}')">${r.name}</button>`).join('');
+  if (!cierresRestIds.length) cierresRestIds = [restaurants[0].id];
+  cierresRestId = cierresRestIds[0];
+  renderCierresRestSel();
   loadCierresList();
 }
 
-function selectCierresRest(id) {
-  cierresRestId = id;
-  document.querySelectorAll('#cierres-rest-sel .stock-rest-btn').forEach(b => {
-    b.classList.toggle('active', b.textContent.trim() === restaurants.find(r => r.id === id)?.name);
-  });
+function renderCierresRestSel() {
+  document.getElementById('cierres-rest-sel').innerHTML = restaurants.map(r => `
+    <button class="stock-rest-btn ${cierresRestIds.includes(r.id) ? 'active' : ''}"
+      onclick="toggleCierresRest('${r.id}')">${r.name}</button>`).join('');
+}
+
+function toggleCierresRest(id) {
+  if (cierresRestIds.includes(id)) {
+    if (cierresRestIds.length === 1) return;
+    cierresRestIds = cierresRestIds.filter(x => x !== id);
+  } else {
+    cierresRestIds = [...cierresRestIds, id];
+  }
+  cierresRestId = cierresRestIds[0];
+  analyticsSelYears.clear();
+  renderCierresRestSel();
   if (cierresTab === 'analitica') initAnalytics();
   else loadCierresList();
 }
 
+// compat para analítica (usa cierresRestId único)
+function selectCierresRest(id) { toggleCierresRest(id); }
+
 async function loadCierresList() {
   const el = document.getElementById('cierres-list');
   el.innerHTML = '<div style="color:#555;font-size:13px">Cargando...</div>';
-  const res  = await apiFetch(`/api/cierres/${cierresRestId}`);
-  cierresData = (await res.json()).cierres || [];
+  const results = await Promise.all(
+    cierresRestIds.map(id => apiFetch(`/api/cierres/${id}?all=1`).then(r => r.json()))
+  );
+  cierresData = results.flatMap(r => r.cierres || [])
+    .sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
+  cierresSelYears  = new Set();
+  cierresSelMonths = new Set();
+  renderCierresYearMonthFilters();
+  renderCierresTable();
+}
 
-  if (!cierresData.length) {
-    el.innerHTML = '<div style="color:#444;font-size:13px">Sin cierres registrados para este local.</div>';
+function renderCierresYearMonthFilters() {
+  const years = [...new Set(cierresData.map(c => c.fecha?.substring(0,4)).filter(Boolean))].sort((a,b) => b-a);
+  const container = document.getElementById('cierres-month-filters');
+  if (!years.length) { container.innerHTML = ''; return; }
+  container.innerHTML = `
+    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:6px">
+      <span style="font-size:11px;color:#444;text-transform:uppercase;letter-spacing:.4px;min-width:40px">Año</span>
+      ${years.map(y => `
+        <button class="month-btn ${cierresSelYears.has(y) ? 'active' : ''}"
+          onclick="toggleCierresYear('${y}', this)">${y}</button>`).join('')}
+    </div>
+    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+      <span style="font-size:11px;color:#444;text-transform:uppercase;letter-spacing:.4px;min-width:40px">Mes</span>
+      ${MONTH_LABELS.map((m, i) => `
+        <button class="month-btn ${cierresSelMonths.has(i+1) ? 'active' : ''}"
+          onclick="toggleCierresMonth(${i+1}, this)">${m}</button>`).join('')}
+    </div>`;
+}
+
+function toggleCierresYear(y, btn) {
+  cierresSelYears.has(y) ? cierresSelYears.delete(y) : cierresSelYears.add(y);
+  btn.classList.toggle('active', cierresSelYears.has(y));
+  renderCierresTable();
+}
+
+function toggleCierresMonth(m, btn) {
+  cierresSelMonths.has(m) ? cierresSelMonths.delete(m) : cierresSelMonths.add(m);
+  btn.classList.toggle('active', cierresSelMonths.has(m));
+  renderCierresTable();
+}
+
+let cierresSortCol = 'fecha';
+let cierresSortDir = -1; // -1 = desc, 1 = asc
+
+function sortCierresBy(col) {
+  if (cierresSortCol === col) cierresSortDir *= -1;
+  else { cierresSortCol = col; cierresSortDir = -1; }
+  renderCierresTable();
+}
+
+function renderCierresTable() {
+  const el = document.getElementById('cierres-list');
+  const filtered = cierresData.filter(c => {
+    if (!c.fecha) return false;
+    const y = c.fecha.substring(0,4);
+    const m = parseInt(c.fecha.substring(5,7));
+    if (cierresSelYears.size  > 0 && !cierresSelYears.has(y))  return false;
+    if (cierresSelMonths.size > 0 && !cierresSelMonths.has(m)) return false;
+    return true;
+  });
+
+  if (!filtered.length) {
+    el.innerHTML = '<div style="color:#444;font-size:13px;padding:16px 0">Sin cierres para el período seleccionado.</div>';
     return;
   }
 
+  const getVal = (c, col) => {
+    if (col === 'fecha') return c.fecha || '';
+    if (col === 'totalPrograma') return c.totalPrograma || 0;
+    if (col === 'transbank') return c.transbank || 0;
+    if (col === 'efectivo') return c.efectivo || 0;
+    if (col === 'gastos') return c.gastos || 0;
+    if (col === 'ingresoReal') return (c.transbank||0) + (c.gastos||0) + (c.efectivo||0) - (c.propinaAMano||0);
+    if (col === 'diferencia') {
+      const ir = (c.transbank||0) + (c.gastos||0) + (c.efectivo||0) - (c.propinaAMano||0);
+      return c.totalPrograma != null ? (c.totalPrograma||0) - ir : -Infinity;
+    }
+    return 0;
+  };
+
+  filtered.sort((a, b) => {
+    const va = getVal(a, cierresSortCol), vb = getVal(b, cierresSortCol);
+    return va < vb ? -cierresSortDir : va > vb ? cierresSortDir : 0;
+  });
+
   const fmt = v => v != null ? Number(v).toLocaleString('es-CL', { style:'currency', currency:'CLP', maximumFractionDigits:0 }) : '—';
+  const arrow = col => cierresSortCol === col ? (cierresSortDir === -1 ? ' ↓' : ' ↑') : '';
+  const thStyle = 'cursor:pointer;user-select:none';
 
   el.innerHTML = `
     <table class="cierres-table">
       <thead><tr>
-        <th>Fecha</th>
-        <th>Total Prog.</th>
-        <th>Transbank</th>
-        <th>Efectivo</th>
-        <th>Gastos</th>
-        <th>Ingreso Real</th>
-        <th>Diferencia</th>
-        ${userRole==='admin'?'<th></th>':''}
+        <th style="${thStyle}" onclick="sortCierresBy('fecha')">Fecha${arrow('fecha')}</th>
+        <th style="${thStyle}" onclick="sortCierresBy('totalPrograma')">Total Prog.${arrow('totalPrograma')}</th>
+        <th style="${thStyle}" onclick="sortCierresBy('transbank')">Transbank${arrow('transbank')}</th>
+        <th style="${thStyle}" onclick="sortCierresBy('efectivo')">Efectivo${arrow('efectivo')}</th>
+        <th style="${thStyle}" onclick="sortCierresBy('gastos')">Gastos${arrow('gastos')}</th>
+        <th style="${thStyle}" onclick="sortCierresBy('ingresoReal')">Ingreso Real${arrow('ingresoReal')}</th>
+        <th style="${thStyle}" onclick="sortCierresBy('diferencia')">Diferencia${arrow('diferencia')}</th>
+        ${(userRole==='admin'||userRole==='superadmin')?'<th></th>':''}
       </tr></thead>
       <tbody>
-        ${cierresData.map(c => {
-          // Ingreso Real = POS + gastos + efectivo - propina efectivo (propinaAMano)
+        ${filtered.map(c => {
           const ingresoReal = (c.transbank||0) + (c.gastos||0) + (c.efectivo||0) - (c.propinaAMano||0);
-          // Diferencia = Total Programa - Ingreso Real
           const diff = c.totalPrograma != null ? (c.totalPrograma||0) - ingresoReal : null;
           const diffColor = diff == null || Math.abs(diff) < 1 ? '#555' : diff > 0 ? '#fca5a5' : '#86efac';
           return `<tr>
@@ -2410,7 +2887,7 @@ async function loadCierresList() {
             <td>${fmt(c.gastos)}</td>
             <td style="color:#aaa;font-weight:600">${fmt(ingresoReal)}</td>
             <td style="color:${diffColor};font-weight:600">${diff != null ? fmt(diff) : '—'}</td>
-            ${userRole==='admin'?`<td style="white-space:nowrap">
+            ${(userRole==='admin'||userRole==='superadmin')?`<td style="white-space:nowrap">
               <button class="btn-edit" onclick="openModalCierre('${c.id}')">Editar</button>
               <button class="btn-del"  onclick="delCierre('${c.id}')">Eliminar</button>
             </td>`:''}
@@ -2505,20 +2982,55 @@ function switchCierresTab(tab) {
   if (tab === 'analitica') initAnalytics();
 }
 
+let analyticsSelYears  = new Set();
+let analyticsSelMonths = new Set();
+
 async function initAnalytics() {
   document.getElementById('analytics-grid').innerHTML = '<div style="color:#333;font-size:13px;grid-column:1/-1;padding:40px 0;text-align:center">Cargando datos...</div>';
-  const res = await apiFetch(`/api/cierres/${cierresRestId}?all=1`);
-  analyticsData = (await res.json()).cierres || [];
+  const results = await Promise.all(
+    cierresRestIds.map(id => apiFetch(`/api/cierres/${id}?all=1`).then(r => r.json()))
+  );
+  analyticsData = results.flatMap(r => r.cierres || [])
+    .sort((a, b) => (a.fecha||'').localeCompare(b.fecha||''));
+
   const years = [...new Set(analyticsData.map(c => c.fecha?.slice(0,4)).filter(Boolean))].sort().reverse();
-  const yearSel = document.getElementById('analytics-year');
-  const prevYear = yearSel.value;
-  yearSel.innerHTML = years.map(y => `<option value="${y}" ${y===prevYear?'selected':''}>${y}</option>`).join('');
+  // Seleccionar el año más reciente por defecto si no hay selección
+  if (analyticsSelYears.size === 0 && years.length) analyticsSelYears.add(years[0]);
+
+  // Renderizar botones de año
+  document.getElementById('analytics-year-btns').innerHTML = years.map(y =>
+    `<button class="month-btn ${analyticsSelYears.has(y) ? 'active' : ''}"
+      onclick="toggleAnalyticsYear('${y}',this)">${y}</button>`).join('');
+
+  // Renderizar botones de mes
+  document.getElementById('analytics-month-btns').innerHTML = MONTH_LABELS.map((l, i) =>
+    `<button class="month-btn ${analyticsSelMonths.has(i+1) ? 'active' : ''}" data-month="${i+1}" onclick="toggleAnalyticsMonth(${i+1},this)">${l}</button>`
+  ).join('');
+
+  loadAnalyticsData();
+}
+
+function toggleAnalyticsYear(y, btn) {
+  analyticsSelYears.has(y) ? analyticsSelYears.delete(y) : analyticsSelYears.add(y);
+  btn.classList.toggle('active', analyticsSelYears.has(y));
+  loadAnalyticsData();
+}
+
+function toggleAnalyticsMonth(m, btn) {
+  analyticsSelMonths.has(m) ? analyticsSelMonths.delete(m) : analyticsSelMonths.add(m);
+  btn.classList.toggle('active', analyticsSelMonths.has(m));
   loadAnalyticsData();
 }
 
 function loadAnalyticsData() {
-  const year = document.getElementById('analytics-year').value;
-  const filtered = analyticsData.filter(c => c.fecha?.startsWith(year));
+  const filtered = analyticsData.filter(c => {
+    if (!c.fecha) return false;
+    const y = c.fecha.slice(0,4);
+    const m = parseInt(c.fecha.slice(5,7));
+    if (analyticsSelYears.size  > 0 && !analyticsSelYears.has(y))  return false;
+    if (analyticsSelMonths.size > 0 && !analyticsSelMonths.has(m)) return false;
+    return true;
+  });
   document.getElementById('analytics-count').textContent = `${filtered.length} registros`;
   renderAnalyticsCharts(filtered);
 }
@@ -2911,7 +3423,7 @@ async function initPdfView() {
     }
     // Non-admins only see manuals for their restaurants (or general ones with no restaurant)
     const userRestIds = new Set(restaurants.map(r => r.id));
-    const visible = userRole === 'admin'
+    const visible = (userRole === 'admin' || userRole === 'superadmin')
       ? manuals
       : manuals.filter(m => !m.restaurantId || userRestIds.has(m.restaurantId));
 
