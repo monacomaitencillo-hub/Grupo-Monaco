@@ -256,11 +256,11 @@ app.get('/api/restaurants', requireAuth, async (req, res) => {
     let restaurants;
     if (userData.role === 'admin') {
       const snap = await db.collection('restaurants').get();
-      restaurants = snap.docs.map(d => ({ id: d.id, name: d.data().name }));
+      restaurants = snap.docs.map(d => ({ id: d.id, name: d.data().name, sections: d.data().sections || [] }));
     } else {
       const ids  = userData.restaurantIds || [];
       const docs = await Promise.all(ids.map(id => db.collection('restaurants').doc(id).get()));
-      restaurants = docs.filter(d => d.exists).map(d => ({ id: d.id, name: d.data().name }));
+      restaurants = docs.filter(d => d.exists).map(d => ({ id: d.id, name: d.data().name, sections: d.data().sections || [] }));
     }
 
     res.json({
@@ -310,7 +310,14 @@ app.get('/api/summary/:restaurantId', requireAuth, async (req, res) => {
 app.get('/api/admin/restaurants', requireAuth, async (req, res) => {
   if (!await isAdmin(req.uid)) return res.status(403).json({ error: 'Solo administradores' });
   const snap = await db.collection('restaurants').get();
-  res.json({ restaurants: snap.docs.map(d => ({ id: d.id, name: d.data().name, fudoUser: d.data().fudoUser })) });
+  res.json({ restaurants: snap.docs.map(d => ({ id: d.id, name: d.data().name, fudoUser: d.data().fudoUser, sections: d.data().sections || [] })) });
+});
+
+app.patch('/api/admin/restaurants/:id', requireAuth, async (req, res) => {
+  if (!await isAdmin(req.uid)) return res.status(403).json({ error: 'Solo administradores' });
+  const { sections } = req.body;
+  await db.collection('restaurants').doc(req.params.id).update({ sections: sections || [] });
+  res.json({ ok: true });
 });
 
 app.post('/api/admin/restaurants', requireAuth, async (req, res) => {
@@ -439,21 +446,23 @@ app.get('/api/inv/products', requireAuth, async (req, res) => {
 
 app.post('/api/inv/products', requireAuth, async (req, res) => {
   if (!await isAdmin(req.uid)) return res.status(403).json({ error: 'Solo administradores' });
-  const { name, category, unit, supplierIds, restaurantIds } = req.body;
+  const { name, category, unit, supplierIds, restaurantIds, restaurantSections } = req.body;
   if (!name) return res.status(400).json({ error: 'Nombre requerido' });
   const ref = await db.collection('products').add({
     name, category: category||'', unit: unit||'unidad',
-    supplierIds: supplierIds||[], restaurantIds: restaurantIds||[]
+    supplierIds: supplierIds||[], restaurantIds: restaurantIds||[],
+    restaurantSections: restaurantSections||{}
   });
   res.json({ id: ref.id });
 });
 
 app.put('/api/inv/products/:id', requireAuth, async (req, res) => {
   if (!await isAdmin(req.uid)) return res.status(403).json({ error: 'Solo administradores' });
-  const { name, category, unit, supplierIds, restaurantIds } = req.body;
+  const { name, category, unit, supplierIds, restaurantIds, restaurantSections } = req.body;
   await db.collection('products').doc(req.params.id).update({
     name, category: category||'', unit: unit||'unidad',
-    supplierIds: supplierIds||[], restaurantIds: restaurantIds||[]
+    supplierIds: supplierIds||[], restaurantIds: restaurantIds||[],
+    restaurantSections: restaurantSections||{}
   });
   res.json({ ok: true });
 });
@@ -486,6 +495,7 @@ app.get('/api/inv/stock/:restaurantId', requireAuth, async (req, res) => {
   supSnap.docs.forEach(d => { suppliersMap[d.id] = d.data().name; });
 
   const allowedCats = userData.categories || []; // empty = all
+  const sectionFilter = req.query.section || '';
 
   // Only products assigned to this restaurant (and filtered by user categories)
   const items = prodSnap.docs
@@ -493,7 +503,12 @@ app.get('/api/inv/stock/:restaurantId', requireAuth, async (req, res) => {
       const data = d.data();
       const inRest = (data.restaurantIds || []).includes(restaurantId);
       const inCat  = allowedCats.length === 0 || allowedCats.includes(data.category);
-      return inRest && inCat;
+      if (!inRest || !inCat) return false;
+      if (sectionFilter) {
+        const assignedSections = (data.restaurantSections || {})[restaurantId] || [];
+        if (!assignedSections.includes(sectionFilter)) return false;
+      }
+      return true;
     })
     .map(d => ({
       id: d.id,
@@ -541,7 +556,7 @@ app.post('/api/inv/inventories/:restaurantId', requireAuth, async (req, res) => 
     return res.status(403).json({ error: 'Sin acceso a este local' });
   }
 
-  const { date, items } = req.body; // items: [{ productId, name, category, unit, quantity }]
+  const { date, items, section } = req.body;
   if (!date || !Array.isArray(items) || items.length === 0) {
     return res.status(400).json({ error: 'Fecha e items requeridos' });
   }
@@ -551,6 +566,7 @@ app.post('/api/inv/inventories/:restaurantId', requireAuth, async (req, res) => 
   const record = {
     restaurantId,
     date,
+    section:        section || '',
     createdAt:      new Date().toISOString(),
     createdBy:      req.email,
     createdByName:  userData.name || req.email,
@@ -595,6 +611,7 @@ app.get('/api/inv/inventories/:restaurantId', requireAuth, async (req, res) => {
   const records = snap.docs.map(d => ({
     id: d.id,
     date:          d.data().date,
+    section:       d.data().section || '',
     createdByName: d.data().createdByName,
     createdBy:     d.data().createdBy,
     itemCount:     d.data().itemCount,
@@ -667,6 +684,109 @@ app.post('/api/inv/stock/:restaurantId/:productId/add', requireAuth, async (req,
   }, { merge: true });
 
   res.json({ ok: true, quantity: newQty });
+});
+
+// ── Cierres de caja ───────────────────────────────────────
+const cierresCache = {}; // { [restaurantId]: { data, cachedAt } }
+const CIERRES_TTL  = 10 * 60 * 1000; // 10 min
+
+async function getCierresForRest(restaurantId) {
+  const cached = cierresCache[restaurantId];
+  if (cached && (Date.now() - cached.cachedAt) < CIERRES_TTL) return cached.data;
+
+  const snap = await db.collection('ingresos')
+    .where('restaurantId', '==', restaurantId)
+    .get();
+  const data = snap.docs
+    .map(d => ({ id: d.id, ...d.data() }))
+    .sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
+  cierresCache[restaurantId] = { data, cachedAt: Date.now() };
+  return data;
+}
+
+app.get('/api/cierres/:restaurantId', requireAuth, async (req, res) => {
+  const { restaurantId } = req.params;
+  const userDoc = await db.collection('users').doc(req.uid).get();
+  if (!userDoc.exists) return res.status(403).json({ error: 'Sin acceso' });
+  const userData = userDoc.data();
+  if (userData.role !== 'admin' && !(userData.restaurantIds||[]).includes(restaurantId)) {
+    return res.status(403).json({ error: 'Sin acceso a este local' });
+  }
+  let cierres = await getCierresForRest(restaurantId);
+  if (!req.query.all) cierres = cierres.slice(0, 90);
+  res.json({ cierres });
+});
+
+app.post('/api/cierres', requireAuth, async (req, res) => {
+  const userDoc = await db.collection('users').doc(req.uid).get();
+  if (!userDoc.exists) return res.status(403).json({ error: 'Sin acceso' });
+  const userData = userDoc.data();
+  const { restaurantId, fecha, local, totalPrograma, propinasPrograma, transbank, transbankPropinas,
+    efectivo, propinaAMano, gastos, garzones, propnasPagadas, comentarios,
+    envioDelivery, propinasDelivery, montoDelivery, cantidadDelivery,
+    cantidadRetiro, montoRetiro, bookingTotal } = req.body;
+  if (!restaurantId || !fecha) return res.status(400).json({ error: 'Local y fecha requeridos' });
+  if (userData.role !== 'admin' && !(userData.restaurantIds||[]).includes(restaurantId)) {
+    return res.status(403).json({ error: 'Sin acceso a este local' });
+  }
+  const ref = await db.collection('ingresos').add({
+    restaurantId, fecha, local: local||'',
+    totalPrograma:    totalPrograma    != null ? Number(totalPrograma)    : null,
+    propinasPrograma: propinasPrograma != null ? Number(propinasPrograma) : null,
+    transbank:        transbank        != null ? Number(transbank)        : null,
+    transbankPropinas:transbankPropinas!= null ? Number(transbankPropinas): null,
+    efectivo:         efectivo         != null ? Number(efectivo)         : null,
+    propinaAMano:     propinaAMano     != null ? Number(propinaAMano)     : null,
+    gastos:           gastos           != null ? Number(gastos)           : null,
+    garzones:         garzones         != null ? Number(garzones)         : null,
+    propnasPagadas:   propnasPagadas   || null,
+    comentarios:      comentarios      || null,
+    envioDelivery:    envioDelivery    != null ? Number(envioDelivery)    : null,
+    propinasDelivery: propinasDelivery != null ? Number(propinasDelivery) : null,
+    montoDelivery:    montoDelivery    != null ? Number(montoDelivery)    : null,
+    cantidadDelivery: cantidadDelivery != null ? Number(cantidadDelivery) : null,
+    cantidadRetiro:   cantidadRetiro   != null ? Number(cantidadRetiro)   : null,
+    montoRetiro:      montoRetiro      != null ? Number(montoRetiro)      : null,
+    bookingTotal:     bookingTotal     != null ? Number(bookingTotal)     : null,
+    createdAt:   new Date().toISOString(),
+    createdBy:   req.email,
+    createdByName: userData.name || req.email,
+  });
+  delete cierresCache[restaurantId]; // invalidar caché
+  res.json({ id: ref.id });
+});
+
+app.put('/api/cierres/:id', requireAuth, async (req, res) => {
+  const userDoc = await db.collection('users').doc(req.uid).get();
+  if (!userDoc.exists) return res.status(403).json({ error: 'Sin acceso' });
+  const { restaurantId, fecha, local, totalPrograma, propinasPrograma, transbank, transbankPropinas,
+    efectivo, propinaAMano, gastos, garzones, propnasPagadas, comentarios,
+    envioDelivery, propinasDelivery, montoDelivery, cantidadDelivery,
+    cantidadRetiro, montoRetiro, bookingTotal } = req.body;
+  const n = v => v != null && v !== '' ? Number(v) : null;
+  await db.collection('ingresos').doc(req.params.id).update({
+    fecha, local: local||'', restaurantId,
+    totalPrograma: n(totalPrograma), propinasPrograma: n(propinasPrograma),
+    transbank: n(transbank), transbankPropinas: n(transbankPropinas),
+    efectivo: n(efectivo), propinaAMano: n(propinaAMano),
+    gastos: n(gastos), garzones: n(garzones),
+    propnasPagadas: propnasPagadas||null, comentarios: comentarios||null,
+    envioDelivery: n(envioDelivery), propinasDelivery: n(propinasDelivery),
+    montoDelivery: n(montoDelivery), cantidadDelivery: n(cantidadDelivery),
+    cantidadRetiro: n(cantidadRetiro), montoRetiro: n(montoRetiro),
+    bookingTotal: n(bookingTotal),
+  });
+  if (restaurantId) delete cierresCache[restaurantId];
+  res.json({ ok: true });
+});
+
+app.delete('/api/cierres/:id', requireAuth, async (req, res) => {
+  if (!await isAdmin(req.uid)) return res.status(403).json({ error: 'Solo administradores' });
+  const doc = await db.collection('ingresos').doc(req.params.id).get();
+  const restId = doc.exists ? doc.data().restaurantId : null;
+  await db.collection('ingresos').doc(req.params.id).delete();
+  if (restId) delete cierresCache[restId]; // invalidar caché
+  res.json({ ok: true });
 });
 
 module.exports = app;
