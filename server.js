@@ -35,6 +35,10 @@ const bucket = admin.storage().bucket();
 
 const app = express();
 app.use(express.json());
+app.get('/', (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.sendFile(path.join(__dirname, 'landing.html'));
+});
 app.get('/admin', (req, res) => {
   res.set('Cache-Control', 'no-store');
   res.sendFile(path.join(__dirname, 'index.html'));
