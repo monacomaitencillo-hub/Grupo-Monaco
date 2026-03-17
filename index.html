@@ -468,6 +468,7 @@
         <button class="view-btn active" id="vbtn-resumen" onclick="setView('resumen')">Resumen</button>
       </div>
       <button class="btn-admin" id="btn-admin" onclick="openAdmin()" title="Administración" style="display:none">⚙</button>
+      <button id="btn-clear-cache" onclick="clearCacheActivos()" title="Limpiar caché de ventas" style="display:none;padding:5px 10px;background:transparent;border:1px solid #2a2a2a;border-radius:8px;color:#555;font-size:11px;cursor:pointer;white-space:nowrap;transition:all .15s" onmouseover="this.style.borderColor='#444';this.style.color='#aaa'" onmouseout="this.style.borderColor='#2a2a2a';this.style.color='#555'">Limpiar caché</button>
       <button class="btn-logout" onclick="doLogout()">Salir</button>
     </div>
   </div>
@@ -969,6 +970,7 @@ async function initDashboard() {
 
     document.getElementById('btn-admin').style.display = userRole === 'superadmin' ? 'flex' : 'none';
     document.getElementById('hub-btn-admin').style.display = userRole === 'superadmin' ? 'flex' : 'none';
+    document.getElementById('btn-clear-cache').style.display = userRole === 'superadmin' ? 'inline-block' : 'none';
     const rawName = data.name || data.email || '';
     const displayName = rawName.includes('@') ? rawName.split('@')[0] : rawName;
     document.getElementById('hub-user-name').textContent = displayName;
@@ -1540,6 +1542,22 @@ async function clearCacheLocal(id, name) {
   const data = await res.json();
   if (data.error) { alert('Error: ' + data.error); return; }
   alert(`Caché de "${name}" limpiado (${data.deleted} días eliminados). Recargá Ventas para ver datos frescos.`);
+}
+
+async function clearCacheActivos() {
+  const nombres = restaurants.map(r => r.name).join(', ');
+  if (!confirm(`¿Limpiar caché de ventas de todos los locales activos?\n\n${nombres}\n\nEsto forzará una recarga desde Fudo.`)) return;
+  const btn = document.getElementById('btn-clear-cache');
+  btn.textContent = 'Limpiando...'; btn.disabled = true;
+  let total = 0;
+  for (const r of restaurants) {
+    const res  = await apiFetch(`/api/admin/sales-cache/${r.id}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (!data.error) total += data.deleted || 0;
+  }
+  btn.textContent = 'Limpiar caché'; btn.disabled = false;
+  alert(`Caché limpiado (${total} días eliminados). Los datos se recargarán desde Fudo.`);
+  loadResumen();
 }
 
 async function fudoDiag(id, name) {
