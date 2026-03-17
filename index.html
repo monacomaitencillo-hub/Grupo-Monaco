@@ -718,6 +718,27 @@
         <div><div class="field-label">Teléfono</div><input type="text" id="mcli-phone" placeholder="+56 9 ..."></div>
         <div><div class="field-label">Dirección</div><input type="text" id="mcli-address" placeholder="Dirección"></div>
       </div>
+      <div style="margin-top:14px;padding-top:14px;border-top:1px solid #1f1f1f">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div>
+            <div class="field-label" style="margin-bottom:2px">Acceso al portal de compras</div>
+            <div style="font-size:11px;color:#444">Permite al cliente comprar helados en línea</div>
+          </div>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+            <input type="checkbox" id="mcli-portal" onchange="togglePortalFields()">
+            <span style="font-size:12px;color:#555">Habilitado</span>
+          </label>
+        </div>
+        <div id="mcli-portal-fields" style="display:none">
+          <div class="form-row">
+            <div><div class="field-label">Email de acceso</div><input type="email" id="mcli-portal-email" placeholder="email@cliente.com"></div>
+            <div>
+              <div class="field-label">Contraseña <span id="mcli-pass-hint" style="color:#555;font-weight:400;font-size:10px">(mínimo 6 caracteres)</span></div>
+              <input type="password" id="mcli-portal-pass" placeholder="••••••••">
+            </div>
+          </div>
+        </div>
+      </div>
       <div id="mcli-msg"></div>
     </div>
     <div class="inv-modal-btns">
@@ -2560,10 +2581,10 @@ async function renderInvClientes() {
       ${(userRole === 'admin' || userRole === 'superadmin') ? '<button class="btn-new" onclick="openModalCliente()">+ Nuevo cliente</button>' : ''}
     </div>
     <table class="inv-table">
-      <thead><tr><th>Nombre</th><th>RUT</th><th>Nombre fantasía</th><th>Teléfono</th><th>Dirección</th>${(userRole==='admin'||userRole==='superadmin')?'<th></th>':''}</tr></thead>
+      <thead><tr><th>Nombre</th><th>RUT</th><th>Nombre fantasía</th><th>Teléfono</th><th>Dirección</th><th>Portal</th>${(userRole==='admin'||userRole==='superadmin')?'<th></th>':''}</tr></thead>
       <tbody>
         ${invClientes.length === 0
-          ? `<tr><td colspan="6" style="color:#444;padding:20px">Sin clientes registrados</td></tr>`
+          ? `<tr><td colspan="7" style="color:#444;padding:20px">Sin clientes registrados</td></tr>`
           : invClientes.map(c => `
             <tr>
               <td style="color:#fff;font-weight:500">${c.name}</td>
@@ -2571,6 +2592,11 @@ async function renderInvClientes() {
               <td>${c.fantasyName || '—'}</td>
               <td>${c.phone || '—'}</td>
               <td>${c.address || '—'}</td>
+              <td>
+                ${c.hasPortalAccess
+                  ? `<span style="background:#0d2b1a;color:#4ade80;border:1px solid #16532d;padding:2px 9px;border-radius:20px;font-size:11px;white-space:nowrap">● Activo</span>`
+                  : `<span style="color:#333;font-size:11px">Sin acceso</span>`}
+              </td>
               ${(userRole==='admin'||userRole==='superadmin') ? `<td style="white-space:nowrap">
                 <button class="btn-edit" onclick="openModalCliente('${c.id}')">Editar</button>
                 <button class="btn-del"  onclick="delCliente('${c.id}','${c.name.replace(/'/g,"\\'")}')">Eliminar</button>
@@ -2590,21 +2616,48 @@ function openModalCliente(id) {
   document.getElementById('mcli-phone').value          = c?.phone       || '';
   document.getElementById('mcli-address').value        = c?.address     || '';
   document.getElementById('mcli-msg').textContent      = '';
+
+  const hasPortal = c?.hasPortalAccess || false;
+  document.getElementById('mcli-portal').checked       = hasPortal;
+  document.getElementById('mcli-portal-email').value   = c?.portalEmail || '';
+  document.getElementById('mcli-portal-pass').value    = '';
+  document.getElementById('mcli-portal-fields').style.display = hasPortal ? '' : 'none';
+  document.getElementById('mcli-pass-hint').textContent = c?.hasPortalAccess
+    ? '(dejar vacío para no cambiarla)'
+    : '(mínimo 6 caracteres)';
+
   document.getElementById('modal-cliente').classList.add('open');
 }
 
+function togglePortalFields() {
+  const checked = document.getElementById('mcli-portal').checked;
+  document.getElementById('mcli-portal-fields').style.display = checked ? '' : 'none';
+}
+
 async function saveCliente() {
-  const id   = document.getElementById('mcli-id').value;
+  const id          = document.getElementById('mcli-id').value;
+  const hasPortal   = document.getElementById('mcli-portal').checked;
+  const portalEmail = document.getElementById('mcli-portal-email').value.trim();
+  const portalPass  = document.getElementById('mcli-portal-pass').value;
+  const msg         = document.getElementById('mcli-msg');
+
   const body = {
-    name:        document.getElementById('mcli-name').value.trim(),
-    rut:         document.getElementById('mcli-rut').value.trim(),
-    fantasyName: document.getElementById('mcli-fantasy').value.trim(),
-    phone:       document.getElementById('mcli-phone').value.trim(),
-    address:     document.getElementById('mcli-address').value.trim()
+    name:            document.getElementById('mcli-name').value.trim(),
+    rut:             document.getElementById('mcli-rut').value.trim(),
+    fantasyName:     document.getElementById('mcli-fantasy').value.trim(),
+    phone:           document.getElementById('mcli-phone').value.trim(),
+    address:         document.getElementById('mcli-address').value.trim(),
+    hasPortalAccess: hasPortal,
+    portalEmail:     hasPortal ? portalEmail : '',
+    portalPassword:  portalPass || null
   };
-  const msg = document.getElementById('mcli-msg');
+
   if (!body.name) { msg.className = 'inline-error'; msg.textContent = 'Nombre requerido'; return; }
+  if (hasPortal && !portalEmail) { msg.className = 'inline-error'; msg.textContent = 'Email de acceso requerido para el portal'; return; }
+  if (hasPortal && !id && !portalPass) { msg.className = 'inline-error'; msg.textContent = 'Contraseña requerida para nuevo acceso al portal'; return; }
+
   try {
+    msg.className = ''; msg.textContent = 'Guardando…';
     const res  = await apiFetch(id ? `/api/inv/clients/${id}` : '/api/inv/clients',
       { method: id ? 'PUT' : 'POST', body: JSON.stringify(body) });
     const data = await res.json();

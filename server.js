@@ -994,31 +994,99 @@ app.post('/api/inv/stock/:restaurantId/:productId/add', requireAuth, async (req,
 // ── Clientes ─────────────────────────────────────────────
 app.get('/api/inv/clients', requireAuth, async (req, res) => {
   const snap = await db.collection('clients').orderBy('name').get();
-  res.json({ clients: snap.docs.map(d => ({ id: d.id, ...d.data() })) });
+  // Never expose portalPassword hash to the frontend
+  res.json({ clients: snap.docs.map(d => {
+    const { portalPasswordHash, ...data } = d.data();
+    return { id: d.id, ...data };
+  })});
 });
 
 app.post('/api/inv/clients', requireAuth, async (req, res) => {
   if (!await isEditor(req.uid)) return res.status(403).json({ error: 'Sin permisos' });
-  const { name, rut, fantasyName, phone, address } = req.body;
+  const { name, rut, fantasyName, phone, address, hasPortalAccess, portalEmail, portalPassword } = req.body;
   if (!name) return res.status(400).json({ error: 'Nombre requerido' });
+
+  let portalUid = null;
+  if (hasPortalAccess && portalEmail) {
+    if (!portalPassword) return res.status(400).json({ error: 'Contraseña requerida para el portal' });
+    try {
+      const authUser = await admin.auth().createUser({
+        email: portalEmail, password: portalPassword, displayName: name
+      });
+      await admin.auth().setCustomUserClaims(authUser.uid, { type: 'buyer' });
+      portalUid = authUser.uid;
+    } catch(e) {
+      return res.status(400).json({ error: `Error al crear acceso: ${e.message}` });
+    }
+  }
+
   const ref = await db.collection('clients').add({
-    name, rut: rut||'', fantasyName: fantasyName||'', phone: phone||'', address: address||''
+    name, rut: rut||'', fantasyName: fantasyName||'', phone: phone||'', address: address||'',
+    hasPortalAccess: hasPortalAccess || false,
+    portalEmail:     hasPortalAccess ? (portalEmail||'') : '',
+    portalUid:       portalUid
   });
   res.json({ id: ref.id });
 });
 
 app.put('/api/inv/clients/:id', requireAuth, async (req, res) => {
   if (!await isEditor(req.uid)) return res.status(403).json({ error: 'Sin permisos' });
-  const { name, rut, fantasyName, phone, address } = req.body;
+  const { name, rut, fantasyName, phone, address, hasPortalAccess, portalEmail, portalPassword } = req.body;
   if (!name) return res.status(400).json({ error: 'Nombre requerido' });
-  await db.collection('clients').doc(req.params.id).update({
-    name, rut: rut||'', fantasyName: fantasyName||'', phone: phone||'', address: address||''
+
+  const ref      = db.collection('clients').doc(req.params.id);
+  const snap     = await ref.get();
+  if (!snap.exists) return res.status(404).json({ error: 'No encontrado' });
+  const existing = snap.data();
+
+  let portalUid = existing.portalUid || null;
+
+  // Enabling portal for the first time
+  if (hasPortalAccess && !existing.hasPortalAccess) {
+    if (!portalEmail) return res.status(400).json({ error: 'Email requerido para el portal' });
+    if (!portalPassword) return res.status(400).json({ error: 'Contraseña requerida para el portal' });
+    try {
+      const authUser = await admin.auth().createUser({
+        email: portalEmail, password: portalPassword, displayName: name
+      });
+      await admin.auth().setCustomUserClaims(authUser.uid, { type: 'buyer' });
+      portalUid = authUser.uid;
+    } catch(e) {
+      return res.status(400).json({ error: `Error al crear acceso: ${e.message}` });
+    }
+  }
+
+  // Disabling portal
+  if (!hasPortalAccess && existing.hasPortalAccess && existing.portalUid) {
+    try { await admin.auth().deleteUser(existing.portalUid); } catch {}
+    portalUid = null;
+  }
+
+  // Updating password (portal already active)
+  if (hasPortalAccess && existing.hasPortalAccess && portalPassword && existing.portalUid) {
+    try { await admin.auth().updateUser(existing.portalUid, { password: portalPassword }); } catch {}
+  }
+
+  // Updating email (portal already active)
+  if (hasPortalAccess && existing.hasPortalAccess && portalEmail && portalEmail !== existing.portalEmail && existing.portalUid) {
+    try { await admin.auth().updateUser(existing.portalUid, { email: portalEmail }); } catch {}
+  }
+
+  await ref.update({
+    name, rut: rut||'', fantasyName: fantasyName||'', phone: phone||'', address: address||'',
+    hasPortalAccess: hasPortalAccess || false,
+    portalEmail:     hasPortalAccess ? (portalEmail||'') : '',
+    portalUid
   });
   res.json({ ok: true });
 });
 
 app.delete('/api/inv/clients/:id', requireAuth, async (req, res) => {
   if (!await isEditor(req.uid)) return res.status(403).json({ error: 'Sin permisos' });
+  const snap = await db.collection('clients').doc(req.params.id).get();
+  if (snap.exists && snap.data().portalUid) {
+    try { await admin.auth().deleteUser(snap.data().portalUid); } catch {}
+  }
   await db.collection('clients').doc(req.params.id).delete();
   res.json({ ok: true });
 });
