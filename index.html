@@ -439,8 +439,9 @@
   <div id="hub-bg"></div>
   <div class="hub-topbar">
     <img src="logo-monaco.png" alt="Mónaco" style="height:116px;width:auto;filter:brightness(0) invert(1)">
-    <div style="display:flex;align-items:center;gap:16px">
+    <div style="display:flex;align-items:center;gap:12px">
       <span class="hub-user" id="hub-user-name"></span>
+      <button class="btn-admin" id="hub-btn-admin" onclick="openAdmin()" title="Administración" style="display:none">⚙</button>
       <button class="btn-logout" onclick="doLogout()">Salir</button>
     </div>
   </div>
@@ -965,6 +966,7 @@ async function initDashboard() {
     activeRestIds  = activeRestId ? [activeRestId] : [];
 
     document.getElementById('btn-admin').style.display = userRole === 'superadmin' ? 'flex' : 'none';
+    document.getElementById('hub-btn-admin').style.display = userRole === 'superadmin' ? 'flex' : 'none';
     const rawName = data.name || data.email || '';
     const displayName = rawName.includes('@') ? rawName.split('@')[0] : rawName;
     document.getElementById('hub-user-name').textContent = displayName;
