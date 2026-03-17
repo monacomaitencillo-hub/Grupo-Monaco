@@ -484,11 +484,9 @@
     <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:6px" id="ventas-year-row">
       <span style="font-size:11px;color:#444;text-transform:uppercase;letter-spacing:.4px;min-width:40px">Año</span>
     </div>
-    <!-- Mes -->
+    <!-- Mes (rendered by renderVentasMonthRow()) -->
     <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:20px" id="ventas-month-row">
       <span style="font-size:11px;color:#444;text-transform:uppercase;letter-spacing:.4px;min-width:40px">Mes</span>
-      ${[['Ene',1],['Feb',2],['Mar',3],['Abr',4],['May',5],['Jun',6],['Jul',7],['Ago',8],['Sep',9],['Oct',10],['Nov',11],['Dic',12]].map(([l,n]) =>
-        `<button class="month-btn" data-month="${n}" onclick="toggleVentasMonth(${n},this)">${l}</button>`).join('')}
     </div>
 
     <div id="content" style="display:none">
@@ -618,13 +616,26 @@
   </div>
 </div>
 
+<!-- ── REGISTRO DE INVENTARIOS ── -->
+<div id="registro-inv-module" style="display:none;flex-direction:column;min-height:100vh">
+  <div class="inv-topbar">
+    <button onclick="goToHub()" style="background:transparent;border:none;color:#555;font-size:18px;cursor:pointer;padding:0 12px 0 0;line-height:1">←</button>
+    <div class="topbar-brand" style="margin-right:24px">Registro de Inventarios</div>
+    <button class="btn-logout" onclick="doLogout()">Salir</button>
+  </div>
+  <div class="inv-main">
+    <div id="inv-historial"></div>
+  </div>
+</div>
+
 <!-- ── INVENTARIO ── -->
 <div id="inventario">
   <div class="inv-topbar">
     <button onclick="goToHub()" style="background:transparent;border:none;color:#555;font-size:18px;cursor:pointer;padding:0 12px 0 0;line-height:1">←</button>
-    <div class="topbar-brand" style="margin-right:24px">Inventario</div>
+    <div class="topbar-brand" style="margin-right:24px">Gestión de Clientes y Proveedor</div>
     <div class="inv-tabs">
-      <button class="inv-tab active" id="itab-historial"   onclick="switchInvTab('historial')">Historial</button>
+      <button class="inv-tab active" id="itab-clientes"    onclick="switchInvTab('clientes')">Clientes</button>
+      <button class="inv-tab"        id="itab-catalogo"    onclick="switchInvTab('catalogo')">Catálogo</button>
       <button class="inv-tab"        id="itab-productos"   onclick="switchInvTab('productos')">Productos</button>
       <button class="inv-tab"        id="itab-proveedores" onclick="switchInvTab('proveedores')">Proveedores</button>
       <button class="inv-tab"        id="itab-alertas"     onclick="switchInvTab('alertas')" style="display:none">Alertas</button>
@@ -632,7 +643,8 @@
     <button class="btn-logout" onclick="doLogout()">Salir</button>
   </div>
   <div class="inv-main">
-    <div id="inv-historial"></div>
+    <div id="inv-clientes"></div>
+    <div id="inv-catalogo"    style="display:none"></div>
     <div id="inv-productos"   style="display:none"></div>
     <div id="inv-proveedores" style="display:none"></div>
     <div id="inv-alertas"     style="display:none"></div>
@@ -687,6 +699,62 @@
     <div class="inv-modal-btns">
       <button class="btn-new"    onclick="saveProveedor()">Guardar</button>
       <button class="btn-cancel" onclick="closeModal('modal-proveedor')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- modal cliente -->
+<div class="inv-modal-overlay" id="modal-cliente" onclick="closeModalIfOutside(event,'modal-cliente')">
+  <div class="inv-modal">
+    <h3 id="mcli-title">Nuevo cliente</h3>
+    <div class="admin-form">
+      <input type="hidden" id="mcli-id">
+      <div class="form-row">
+        <div><div class="field-label">Nombre</div><input type="text" id="mcli-name" placeholder="Nombre del cliente"></div>
+        <div><div class="field-label">RUT empresa</div><input type="text" id="mcli-rut" placeholder="Ej: 76.123.456-7"></div>
+      </div>
+      <div><div class="field-label">Nombre fantasía</div><input type="text" id="mcli-fantasy" placeholder="Nombre comercial (opcional)"></div>
+      <div class="form-row">
+        <div><div class="field-label">Teléfono</div><input type="text" id="mcli-phone" placeholder="+56 9 ..."></div>
+        <div><div class="field-label">Dirección</div><input type="text" id="mcli-address" placeholder="Dirección"></div>
+      </div>
+      <div id="mcli-msg"></div>
+    </div>
+    <div class="inv-modal-btns">
+      <button class="btn-new"    onclick="saveCliente()">Guardar</button>
+      <button class="btn-cancel" onclick="closeModal('modal-cliente')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- modal catálogo -->
+<div class="inv-modal-overlay" id="modal-catalogo" onclick="closeModalIfOutside(event,'modal-catalogo')">
+  <div class="inv-modal">
+    <h3 id="mcat-title">Nuevo producto</h3>
+    <div class="admin-form">
+      <input type="hidden" id="mcat-id">
+      <div class="form-row">
+        <div><div class="field-label">Nombre</div><input type="text" id="mcat-name" placeholder="Ej: Helado de frutilla"></div>
+        <div><div class="field-label">Categoría</div><input type="text" id="mcat-cat" placeholder="Ej: Helados"></div>
+      </div>
+      <div class="form-row">
+        <div>
+          <div class="field-label">Unidad</div>
+          <select id="mcat-unit">
+            <option value="unidad">Unidad</option>
+            <option value="kg">Kilogramo (kg)</option>
+            <option value="lt">Litro (lt)</option>
+            <option value="caja">Caja</option>
+            <option value="pote">Pote</option>
+          </select>
+        </div>
+        <div><div class="field-label">Precio actual ($)</div><input type="number" id="mcat-price" placeholder="0" min="0" step="1"></div>
+      </div>
+      <div id="mcat-msg"></div>
+    </div>
+    <div class="inv-modal-btns">
+      <button class="btn-new"    onclick="saveCatalogo()">Guardar</button>
+      <button class="btn-cancel" onclick="closeModal('modal-catalogo')">Cancelar</button>
     </div>
   </div>
 </div>
@@ -791,7 +859,7 @@ async function doLogout() {
   document.getElementById('dashboard').style.display = 'none';
 }
 
-const ALL_MODULES_EL = ['hub','dashboard','inventario','add-stock-module','cierres-module','pdf-upload-module','pdf-view-module','usuarios-module'];
+const ALL_MODULES_EL = ['hub','dashboard','inventario','registro-inv-module','add-stock-module','cierres-module','pdf-upload-module','pdf-view-module','usuarios-module'];
 function hideAll() { ALL_MODULES_EL.forEach(id => { const el = document.getElementById(id); if(el) el.style.display = 'none'; }); }
 
 function goTo(module) {
@@ -808,12 +876,15 @@ function goTo(module) {
     initAddStockModule();
   } else if (module === 'inventario') {
     document.getElementById('inventario').style.display = 'flex';
-    invTab = 'historial';
+    invTab = 'clientes';
     document.getElementById('itab-alertas').style.display = userRole === 'superadmin' ? '' : 'none';
-    ['historial','productos','proveedores','alertas'].forEach(t => {
-      document.getElementById(`itab-${t}`).classList.toggle('active', t === 'historial');
-      document.getElementById(`inv-${t}`).style.display = t === 'historial' ? 'block' : 'none';
+    ['clientes','catalogo','productos','proveedores','alertas'].forEach(t => {
+      document.getElementById(`itab-${t}`).classList.toggle('active', t === 'clientes');
+      document.getElementById(`inv-${t}`).style.display = t === 'clientes' ? 'block' : 'none';
     });
+    renderInvClientes();
+  } else if (module === 'registro-inv') {
+    document.getElementById('registro-inv-module').style.display = 'flex';
     renderInvHistorial();
   } else if (module === 'usuarios') {
     hideAll();
@@ -915,14 +986,15 @@ let ventasSelMonths = new Set();
 function applyDefaultRange() {
   ventasSelYears.clear();
   ventasSelMonths.clear();
-  // Por defecto: año actual
-  const y = new Date().getFullYear().toString();
-  ventasSelYears.add(y);
+  // Por defecto: Hoy (más rápido — un solo día desde Firebase)
+  const today = getToday();
   document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-  document.getElementById('inp-from').value = '';
-  document.getElementById('inp-to').value   = '';
+  document.querySelector('[data-range="today"]')?.classList.add('active');
+  document.getElementById('inp-from').value = today;
+  document.getElementById('inp-to').value   = today;
   renderVentasYearRow();
-  updateVentasDateRange();
+  renderVentasMonthRow();
+  // No llama loadResumen aquí — lo hace showModule para evitar doble carga
 }
 
 function renderVentasYearRow() {
@@ -933,8 +1005,15 @@ function renderVentasYearRow() {
   const btns = years.map(y =>
     `<button class="month-btn ${ventasSelYears.has(y) ? 'active' : ''}"
       onclick="toggleVentasYear('${y}',this)">${y}</button>`).join('');
-  // Conservar el label
   row.innerHTML = `<span style="font-size:11px;color:#444;text-transform:uppercase;letter-spacing:.4px;min-width:40px">Año</span>${btns}`;
+}
+
+function renderVentasMonthRow() {
+  const MONTHS = [['Ene',1],['Feb',2],['Mar',3],['Abr',4],['May',5],['Jun',6],['Jul',7],['Ago',8],['Sep',9],['Oct',10],['Nov',11],['Dic',12]];
+  const row = document.getElementById('ventas-month-row');
+  const btns = MONTHS.map(([l,n]) =>
+    `<button class="month-btn ${ventasSelMonths.has(n) ? 'active' : ''}" onclick="toggleVentasMonth(${n},this)">${l}</button>`).join('');
+  row.innerHTML = `<span style="font-size:11px;color:#444;text-transform:uppercase;letter-spacing:.4px;min-width:40px">Mes</span>${btns}`;
 }
 
 function toggleVentasYear(y, btn) {
@@ -986,9 +1065,9 @@ function monthStart() { const t = getToday(); return t.substring(0,7) + '-01'; }
 function setRange(btn) {
   if (btn) {
     document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('.month-btn').forEach(b => b.classList.remove('active'));
     ventasSelYears.clear(); ventasSelMonths.clear();
     renderVentasYearRow();
+    renderVentasMonthRow();
     btn.classList.add('active');
     const r = btn.dataset.range, today = getToday();
     const from = r === 'today' ? today : r === '7d' ? daysAgo(6) : '';
@@ -1511,7 +1590,8 @@ async function renderAdminUsuarios() {
           <div class="rest-checkboxes">
             <label><input type="checkbox" class="nu-module" value="ventas" checked> Ventas</label>
             <label><input type="checkbox" class="nu-module" value="stock"> Añadir stock</label>
-            <label><input type="checkbox" class="nu-module" value="inventario"> Inventario</label>
+            <label><input type="checkbox" class="nu-module" value="inventario"> Gestión de Clientes y Proveedor</label>
+            <label><input type="checkbox" class="nu-module" value="registro-inv"> Registro de Inventarios</label>
             <label><input type="checkbox" class="nu-module" value="cierres"> Cierres de caja</label>
             <label><input type="checkbox" class="nu-module" value="pdf-view"> Ver Manual</label>
           </div>
@@ -1613,11 +1693,12 @@ async function editPermisos(uid, name) {
         <div class="rest-checkboxes" id="edit-rests">${checks}</div>
         <div class="field-label" style="margin-top:12px">Módulos permitidos</div>
         <div class="rest-checkboxes">
-          <label><input type="checkbox" class="ep-module" value="ventas"      ${currentMods.includes('ventas')?'checked':''}> Ventas</label>
-          <label><input type="checkbox" class="ep-module" value="stock"       ${currentMods.includes('stock')?'checked':''}> Añadir stock</label>
-          <label><input type="checkbox" class="ep-module" value="inventario"  ${currentMods.includes('inventario')?'checked':''}> Inventario</label>
-          <label><input type="checkbox" class="ep-module" value="cierres"     ${currentMods.includes('cierres')?'checked':''}> Cierres de caja</label>
-          <label><input type="checkbox" class="ep-module" value="pdf-view"    ${currentMods.includes('pdf-view')?'checked':''}> Ver Manual</label>
+          <label><input type="checkbox" class="ep-module" value="ventas"        ${currentMods.includes('ventas')?'checked':''}> Ventas</label>
+          <label><input type="checkbox" class="ep-module" value="stock"         ${currentMods.includes('stock')?'checked':''}> Añadir stock</label>
+          <label><input type="checkbox" class="ep-module" value="inventario"    ${currentMods.includes('inventario')?'checked':''}> Gestión de Clientes y Proveedor</label>
+          <label><input type="checkbox" class="ep-module" value="registro-inv"  ${currentMods.includes('registro-inv')?'checked':''}> Registro de Inventarios</label>
+          <label><input type="checkbox" class="ep-module" value="cierres"       ${currentMods.includes('cierres')?'checked':''}> Cierres de caja</label>
+          <label><input type="checkbox" class="ep-module" value="pdf-view"      ${currentMods.includes('pdf-view')?'checked':''}> Ver Manual</label>
         </div>
         <div class="field-label" style="margin-top:12px">Categorías de inventario (vacío = todas)</div>
         <div class="rest-checkboxes" id="edit-cats">${catChecks}</div>
@@ -1674,7 +1755,8 @@ function renderUsuariosPage() {
   const listEl = document.getElementById('usuarios-list');
   const restMap = Object.fromEntries(_upRests.map(r => [r.id, r.name]));
   const MODULE_NAMES = {
-    ventas: 'Ventas', stock: 'Añadir stock', inventario: 'Inventario',
+    ventas: 'Ventas', stock: 'Añadir stock', inventario: 'Gestión de Clientes y Proveedor',
+    'registro-inv': 'Registro de Inventarios',
     cierres: 'Cierres de caja', 'pdf-view': 'Ver Manual', usuarios: 'Usuarios'
   };
   const roleLabel = r => r === 'superadmin' ? 'Superadmin' : r === 'admin' ? 'Admin' : 'Usuario';
@@ -1761,7 +1843,8 @@ async function usuariosShowForm() {
           <div class="rest-checkboxes">
             <label><input type="checkbox" class="nu-module" value="ventas" checked> Ventas</label>
             <label><input type="checkbox" class="nu-module" value="stock"> Añadir stock</label>
-            <label><input type="checkbox" class="nu-module" value="inventario"> Inventario</label>
+            <label><input type="checkbox" class="nu-module" value="inventario"> Gestión de Clientes y Proveedor</label>
+            <label><input type="checkbox" class="nu-module" value="registro-inv"> Registro de Inventarios</label>
             <label><input type="checkbox" class="nu-module" value="cierres"> Cierres de caja</label>
             <label><input type="checkbox" class="nu-module" value="pdf-view"> Ver Manual</label>
           </div>
@@ -1835,11 +1918,12 @@ async function usuariosEditUser(uid, name) {
         <div class="rest-checkboxes" id="edit-rests">${checks}</div>
         <div class="field-label" style="margin-top:12px">Módulos permitidos</div>
         <div class="rest-checkboxes">
-          <label><input type="checkbox" class="ep-module" value="ventas"      ${currentMods.includes('ventas')?'checked':''}> Ventas</label>
-          <label><input type="checkbox" class="ep-module" value="stock"       ${currentMods.includes('stock')?'checked':''}> Añadir stock</label>
-          <label><input type="checkbox" class="ep-module" value="inventario"  ${currentMods.includes('inventario')?'checked':''}> Inventario</label>
-          <label><input type="checkbox" class="ep-module" value="cierres"     ${currentMods.includes('cierres')?'checked':''}> Cierres de caja</label>
-          <label><input type="checkbox" class="ep-module" value="pdf-view"    ${currentMods.includes('pdf-view')?'checked':''}> Ver Manual</label>
+          <label><input type="checkbox" class="ep-module" value="ventas"        ${currentMods.includes('ventas')?'checked':''}> Ventas</label>
+          <label><input type="checkbox" class="ep-module" value="stock"         ${currentMods.includes('stock')?'checked':''}> Añadir stock</label>
+          <label><input type="checkbox" class="ep-module" value="inventario"    ${currentMods.includes('inventario')?'checked':''}> Gestión de Clientes y Proveedor</label>
+          <label><input type="checkbox" class="ep-module" value="registro-inv"  ${currentMods.includes('registro-inv')?'checked':''}> Registro de Inventarios</label>
+          <label><input type="checkbox" class="ep-module" value="cierres"       ${currentMods.includes('cierres')?'checked':''}> Cierres de caja</label>
+          <label><input type="checkbox" class="ep-module" value="pdf-view"      ${currentMods.includes('pdf-view')?'checked':''}> Ver Manual</label>
         </div>
         <div class="field-label" style="margin-top:12px">Categorías de inventario (vacío = todas)</div>
         <div class="rest-checkboxes" id="edit-cats">${catChecks}</div>
@@ -1996,11 +2080,12 @@ async function saveThresholds() {
 
 function switchInvTab(tab) {
   invTab = tab;
-  ['historial','productos','proveedores','alertas'].forEach(t => {
+  ['clientes','catalogo','productos','proveedores','alertas'].forEach(t => {
     document.getElementById(`itab-${t}`).classList.toggle('active', t === tab);
     document.getElementById(`inv-${t}`).style.display = t === tab ? 'block' : 'none';
   });
-  if (tab === 'historial')   renderInvHistorial();
+  if (tab === 'clientes')    renderInvClientes();
+  if (tab === 'catalogo')    renderInvCatalogo();
   if (tab === 'productos')   renderInvProductos();
   if (tab === 'proveedores') renderInvProveedores();
   if (tab === 'alertas')     renderInvAlertas();
@@ -2017,13 +2102,14 @@ function closeSidebar() {
 }
 function renderSidebar() {
   const allModules = [
-    { id: 'ventas',      icon: '📊', name: 'Ventas',          bg: 'linear-gradient(135deg,#7c6bc9,#9b8de0)', adminOnly: false },
-    { id: 'stock',       icon: '📦', name: 'Añadir stock',    bg: 'linear-gradient(135deg,#3aada8,#52c9c4)', adminOnly: false },
-    { id: 'inventario',  icon: '🗂️', name: 'Inventario',      bg: 'linear-gradient(135deg,#3d9e72,#52c98a)', adminOnly: false },
-    { id: 'cierres',     icon: '💰', name: 'Cierres de caja', bg: 'linear-gradient(135deg,#d97b45,#f0975a)', adminOnly: false },
-    { id: 'pdf-upload',  icon: '📤', name: 'Añadir PDF',      bg: 'linear-gradient(135deg,#2563b0,#3b82f6)', adminOnly: true  },
-    { id: 'pdf-view',    icon: '📄', name: 'Ver Manual',      bg: 'linear-gradient(135deg,#0e7490,#06b6d4)', adminOnly: false },
-    { id: 'usuarios',    icon: '👥', name: 'Usuarios',        bg: 'linear-gradient(135deg,#c95e6b,#e07585)', adminOnly: true  },
+    { id: 'ventas',        icon: '📊', name: 'Ventas',                        bg: 'linear-gradient(135deg,#7c6bc9,#9b8de0)', adminOnly: false },
+    { id: 'stock',         icon: '📦', name: 'Añadir stock',                  bg: 'linear-gradient(135deg,#3aada8,#52c9c4)', adminOnly: false },
+    { id: 'inventario',    icon: '🗂️', name: 'Gestión de Clientes y Proveedor', bg: 'linear-gradient(135deg,#3d9e72,#52c98a)', adminOnly: false },
+    { id: 'registro-inv',  icon: '📋', name: 'Registro de Inventarios',       bg: 'linear-gradient(135deg,#5a7e3d,#7ab552)', adminOnly: false },
+    { id: 'cierres',       icon: '💰', name: 'Cierres de caja',               bg: 'linear-gradient(135deg,#d97b45,#f0975a)', adminOnly: false },
+    { id: 'pdf-upload',    icon: '📤', name: 'Añadir PDF',                    bg: 'linear-gradient(135deg,#2563b0,#3b82f6)', adminOnly: true  },
+    { id: 'pdf-view',      icon: '📄', name: 'Ver Manual',                    bg: 'linear-gradient(135deg,#0e7490,#06b6d4)', adminOnly: false },
+    { id: 'usuarios',      icon: '👥', name: 'Usuarios',                      bg: 'linear-gradient(135deg,#c95e6b,#e07585)', adminOnly: true  },
   ];
   const visible = allModules.filter(m => {
     if (m.adminOnly) return userRole === 'superadmin';
@@ -2049,13 +2135,14 @@ function setSidebarVisibility(onHub) {
 // ── Hub dinámico ────────────────────────────────────────────
 function renderHub() {
   const allModules = [
-    { id: 'ventas',      icon: '📊', name: 'Ventas',          bg: 'linear-gradient(135deg,#7c6bc9,#9b8de0)', adminOnly: false },
-    { id: 'stock',       icon: '📦', name: 'Añadir stock',    bg: 'linear-gradient(135deg,#3aada8,#52c9c4)', adminOnly: false },
-    { id: 'inventario',  icon: '🗂️', name: 'Inventario',      bg: 'linear-gradient(135deg,#3d9e72,#52c98a)', adminOnly: false },
-    { id: 'cierres',     icon: '💰', name: 'Cierres de caja', bg: 'linear-gradient(135deg,#d97b45,#f0975a)', adminOnly: false },
-    { id: 'pdf-upload',  icon: '📤', name: 'Añadir PDF',      bg: 'linear-gradient(135deg,#2563b0,#3b82f6)', adminOnly: true  },
-    { id: 'pdf-view',    icon: '📄', name: 'Ver Manual',      bg: 'linear-gradient(135deg,#0e7490,#06b6d4)', adminOnly: false },
-    { id: 'usuarios',    icon: '👥', name: 'Usuarios',        bg: 'linear-gradient(135deg,#c95e6b,#e07585)', adminOnly: true  },
+    { id: 'ventas',        icon: '📊', name: 'Ventas',                        bg: 'linear-gradient(135deg,#7c6bc9,#9b8de0)', adminOnly: false },
+    { id: 'stock',         icon: '📦', name: 'Añadir stock',                  bg: 'linear-gradient(135deg,#3aada8,#52c9c4)', adminOnly: false },
+    { id: 'inventario',    icon: '🗂️', name: 'Gestión de Clientes y Proveedor', bg: 'linear-gradient(135deg,#3d9e72,#52c98a)', adminOnly: false },
+    { id: 'registro-inv',  icon: '📋', name: 'Registro de Inventarios',       bg: 'linear-gradient(135deg,#5a7e3d,#7ab552)', adminOnly: false },
+    { id: 'cierres',       icon: '💰', name: 'Cierres de caja',               bg: 'linear-gradient(135deg,#d97b45,#f0975a)', adminOnly: false },
+    { id: 'pdf-upload',    icon: '📤', name: 'Añadir PDF',                    bg: 'linear-gradient(135deg,#2563b0,#3b82f6)', adminOnly: true  },
+    { id: 'pdf-view',      icon: '📄', name: 'Ver Manual',                    bg: 'linear-gradient(135deg,#0e7490,#06b6d4)', adminOnly: false },
+    { id: 'usuarios',      icon: '👥', name: 'Usuarios',                      bg: 'linear-gradient(135deg,#c95e6b,#e07585)', adminOnly: true  },
   ];
   const visible = allModules.filter(m => {
     if (m.adminOnly) return userRole === 'superadmin';
@@ -2449,6 +2536,209 @@ async function delProducto(id, name) {
   await apiFetch(`/api/inv/products/${id}`, { method: 'DELETE' });
   invProducts = invProducts.filter(p => p.id !== id);
   renderProdTable();
+}
+
+// ── Clientes ───────────────────────────────────────────────
+let invClientes = [];
+
+async function renderInvClientes() {
+  const el = document.getElementById('inv-clientes');
+  el.innerHTML = '<div style="color:#555;font-size:13px">Cargando...</div>';
+  try {
+    const res = await apiFetch('/api/inv/clients');
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    invClientes = data.clients || [];
+  } catch(e) {
+    el.innerHTML = `<div style="color:#f87171;font-size:13px;padding:20px">Error al cargar clientes: ${e.message}</div>`;
+    return;
+  }
+
+  el.innerHTML = `
+    <div class="inv-toolbar">
+      <h2>Clientes</h2>
+      ${(userRole === 'admin' || userRole === 'superadmin') ? '<button class="btn-new" onclick="openModalCliente()">+ Nuevo cliente</button>' : ''}
+    </div>
+    <table class="inv-table">
+      <thead><tr><th>Nombre</th><th>RUT</th><th>Nombre fantasía</th><th>Teléfono</th><th>Dirección</th>${(userRole==='admin'||userRole==='superadmin')?'<th></th>':''}</tr></thead>
+      <tbody>
+        ${invClientes.length === 0
+          ? `<tr><td colspan="6" style="color:#444;padding:20px">Sin clientes registrados</td></tr>`
+          : invClientes.map(c => `
+            <tr>
+              <td style="color:#fff;font-weight:500">${c.name}</td>
+              <td>${c.rut || '—'}</td>
+              <td>${c.fantasyName || '—'}</td>
+              <td>${c.phone || '—'}</td>
+              <td>${c.address || '—'}</td>
+              ${(userRole==='admin'||userRole==='superadmin') ? `<td style="white-space:nowrap">
+                <button class="btn-edit" onclick="openModalCliente('${c.id}')">Editar</button>
+                <button class="btn-del"  onclick="delCliente('${c.id}','${c.name.replace(/'/g,"\\'")}')">Eliminar</button>
+              </td>` : ''}
+            </tr>`).join('')}
+      </tbody>
+    </table>`;
+}
+
+function openModalCliente(id) {
+  const c = id ? invClientes.find(x => x.id === id) : null;
+  document.getElementById('mcli-title').textContent    = c ? 'Editar cliente' : 'Nuevo cliente';
+  document.getElementById('mcli-id').value             = c?.id          || '';
+  document.getElementById('mcli-name').value           = c?.name        || '';
+  document.getElementById('mcli-rut').value            = c?.rut         || '';
+  document.getElementById('mcli-fantasy').value        = c?.fantasyName || '';
+  document.getElementById('mcli-phone').value          = c?.phone       || '';
+  document.getElementById('mcli-address').value        = c?.address     || '';
+  document.getElementById('mcli-msg').textContent      = '';
+  document.getElementById('modal-cliente').classList.add('open');
+}
+
+async function saveCliente() {
+  const id   = document.getElementById('mcli-id').value;
+  const body = {
+    name:        document.getElementById('mcli-name').value.trim(),
+    rut:         document.getElementById('mcli-rut').value.trim(),
+    fantasyName: document.getElementById('mcli-fantasy').value.trim(),
+    phone:       document.getElementById('mcli-phone').value.trim(),
+    address:     document.getElementById('mcli-address').value.trim()
+  };
+  const msg = document.getElementById('mcli-msg');
+  if (!body.name) { msg.className = 'inline-error'; msg.textContent = 'Nombre requerido'; return; }
+  try {
+    const res  = await apiFetch(id ? `/api/inv/clients/${id}` : '/api/inv/clients',
+      { method: id ? 'PUT' : 'POST', body: JSON.stringify(body) });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    closeModal('modal-cliente');
+    renderInvClientes();
+  } catch(e) { msg.className = 'inline-error'; msg.textContent = e.message; }
+}
+
+async function delCliente(id, name) {
+  if (!confirm(`¿Eliminar cliente "${name}"?`)) return;
+  await apiFetch(`/api/inv/clients/${id}`, { method: 'DELETE' });
+  invClientes = invClientes.filter(c => c.id !== id);
+  renderInvClientes();
+}
+
+// ── Catálogo de productos ──────────────────────────────────
+let invCatalogo     = [];
+let catHistExpanded = {};
+
+async function renderInvCatalogo() {
+  const el = document.getElementById('inv-catalogo');
+  el.innerHTML = '<div style="color:#555;font-size:13px">Cargando...</div>';
+  try {
+    const res  = await apiFetch('/api/inv/catalog');
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    invCatalogo     = data.catalog || [];
+    catHistExpanded = {};
+  } catch(e) {
+    el.innerHTML = `<div style="color:#f87171;font-size:13px;padding:20px">Error al cargar catálogo: ${e.message}</div>`;
+    return;
+  }
+  renderCatalogoTable();
+}
+
+function renderCatalogoTable() {
+  const el = document.getElementById('inv-catalogo');
+  el.innerHTML = `
+    <div class="inv-toolbar">
+      <h2>Catálogo de productos</h2>
+      ${(userRole === 'admin' || userRole === 'superadmin') ? '<button class="btn-new" onclick="openModalCatalogo()">+ Nuevo producto</button>' : ''}
+    </div>
+    <table class="inv-table">
+      <thead><tr><th>Nombre</th><th>Categoría</th><th>Unidad</th><th>Precio actual</th><th>Vigente desde</th>${(userRole==='admin'||userRole==='superadmin')?'<th></th>':''}</tr></thead>
+      <tbody>
+        ${invCatalogo.length === 0
+          ? `<tr><td colspan="6" style="color:#444;padding:20px">Sin productos en catálogo</td></tr>`
+          : invCatalogo.map(p => {
+              const hist = p.priceHistory || [];
+              return `
+              <tr>
+                <td style="color:#fff;font-weight:500">
+                  ${p.name}
+                  ${hist.length ? `<button onclick="toggleCatHist('${p.id}')" title="Historial de precios"
+                    style="background:transparent;border:none;color:#555;font-size:11px;cursor:pointer;margin-left:6px">📈 ${hist.length}</button>` : ''}
+                </td>
+                <td>${p.category || '—'}</td>
+                <td><span class="tag">${p.unit || 'unidad'}</span></td>
+                <td style="color:#fff;font-weight:600">${p.currentPrice != null ? '$' + Number(p.currentPrice).toLocaleString('es-CL') : '—'}</td>
+                <td style="color:#555;font-size:12px">${p.currentPriceSince || '—'}</td>
+                ${(userRole==='admin'||userRole==='superadmin') ? `<td style="white-space:nowrap">
+                  <button class="btn-edit" onclick="openModalCatalogo('${p.id}')">Editar</button>
+                  <button class="btn-del"  onclick="delCatalogo('${p.id}','${p.name.replace(/'/g,"\\'")}')">Eliminar</button>
+                </td>` : ''}
+              </tr>
+              <tr id="cathist-${p.id}" style="display:${catHistExpanded[p.id] ? 'table-row' : 'none'}">
+                <td colspan="6" style="padding:0 0 12px 24px;border-bottom:1px solid #1a1a1a">
+                  ${hist.length === 0
+                    ? '<span style="color:#444;font-size:12px">Sin historial de precios</span>'
+                    : `<table style="font-size:12px;border-collapse:collapse">
+                        <thead><tr>
+                          <th style="color:#444;font-weight:400;text-align:left;padding:4px 24px 4px 0">Mes</th>
+                          <th style="color:#444;font-weight:400;text-align:left;padding:4px 0">Precio</th>
+                        </tr></thead>
+                        <tbody>
+                          ${[...hist].reverse().map(h => `
+                            <tr>
+                              <td style="color:#666;padding:3px 24px 3px 0">${h.month}</td>
+                              <td style="color:#ccc;padding:3px 0">$${Number(h.price).toLocaleString('es-CL')}</td>
+                            </tr>`).join('')}
+                        </tbody>
+                      </table>`}
+                </td>
+              </tr>`;
+            }).join('')}
+      </tbody>
+    </table>`;
+}
+
+function toggleCatHist(id) {
+  catHistExpanded[id] = !catHistExpanded[id];
+  const row = document.getElementById(`cathist-${id}`);
+  if (row) row.style.display = catHistExpanded[id] ? 'table-row' : 'none';
+}
+
+function openModalCatalogo(id) {
+  const p = id ? invCatalogo.find(x => x.id === id) : null;
+  document.getElementById('mcat-title').textContent   = p ? 'Editar producto' : 'Nuevo producto';
+  document.getElementById('mcat-id').value            = p?.id           || '';
+  document.getElementById('mcat-name').value          = p?.name         || '';
+  document.getElementById('mcat-cat').value           = p?.category     || '';
+  document.getElementById('mcat-unit').value          = p?.unit         || 'unidad';
+  document.getElementById('mcat-price').value         = p?.currentPrice != null ? p.currentPrice : '';
+  document.getElementById('mcat-msg').textContent     = '';
+  document.getElementById('modal-catalogo').classList.add('open');
+}
+
+async function saveCatalogo() {
+  const id       = document.getElementById('mcat-id').value;
+  const priceRaw = document.getElementById('mcat-price').value;
+  const body     = {
+    name:         document.getElementById('mcat-name').value.trim(),
+    category:     document.getElementById('mcat-cat').value.trim(),
+    unit:         document.getElementById('mcat-unit').value,
+    currentPrice: priceRaw !== '' ? parseFloat(priceRaw) : null
+  };
+  const msg = document.getElementById('mcat-msg');
+  if (!body.name) { msg.className = 'inline-error'; msg.textContent = 'Nombre requerido'; return; }
+  try {
+    const res  = await apiFetch(id ? `/api/inv/catalog/${id}` : '/api/inv/catalog',
+      { method: id ? 'PUT' : 'POST', body: JSON.stringify(body) });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    closeModal('modal-catalogo');
+    renderInvCatalogo();
+  } catch(e) { msg.className = 'inline-error'; msg.textContent = e.message; }
+}
+
+async function delCatalogo(id, name) {
+  if (!confirm(`¿Eliminar "${name}" del catálogo?`)) return;
+  await apiFetch(`/api/inv/catalog/${id}`, { method: 'DELETE' });
+  invCatalogo = invCatalogo.filter(p => p.id !== id);
+  renderCatalogoTable();
 }
 
 // ── Historial de inventarios ───────────────────────────────
