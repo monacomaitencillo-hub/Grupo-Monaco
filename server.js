@@ -616,6 +616,10 @@ app.get('/api/summary/:restaurantId', requireAuth, async (req, res) => {
     res.json(clientSummary);
   } catch(e) {
     console.error(e);
+    // Si el error es de credenciales Fudo, devolver datos vacíos con aviso (no crashear el frontend)
+    if (e.message?.includes('autenticar con Fudo') || e.message?.includes('No se pudo')) {
+      return res.json({ noData: true, reason: 'Sin credenciales de Fudo válidas para este local' });
+    }
     res.status(500).json({ error: e.message });
   }
 });

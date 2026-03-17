@@ -1177,10 +1177,16 @@ async function loadSummary() {
   const qsStr = qs.toString() ? '?' + qs : '';
 
   try {
-    const results = await Promise.all(
+    const settled = await Promise.allSettled(
       activeRestIds.map(id => apiFetch(`/api/summary/${id}${qsStr}`).then(r => r.json()))
     );
-    for (const d of results) if (d.error) throw new Error(d.error);
+    const results = settled
+      .filter(r => r.status === 'fulfilled' && !r.value.error && !r.value.noData)
+      .map(r => r.value);
+    const failed  = settled
+      .filter(r => r.status === 'rejected' || r.value?.error || r.value?.noData)
+      .map((r, i) => activeRestIds[settled.indexOf(r)]);
+    if (!results.length) throw new Error('Sin datos disponibles para los locales seleccionados');
     render(mergeSummaries(results));
   } catch(e) {
     document.getElementById('content').innerHTML =
@@ -1216,11 +1222,12 @@ async function loadResumen() {
       const res  = await apiFetch(`/api/summary/${r.id}${qsStr}`);
       const data = await res.json();
       if (data.error) throw new Error(data.error);
+      if (data.noData) throw new Error(data.reason || 'Sin datos');
       cardEl.innerHTML = resumenCardHTML(r.name, data);
     } catch(e) {
       cardEl.innerHTML = `
         <div class="resumen-card-name">${r.name}</div>
-        <div style="color:#f87171;font-size:13px;margin-top:8px">${e.message}</div>`;
+        <div style="color:#555;font-size:12px;margin-top:8px">⚠️ ${e.message}</div>`;
     }
   }
 }
