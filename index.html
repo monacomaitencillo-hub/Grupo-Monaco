@@ -616,6 +616,18 @@
   </div>
 </div>
 
+<div id="pedidos-module" style="display:none;flex-direction:column;min-height:100vh">
+  <div class="inv-topbar">
+    <button onclick="goToHub()" style="background:transparent;border:none;color:#555;font-size:18px;cursor:pointer;padding:0 12px 0 0;line-height:1">←</button>
+    <div class="topbar-brand">Pedidos</div>
+    <button class="btn-logout" onclick="doLogout()">Salir</button>
+  </div>
+  <div style="padding:24px;max-width:1000px">
+    <div id="pedidos-filters" style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap"></div>
+    <div id="pedidos-list"></div>
+  </div>
+</div>
+
 <!-- ── REGISTRO DE INVENTARIOS ── -->
 <div id="registro-inv-module" style="display:none;flex-direction:column;min-height:100vh">
   <div class="inv-topbar">
@@ -790,10 +802,12 @@
     <div class="modal-tabs">
       <button class="modal-tab active" id="atab-locales"  onclick="switchAdminTab('locales')">Locales</button>
       <button class="modal-tab"        id="atab-usuarios" onclick="switchAdminTab('usuarios')">Usuarios</button>
+      <button class="modal-tab"        id="atab-config"   onclick="switchAdminTab('config')">Configuración</button>
     </div>
     <div class="modal-body">
       <div id="admin-locales"></div>
       <div id="admin-usuarios" style="display:none"></div>
+      <div id="admin-config"   style="display:none"></div>
     </div>
   </div>
 </div>
@@ -880,7 +894,7 @@ async function doLogout() {
   document.getElementById('dashboard').style.display = 'none';
 }
 
-const ALL_MODULES_EL = ['hub','dashboard','inventario','registro-inv-module','add-stock-module','cierres-module','pdf-upload-module','pdf-view-module','usuarios-module'];
+const ALL_MODULES_EL = ['hub','dashboard','inventario','registro-inv-module','add-stock-module','cierres-module','pdf-upload-module','pdf-view-module','usuarios-module','pedidos-module'];
 function hideAll() { ALL_MODULES_EL.forEach(id => { const el = document.getElementById(id); if(el) el.style.display = 'none'; }); }
 
 function goTo(module) {
@@ -920,6 +934,9 @@ function goTo(module) {
   } else if (module === 'pdf-view') {
     document.getElementById('pdf-view-module').style.display = 'flex';
     initPdfView();
+  } else if (module === 'pedidos') {
+    document.getElementById('pedidos-module').style.display = 'flex';
+    initPedidosModule();
   }
 }
 
@@ -1425,10 +1442,13 @@ function switchAdminTab(tab) {
   adminTab = tab;
   document.getElementById('atab-locales').classList.toggle('active',   tab === 'locales');
   document.getElementById('atab-usuarios').classList.toggle('active',  tab === 'usuarios');
+  document.getElementById('atab-config').classList.toggle('active',    tab === 'config');
   document.getElementById('admin-locales').style.display  = tab === 'locales'  ? 'block' : 'none';
   document.getElementById('admin-usuarios').style.display = tab === 'usuarios' ? 'block' : 'none';
+  document.getElementById('admin-config').style.display   = tab === 'config'   ? 'block' : 'none';
   if (tab === 'locales')  renderAdminLocales();
   if (tab === 'usuarios') renderAdminUsuarios();
+  if (tab === 'config')   renderAdminConfig();
 }
 
 // ── Admin: Locales ─────────────────────────────────────────
@@ -1614,6 +1634,7 @@ async function renderAdminUsuarios() {
             <label><input type="checkbox" class="nu-module" value="inventario"> Gestión de Clientes y Proveedor</label>
             <label><input type="checkbox" class="nu-module" value="registro-inv"> Registro de Inventarios</label>
             <label><input type="checkbox" class="nu-module" value="cierres"> Cierres de caja</label>
+            <label><input type="checkbox" class="nu-module" value="pedidos"> Pedidos</label>
             <label><input type="checkbox" class="nu-module" value="pdf-view"> Ver Manual</label>
           </div>
         </div>
@@ -1719,6 +1740,7 @@ async function editPermisos(uid, name) {
           <label><input type="checkbox" class="ep-module" value="inventario"    ${currentMods.includes('inventario')?'checked':''}> Gestión de Clientes y Proveedor</label>
           <label><input type="checkbox" class="ep-module" value="registro-inv"  ${currentMods.includes('registro-inv')?'checked':''}> Registro de Inventarios</label>
           <label><input type="checkbox" class="ep-module" value="cierres"       ${currentMods.includes('cierres')?'checked':''}> Cierres de caja</label>
+          <label><input type="checkbox" class="ep-module" value="pedidos"       ${currentMods.includes('pedidos')?'checked':''}> Pedidos</label>
           <label><input type="checkbox" class="ep-module" value="pdf-view"      ${currentMods.includes('pdf-view')?'checked':''}> Ver Manual</label>
         </div>
         <div class="field-label" style="margin-top:12px">Categorías de inventario (vacío = todas)</div>
@@ -1778,7 +1800,7 @@ function renderUsuariosPage() {
   const MODULE_NAMES = {
     ventas: 'Ventas', stock: 'Añadir stock', inventario: 'Gestión de Clientes y Proveedor',
     'registro-inv': 'Registro de Inventarios',
-    cierres: 'Cierres de caja', 'pdf-view': 'Ver Manual', usuarios: 'Usuarios'
+    cierres: 'Cierres de caja', pedidos: 'Pedidos', 'pdf-view': 'Ver Manual', usuarios: 'Usuarios'
   };
   const roleLabel = r => r === 'superadmin' ? 'Superadmin' : r === 'admin' ? 'Admin' : 'Usuario';
   const roleClass = r => r === 'superadmin' ? 'role-superadmin' : r === 'admin' ? 'role-admin' : 'role-user';
@@ -1867,6 +1889,7 @@ async function usuariosShowForm() {
             <label><input type="checkbox" class="nu-module" value="inventario"> Gestión de Clientes y Proveedor</label>
             <label><input type="checkbox" class="nu-module" value="registro-inv"> Registro de Inventarios</label>
             <label><input type="checkbox" class="nu-module" value="cierres"> Cierres de caja</label>
+            <label><input type="checkbox" class="nu-module" value="pedidos"> Pedidos</label>
             <label><input type="checkbox" class="nu-module" value="pdf-view"> Ver Manual</label>
           </div>
         </div>
@@ -1944,6 +1967,7 @@ async function usuariosEditUser(uid, name) {
           <label><input type="checkbox" class="ep-module" value="inventario"    ${currentMods.includes('inventario')?'checked':''}> Gestión de Clientes y Proveedor</label>
           <label><input type="checkbox" class="ep-module" value="registro-inv"  ${currentMods.includes('registro-inv')?'checked':''}> Registro de Inventarios</label>
           <label><input type="checkbox" class="ep-module" value="cierres"       ${currentMods.includes('cierres')?'checked':''}> Cierres de caja</label>
+          <label><input type="checkbox" class="ep-module" value="pedidos"       ${currentMods.includes('pedidos')?'checked':''}> Pedidos</label>
           <label><input type="checkbox" class="ep-module" value="pdf-view"      ${currentMods.includes('pdf-view')?'checked':''}> Ver Manual</label>
         </div>
         <div class="field-label" style="margin-top:12px">Categorías de inventario (vacío = todas)</div>
@@ -2128,6 +2152,7 @@ function renderSidebar() {
     { id: 'inventario',    icon: '🗂️', name: 'Gestión de Clientes y Proveedor', bg: 'linear-gradient(135deg,#3d9e72,#52c98a)', adminOnly: false },
     { id: 'registro-inv',  icon: '📋', name: 'Registro de Inventarios',       bg: 'linear-gradient(135deg,#5a7e3d,#7ab552)', adminOnly: false },
     { id: 'cierres',       icon: '💰', name: 'Cierres de caja',               bg: 'linear-gradient(135deg,#d97b45,#f0975a)', adminOnly: false },
+    { id: 'pedidos',       icon: '🛒', name: 'Pedidos',                       bg: 'linear-gradient(135deg,#b45309,#f59e0b)', adminOnly: false },
     { id: 'pdf-upload',    icon: '📤', name: 'Añadir PDF',                    bg: 'linear-gradient(135deg,#2563b0,#3b82f6)', adminOnly: true  },
     { id: 'pdf-view',      icon: '📄', name: 'Ver Manual',                    bg: 'linear-gradient(135deg,#0e7490,#06b6d4)', adminOnly: false },
     { id: 'usuarios',      icon: '👥', name: 'Usuarios',                      bg: 'linear-gradient(135deg,#c95e6b,#e07585)', adminOnly: true  },
@@ -2161,6 +2186,7 @@ function renderHub() {
     { id: 'inventario',    icon: '🗂️', name: 'Gestión de Clientes y Proveedor', bg: 'linear-gradient(135deg,#3d9e72,#52c98a)', adminOnly: false },
     { id: 'registro-inv',  icon: '📋', name: 'Registro de Inventarios',       bg: 'linear-gradient(135deg,#5a7e3d,#7ab552)', adminOnly: false },
     { id: 'cierres',       icon: '💰', name: 'Cierres de caja',               bg: 'linear-gradient(135deg,#d97b45,#f0975a)', adminOnly: false },
+    { id: 'pedidos',       icon: '🛒', name: 'Pedidos',                       bg: 'linear-gradient(135deg,#b45309,#f59e0b)', adminOnly: false },
     { id: 'pdf-upload',    icon: '📤', name: 'Añadir PDF',                    bg: 'linear-gradient(135deg,#2563b0,#3b82f6)', adminOnly: true  },
     { id: 'pdf-view',      icon: '📄', name: 'Ver Manual',                    bg: 'linear-gradient(135deg,#0e7490,#06b6d4)', adminOnly: false },
     { id: 'usuarios',      icon: '👥', name: 'Usuarios',                      bg: 'linear-gradient(135deg,#c95e6b,#e07585)', adminOnly: true  },
@@ -3823,6 +3849,122 @@ function closePdfViewer() {
   if (frame.src.startsWith('blob:')) URL.revokeObjectURL(frame.src);
   frame.src = '';
   document.getElementById('pdf-viewer-overlay').style.display = 'none';
+}
+
+// ── Módulo: Pedidos ─────────────────────────────────────
+let pedidosAll = [];
+let pedidosFiltroStatus = '';
+
+async function initPedidosModule() {
+  const listEl = document.getElementById('pedidos-list');
+  listEl.innerHTML = '<div style="color:#555;font-size:13px">Cargando...</div>';
+  try {
+    const res  = await apiFetch('/api/orders');
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    pedidosAll = data.orders || [];
+  } catch(e) {
+    listEl.innerHTML = `<div style="color:#f87171;font-size:13px">${e.message}</div>`;
+    return;
+  }
+  renderPedidosFiltros();
+  renderPedidosList();
+}
+
+function renderPedidosFiltros() {
+  const el = document.getElementById('pedidos-filters');
+  const filtros = [
+    { value: '', label: 'Todos' },
+    { value: 'pendiente',   label: 'Pendientes' },
+    { value: 'confirmado',  label: 'Confirmados' },
+    { value: 'entregado',   label: 'Entregados' }
+  ];
+  el.innerHTML = filtros.map(f => `
+    <button onclick="pedidosFiltroStatus='${f.value}';renderPedidosFiltros();renderPedidosList()"
+      style="padding:6px 14px;border-radius:20px;font-size:12px;cursor:pointer;border:1px solid ${pedidosFiltroStatus===f.value?'#fff':'#252525'};
+             background:${pedidosFiltroStatus===f.value?'#fff':'transparent'};color:${pedidosFiltroStatus===f.value?'#000':'#555'}">
+      ${f.label}
+    </button>`).join('');
+}
+
+function renderPedidosList() {
+  const el = document.getElementById('pedidos-list');
+  const filtered = pedidosFiltroStatus ? pedidosAll.filter(p => p.status === pedidosFiltroStatus) : pedidosAll;
+
+  if (!filtered.length) {
+    el.innerHTML = `<div style="color:#444;font-size:13px;padding:20px 0">${pedidosFiltroStatus ? 'Sin pedidos con este estado.' : 'Sin pedidos aún.'}</div>`;
+    return;
+  }
+
+  const statusBadge = s => {
+    if (s === 'pendiente')  return `<span style="background:#2d1f00;color:#fbbf24;border:1px solid #92400e;padding:2px 10px;border-radius:20px;font-size:11px">Pendiente</span>`;
+    if (s === 'confirmado') return `<span style="background:#0c1a2e;color:#60a5fa;border:1px solid #1e40af;padding:2px 10px;border-radius:20px;font-size:11px">Confirmado</span>`;
+    if (s === 'entregado')  return `<span style="background:#0d2b1a;color:#4ade80;border:1px solid #16532d;padding:2px 10px;border-radius:20px;font-size:11px">Entregado</span>`;
+    return s;
+  };
+
+  el.innerHTML = filtered.map(p => `
+    <div style="background:#141414;border:1px solid #1f1f1f;border-radius:12px;padding:18px 20px;margin-bottom:12px">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap">
+        <div>
+          <div style="font-size:15px;font-weight:600;color:#fff;margin-bottom:2px">${p.clientName || p.buyerEmail}</div>
+          <div style="font-size:12px;color:#444">${p.createdAt?.substring(0,16).replace('T',' ')} · #${p.id.substring(0,6)}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          ${statusBadge(p.status)}
+          <span style="font-size:15px;font-weight:700;color:#fff">$${Number(p.total).toLocaleString('es-CL')}</span>
+        </div>
+      </div>
+      <div style="margin-top:12px;padding-top:12px;border-top:1px solid #1a1a1a">
+        <div style="font-size:12px;color:#555;margin-bottom:8px">
+          ${(p.items||[]).map(i => `${i.quantity}x ${i.name} — $${Number(i.price).toLocaleString('es-CL')}`).join(' · ')}
+        </div>
+        ${p.notes ? `<div style="font-size:12px;color:#444;font-style:italic">📝 ${p.notes}</div>` : ''}
+      </div>
+      ${(userRole==='admin'||userRole==='superadmin') ? `
+      <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+        ${p.status !== 'confirmado' && p.status !== 'entregado' ? `<button onclick="cambiarStatusPedido('${p.id}','confirmado')" style="background:#1e3a5f;border:none;color:#60a5fa;padding:6px 14px;border-radius:8px;font-size:12px;cursor:pointer">Confirmar</button>` : ''}
+        ${p.status !== 'entregado' ? `<button onclick="cambiarStatusPedido('${p.id}','entregado')" style="background:#0d2b1a;border:none;color:#4ade80;padding:6px 14px;border-radius:8px;font-size:12px;cursor:pointer">Marcar entregado</button>` : ''}
+      </div>` : ''}
+    </div>`).join('');
+}
+
+async function cambiarStatusPedido(id, status) {
+  await apiFetch(`/api/orders/${id}/status`, { method: 'PUT', body: JSON.stringify({ status }) });
+  const p = pedidosAll.find(x => x.id === id);
+  if (p) p.status = status;
+  renderPedidosList();
+}
+
+// ── Admin: Configuración general ────────────────────────
+async function renderAdminConfig() {
+  const el = document.getElementById('admin-config');
+  el.innerHTML = '<div style="color:#555;font-size:13px">Cargando...</div>';
+  const res  = await apiFetch('/api/settings/general');
+  const data = await res.json();
+  el.innerHTML = `
+    <div class="admin-section">
+      <h3>Configuración general</h3>
+      <div class="admin-form" style="max-width:400px">
+        <div class="field-label">Número de WhatsApp para pedidos</div>
+        <input type="text" id="cfg-wa-number" value="${data.whatsappNumber||''}" placeholder="56912345678" style="margin-bottom:12px">
+        <div style="font-size:11px;color:#444;margin-bottom:16px">Sin el + ni espacios. Ej: 56912345678</div>
+        <button class="btn-add" onclick="saveGeneralConfig()">Guardar</button>
+        <div id="cfg-msg" style="margin-top:8px;font-size:12px"></div>
+      </div>
+    </div>`;
+}
+
+async function saveGeneralConfig() {
+  const msg = document.getElementById('cfg-msg');
+  const waNumber = document.getElementById('cfg-wa-number').value.trim();
+  try {
+    const res  = await apiFetch('/api/settings/general', { method: 'PUT', body: JSON.stringify({ whatsappNumber: waNumber }) });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    msg.style.color = '#86efac'; msg.textContent = 'Guardado correctamente';
+    setTimeout(() => { msg.textContent = ''; }, 3000);
+  } catch(e) { msg.style.color = '#f87171'; msg.textContent = e.message; }
 }
 </script>
 

@@ -35,6 +35,14 @@ const bucket = admin.storage().bucket();
 
 const app = express();
 app.use(express.json());
+app.get('/admin', (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
+app.get('/portal', (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.sendFile(path.join(__dirname, 'portal.html'));
+});
 app.use(express.static(__dirname, {
   etag: false, lastModified: false,
   setHeaders: res => res.set('Cache-Control', 'no-store')
@@ -286,6 +294,18 @@ async function requireAuth(req, res, next) {
   } catch {
     res.status(401).json({ error: 'Sesión expirada, vuelve a iniciar sesión' });
   }
+}
+
+async function requireBuyer(req, res, next) {
+  const auth = req.headers.authorization;
+  if (!auth?.startsWith('Bearer ')) return res.status(401).json({ error: 'No autenticado' });
+  try {
+    const decoded = await admin.auth().verifyIdToken(auth.slice(7));
+    if (decoded.type !== 'buyer') return res.status(403).json({ error: 'Acceso denegado' });
+    req.uid   = decoded.uid;
+    req.email = decoded.email;
+    next();
+  } catch { res.status(401).json({ error: 'Token inválido' }); }
 }
 
 async function isAdmin(uid) {
@@ -1346,6 +1366,80 @@ app.delete('/api/manuals/:id', requireAuth, async (req, res) => {
     await db.collection('manuals').doc(req.params.id).delete();
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── Configuración general ─────────────────────────────────
+app.get('/api/settings/general', requireAuth, async (req, res) => {
+  const doc = await db.collection('settings').doc('general').get();
+  res.json(doc.exists ? doc.data() : { whatsappNumber: '56994409188' });
+});
+
+app.put('/api/settings/general', requireAuth, async (req, res) => {
+  if (req.role !== 'superadmin') {
+    // need to check role from firestore
+    const u = await db.collection('users').doc(req.uid).get();
+    if (!u.exists || u.data().role !== 'superadmin') return res.status(403).json({ error: 'Sin permisos' });
+  }
+  const { whatsappNumber } = req.body;
+  await db.collection('settings').doc('general').set({ whatsappNumber }, { merge: true });
+  res.json({ ok: true });
+});
+
+// ── Portal: catálogo público para compradores ─────────────
+app.get('/api/portal/catalog', requireBuyer, async (req, res) => {
+  const snap = await db.collection('catalog').orderBy('name').get();
+  res.json({ catalog: snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(p => p.currentPrice != null) });
+});
+
+// ── Portal: pedidos del comprador ─────────────────────────
+app.post('/api/portal/orders', requireBuyer, async (req, res) => {
+  const { items, notes } = req.body;
+  if (!items?.length) return res.status(400).json({ error: 'El pedido está vacío' });
+
+  // Get client info
+  const clientSnap = await db.collection('clients').where('portalUid', '==', req.uid).limit(1).get();
+  const client = clientSnap.empty ? null : { id: clientSnap.docs[0].id, ...clientSnap.docs[0].data() };
+
+  const total = items.reduce((s, i) => s + (i.price * i.quantity), 0);
+
+  const ref = await db.collection('orders').add({
+    buyerUid:    req.uid,
+    buyerEmail:  req.email,
+    clientId:    client?.id || null,
+    clientName:  client?.name || req.email,
+    items,
+    notes:       notes || '',
+    total,
+    status:      'pendiente',
+    createdAt:   new Date().toISOString()
+  });
+
+  // Get WA number from settings
+  const settingsDoc = await db.collection('settings').doc('general').get();
+  const waNumber = settingsDoc.exists ? (settingsDoc.data().whatsappNumber || '56994409188') : '56994409188';
+
+  res.json({ id: ref.id, waNumber });
+});
+
+app.get('/api/portal/orders', requireBuyer, async (req, res) => {
+  const snap = await db.collection('orders')
+    .where('buyerUid', '==', req.uid)
+    .orderBy('createdAt', 'desc')
+    .get();
+  res.json({ orders: snap.docs.map(d => ({ id: d.id, ...d.data() })) });
+});
+
+// ── Admin: ver todos los pedidos ──────────────────────────
+app.get('/api/orders', requireAuth, async (req, res) => {
+  const snap = await db.collection('orders').orderBy('createdAt', 'desc').get();
+  res.json({ orders: snap.docs.map(d => ({ id: d.id, ...d.data() })) });
+});
+
+app.put('/api/orders/:id/status', requireAuth, async (req, res) => {
+  if (!await isEditor(req.uid)) return res.status(403).json({ error: 'Sin permisos' });
+  const { status } = req.body;
+  await db.collection('orders').doc(req.params.id).update({ status });
+  res.json({ ok: true });
 });
 
 module.exports = app;
