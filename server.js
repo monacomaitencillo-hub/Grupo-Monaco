@@ -166,8 +166,16 @@ async function fetchDaysFromFudo(auth, days) {
     const dayData = { total: 0, tips: 0, ordersCount: 0, byPayMethod: {}, byType: {}, products: {} };
     allSales.forEach(sale => {
       if (sale.attributes.saleState !== 'CLOSED') return;
-      const amount = sale.attributes.total || 0;
       const tips   = (sale.relationships?.tips?.data || []).reduce((s, r) => s + (tipLookup[r.id] || 0), 0);
+      let amount = 0;
+      (sale.relationships?.payments?.data || []).forEach(r => {
+        const pay = paymentLookup[r.id];
+        if (pay && !pay.canceled) {
+          const m = paymentMethods[pay.methodId] || 'Otro';
+          dayData.byPayMethod[m] = (dayData.byPayMethod[m] || 0) + pay.amount;
+          amount += pay.amount;
+        }
+      });
       dayData.total       += amount;
       dayData.tips        += tips;
       dayData.ordersCount += 1;
@@ -175,13 +183,6 @@ async function fetchDaysFromFudo(auth, days) {
       if (!dayData.byType[stype]) dayData.byType[stype] = { count: 0, revenue: 0 };
       dayData.byType[stype].count++;
       dayData.byType[stype].revenue += amount;
-      (sale.relationships?.payments?.data || []).forEach(r => {
-        const pay = paymentLookup[r.id];
-        if (pay && !pay.canceled) {
-          const m = paymentMethods[pay.methodId] || 'Otro';
-          dayData.byPayMethod[m] = (dayData.byPayMethod[m] || 0) + pay.amount;
-        }
-      });
       (sale.relationships?.items?.data || []).forEach(r => {
         const item = itemLookup[r.id];
         if (!item || item.canceled) return;
@@ -429,29 +430,30 @@ async function buildSummary(auth, dateFrom, dateTo) {
   allSales.forEach(sale => {
     const attrs = sale.attributes;
     if (!attrs.createdAt || attrs.saleState !== 'CLOSED') return;
-    const day    = toChileDate(attrs.createdAt);
-    const amount = attrs.total || 0;
-    const tips   = (sale.relationships?.tips?.data || [])
+    const day  = toChileDate(attrs.createdAt);
+    const tips = (sale.relationships?.tips?.data || [])
       .reduce((s, r) => s + (tipLookup[r.id] || 0), 0);
 
     if (!perDay[day]) perDay[day] = { total: 0, tips: 0, ordersCount: 0, byPayMethod: {}, byType: {}, products: {} };
-    perDay[day].total       += amount;
     perDay[day].tips        += tips;
     perDay[day].ordersCount += 1;
 
     const stype = attrs.saleType || 'OTHER';
     if (!perDay[day].byType[stype]) perDay[day].byType[stype] = { count: 0, revenue: 0 };
     perDay[day].byType[stype].count++;
-    perDay[day].byType[stype].revenue += amount;
 
+    let amount = 0;
     (sale.relationships?.payments?.data || []).forEach(payRef => {
       const pay = paymentLookup[payRef.id];
       if (pay && !pay.canceled) {
         const m = paymentMethods[pay.methodId] || 'Otro';
         if (!perDay[day].byPayMethod[m]) perDay[day].byPayMethod[m] = 0;
         perDay[day].byPayMethod[m] += pay.amount;
+        amount += pay.amount;
       }
     });
+    perDay[day].total               += amount;
+    perDay[day].byType[stype].revenue += amount;
 
     (sale.relationships?.items?.data || []).forEach(itemRef => {
       const item = itemLookup[itemRef.id];
