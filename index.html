@@ -1496,7 +1496,11 @@ async function renderAdminLocales() {
                   <div class="admin-item-name">${r.name}</div>
                   <div class="admin-item-sub">${r.fudoUser}</div>
                 </div>
-                <button class="btn-del" onclick="delLocal('${r.id}','${safeName}')">Eliminar</button>
+                <div style="display:flex;gap:6px;flex-wrap:wrap">
+                  <button class="btn-edit" onclick="fudoDiag('${r.id}','${safeName}')">Diagnosticar</button>
+                  <button class="btn-edit" style="color:#fbbf24" onclick="clearCacheLocal('${r.id}','${safeName}')">Limpiar caché</button>
+                  <button class="btn-del"  onclick="delLocal('${r.id}','${safeName}')">Eliminar</button>
+                </div>
               </div>
               <div style="width:100%;padding-top:8px;border-top:1px solid #1e1e1e">
                 <div style="font-size:11px;color:#444;text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px">Secciones</div>
@@ -1524,6 +1528,46 @@ async function renderAdminLocales() {
             </div>`;}).join('')}
       </div>
     </div>`;
+}
+
+async function clearCacheLocal(id, name) {
+  if (!confirm(`¿Limpiar caché de ventas de "${name}"?\nEsto forzará una recarga desde Fudo la próxima vez.`)) return;
+  const res  = await apiFetch(`/api/admin/sales-cache/${id}`, { method: 'DELETE' });
+  const data = await res.json();
+  if (data.error) { alert('Error: ' + data.error); return; }
+  alert(`Caché de "${name}" limpiado (${data.deleted} días eliminados). Recargá Ventas para ver datos frescos.`);
+}
+
+async function fudoDiag(id, name) {
+  const btn = event.target;
+  btn.disabled = true; btn.textContent = 'Probando...';
+  try {
+    const res  = await apiFetch(`/api/admin/fudo-test/${id}`);
+    const data = await res.json();
+    if (!data.authOk) {
+      alert(`❌ Error de conexión Fudo para "${name}":\n${data.error}`);
+      return;
+    }
+    const msg = [
+      `✅ Conexión Fudo OK para "${name}"`,
+      ``,
+      `Ventas recibidas (muestra 10): ${data.totalFetched}`,
+      `Estados encontrados: ${data.states.join(', ') || 'ninguno'}`,
+      ``,
+      data.sample.length
+        ? `Últimas ventas:\n` + data.sample.map(s => `  • ${s.createdAt?.substring(0,10)} | ${s.state} | $${s.total}`).join('\n')
+        : `Sin ventas en la muestra.`,
+      ``,
+      data.states.length && !data.states.includes('CLOSED')
+        ? `⚠️ PROBLEMA: Ninguna venta tiene estado CLOSED.\nEl sistema solo cuenta ventas CLOSED.\nEstados actuales: ${data.states.join(', ')}`
+        : data.totalFetched === 0
+          ? `⚠️ Fudo no retorna ventas para este local.\nVerificá que las credenciales sean del local correcto.`
+          : `✅ Todo parece correcto. Si ves 0 ventas, limpiá el caché.`
+    ].join('\n');
+    alert(msg);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Diagnosticar';
+  }
 }
 
 async function addLocal() {

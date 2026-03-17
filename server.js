@@ -624,6 +624,28 @@ app.get('/api/summary/:restaurantId', requireAuth, async (req, res) => {
   }
 });
 
+// ── Admin: diagnóstico Fudo ───────────────────────────────
+app.get('/api/admin/fudo-test/:restaurantId', requireAuth, async (req, res) => {
+  if (!await isAdmin(req.uid)) return res.status(403).json({ error: 'Solo administradores' });
+  try {
+    const auth     = await getFudoToken(req.params.restaurantId);
+    const salesData = await fetchFudoPage(auth,
+      `${FUDO_API}/sales?page%5Bsize%5D=10&page%5Bnumber%5D=1&include=payments,tips,items`
+    );
+    const sales    = salesData.data || [];
+    const states   = [...new Set(sales.map(s => s.attributes?.saleState))];
+    const sample   = sales.slice(0, 3).map(s => ({
+      id:        s.id,
+      state:     s.attributes?.saleState,
+      total:     s.attributes?.total,
+      createdAt: s.attributes?.createdAt
+    }));
+    res.json({ totalFetched: sales.length, states, sample, authOk: true });
+  } catch(e) {
+    res.json({ authOk: false, error: e.message });
+  }
+});
+
 // ── Admin: cache management ───────────────────────────────
 app.delete('/api/admin/sales-cache/:restaurantId', requireAuth, async (req, res) => {
   if (!await isAdmin(req.uid)) return res.status(403).json({ error: 'Solo administradores' });
