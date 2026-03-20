@@ -480,9 +480,36 @@
         height: calc(100vh - 57px);
         overflow-y: auto;
       }
-      .reun-sections-panel, .reun-pages-panel {
-        width: 160px !important; min-width: 120px !important;
+      /* Reuniones mobile: un panel a la vez */
+      #reuniones-module > div:last-child {
+        position: relative;
       }
+      #reun-sections-panel, #reun-pages-panel, #reun-editor-panel {
+        position: absolute !important;
+        top: 0; left: 0; right: 0; bottom: 0;
+        width: 100% !important;
+        min-width: 0 !important;
+        z-index: 1;
+        transition: transform .25s ease;
+      }
+      #reun-sections-panel  { transform: translateX(0); }
+      #reun-pages-panel     { transform: translateX(100%); }
+      #reun-editor-panel    { transform: translateX(200%); }
+      #reun-sections-panel.reun-hidden  { transform: translateX(-100%); }
+      #reun-pages-panel.reun-active     { transform: translateX(0); z-index: 2; }
+      #reun-pages-panel.reun-hidden     { transform: translateX(-100%); }
+      #reun-editor-panel.reun-active    { transform: translateX(0); z-index: 3; }
+      /* Back button for mobile */
+      .reun-back-btn {
+        display: flex !important;
+        align-items: center; gap: 6px;
+        background: none; border: none; color: #ff5023;
+        font-size: 13px; font-weight: 600; cursor: pointer;
+        padding: 10px 12px 4px;
+      }
+    }
+    @media (min-width: 769px) {
+      .reun-back-btn { display: none !important; }
     }
 
     /* Override Bootstrap body styles that conflict */
@@ -868,7 +895,7 @@
   <div class="inv-topbar">
     <div class="topbar-brand" style="margin-right:24px">Reuniones</div>
   </div>
-  <div style="display:flex;flex:1;overflow:hidden">
+  <div style="display:flex;flex:1;overflow:hidden;position:relative">
     <!-- Sections panel -->
     <div id="reun-sections-panel" style="width:200px;min-width:160px;background:#f8f9fa;border-right:1px solid #dee2e6;display:flex;flex-direction:column;overflow:hidden">
       <div style="padding:14px 12px 8px;display:flex;align-items:center;justify-content:space-between">
@@ -879,6 +906,7 @@
     </div>
     <!-- Pages panel -->
     <div id="reun-pages-panel" style="width:200px;min-width:160px;background:#fff;border-right:1px solid #dee2e6;display:flex;flex-direction:column;overflow:hidden">
+      <button class="reun-back-btn" onclick="reunGoBack('sections')">‹ Secciones</button>
       <div style="padding:14px 12px 8px;display:flex;align-items:center;justify-content:space-between">
         <span id="reun-pages-title" style="font-size:11px;color:#6c757d;text-transform:uppercase;letter-spacing:.5px">Páginas</span>
         <button id="btn-new-page" onclick="addNewPage()" style="background:none;border:none;color:#ff5023;font-size:18px;cursor:pointer;line-height:1;display:none" title="Nueva página">+</button>
@@ -891,6 +919,8 @@
         Selecciona una sección y página para comenzar
       </div>
       <div id="reun-editor-area" style="display:none;flex-direction:column;flex:1;overflow:hidden">
+        <!-- Back button mobile -->
+        <button class="reun-back-btn" onclick="reunGoBack('pages')" style="border-bottom:1px solid #dee2e6;width:100%;justify-content:flex-start;">‹ Páginas</button>
         <!-- Page title -->
         <div style="padding:16px 24px 0;border-bottom:1px solid #dee2e6">
           <input id="reun-page-title-input" type="text" placeholder="Título de la página"
@@ -4506,6 +4536,32 @@ function renderSectionsList() {
     </div>`).join('');
 }
 
+function isMobile() { return window.innerWidth <= 768; }
+
+function reunShowPanel(panel) {
+  // panel: 'sections' | 'pages' | 'editor'
+  if (!isMobile()) return;
+  const sp = document.getElementById('reun-sections-panel');
+  const pp = document.getElementById('reun-pages-panel');
+  const ep = document.getElementById('reun-editor-panel');
+  sp.classList.remove('reun-hidden');
+  pp.classList.remove('reun-active','reun-hidden');
+  ep.classList.remove('reun-active');
+  if (panel === 'pages') {
+    sp.classList.add('reun-hidden');
+    pp.classList.add('reun-active');
+  } else if (panel === 'editor') {
+    sp.classList.add('reun-hidden');
+    pp.classList.add('reun-active','reun-hidden');
+    ep.classList.add('reun-active');
+  }
+}
+
+function reunGoBack(to) {
+  if (to === 'sections') reunShowPanel('sections');
+  else if (to === 'pages') reunShowPanel('pages');
+}
+
 async function selectSection(sectionId) {
   activeSectionId = sectionId;
   activePageId    = null;
@@ -4519,6 +4575,7 @@ async function selectSection(sectionId) {
   reunPages = data.pages || [];
   renderPagesList();
   showEditorEmpty();
+  reunShowPanel('pages');
 }
 
 function renderPagesList() {
@@ -4549,6 +4606,7 @@ async function selectPage(pageId) {
   document.getElementById('reun-content-editor').innerHTML = page.content || '';
   showEditorContent();
   document.getElementById('reun-save-status').textContent = 'Guardado';
+  reunShowPanel('editor');
 }
 
 function showEditorEmpty() {
