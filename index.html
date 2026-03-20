@@ -384,11 +384,11 @@
     .stock-form-cat   { margin-bottom: 24px; }
     .stock-form-cat-title { font-size: 11px; color: #6c757d; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid #dee2e6; }
     .stock-form-row   { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #e9ecef; gap: 12px; }
-    .stock-form-name  { flex: 1; font-size: 14px; color: #343a40; }
-    .stock-form-cur   { font-size: 12px; color: #adb5bd; min-width: 60px; text-align: right; }
+    .stock-form-name  { flex: 1; font-size: 14px; color: #212529; font-weight: 500; }
+    .stock-form-cur   { font-size: 13px; color: #495057; min-width: 60px; text-align: right; font-weight: 600; }
     .stock-form-input { width: 90px; padding: 7px 10px; background: #fff; border: 1px solid #dee2e6; border-radius: 8px; color: #212529; font-size: 14px; outline: none; text-align: right; }
     .stock-form-input:focus { border-color: #ff5023; }
-    .stock-form-unit  { font-size: 11px; color: #adb5bd; min-width: 40px; }
+    .stock-form-unit  { font-size: 12px; color: #495057; min-width: 40px; }
     .btn-guardar-todo { width: 100%; padding: 14px; background: #ff5023; color: #fff; border: none; border-radius: 10px; font-size: 15px; font-weight: 600; cursor: pointer; margin-top: 24px; }
     .btn-guardar-todo:hover    { opacity: .9; }
     .btn-guardar-todo:disabled { opacity: .5; cursor: not-allowed; }
@@ -2473,9 +2473,9 @@ function qtyColor(qty, category) {
   if (!t) return null;
   const n = parseFloat(qty);
   if (isNaN(n)) return null;
-  if (n <= t.low)  return '#fca5a5'; // pastel red
-  if (n <= t.high) return '#fde68a'; // pastel yellow
-  return '#86efac';                  // pastel green
+  if (n <= t.low)  return '#dc3545'; // red
+  if (n <= t.high) return '#d97706'; // amber
+  return '#16a34a';                  // green
 }
 
 async function renderInvAlertas() {
@@ -3542,7 +3542,7 @@ function renderHistDetail(id) {
             ${items.map(item => `
               <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #1a1a1a;font-size:13px">
                 <span style="color:#ccc">${item.name}</span>
-                <span style="color:${qtyColor(item.quantity, item.category||'Sin categoría') || '#fff'};font-weight:600">${item.quantity} <span style="color:#444;font-weight:400">${item.unit}</span></span>
+                <span style="color:${qtyColor(item.quantity, item.category||'Sin categoría') || '#212529'};font-weight:700">${item.quantity} <span style="color:#6c757d;font-weight:400">${item.unit}</span></span>
               </div>`).join('')}
           </div>`).join('')}
     </div>`;
