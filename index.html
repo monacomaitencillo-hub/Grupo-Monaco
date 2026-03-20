@@ -7,6 +7,14 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <!-- Bootstrap 5 -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+  <!-- AdminLTE 3 -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2.0/dist/css/adminlte.min.css">
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <!-- Google Fonts Nunito -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,800&display=swap">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f0f0f; color: #e5e5e5; min-height: 100vh; }
@@ -147,70 +155,70 @@
     /* ── DASHBOARD ── */
     #dashboard { display: none; }
 
-    .topbar { background: #141414; border-bottom: 1px solid #1f1f1f; padding: 0 28px; display: flex; align-items: center; gap: 0; height: 52px; }
+    .topbar { background: #fff; border-bottom: 1px solid #dee2e6; padding: 0 28px; display: flex; align-items: center; gap: 0; height: 52px; }
     .topbar-brand { font-size: 14px; font-weight: 700; color: #ff5023; margin-right: 24px; white-space: nowrap; }
 
     .rest-tabs { display: flex; align-items: center; gap: 2px; flex: 1; overflow-x: auto; }
-    .rest-tab  { display: flex; align-items: center; gap: 8px; padding: 0 16px; height: 52px; border-bottom: 2px solid transparent; color: #555; font-size: 13px; cursor: pointer; white-space: nowrap; transition: all .15s; user-select: none; }
-    .rest-tab:hover  { color: #aaa; }
-    .rest-tab.active { color: #fff; border-bottom-color: #ff5023; }
-    .rest-tab .dot   { width: 7px; height: 7px; border-radius: 50%; background: #333; flex-shrink: 0; }
+    .rest-tab  { display: flex; align-items: center; gap: 8px; padding: 0 16px; height: 52px; border-bottom: 2px solid transparent; color: #adb5bd; font-size: 13px; cursor: pointer; white-space: nowrap; transition: all .15s; user-select: none; }
+    .rest-tab:hover  { color: #495057; }
+    .rest-tab.active { color: #212529; border-bottom-color: #ff5023; }
+    .rest-tab .dot   { width: 7px; height: 7px; border-radius: 50%; background: #ced4da; flex-shrink: 0; }
     .rest-tab.active .dot { background: #ff5023; }
 
     .topbar-right { display: flex; align-items: center; gap: 10px; margin-left: 12px; flex-shrink: 0; }
 
-    .view-toggle { display: flex; border: 1px solid #2a2a2a; border-radius: 20px; overflow: hidden; }
-    .view-btn    { padding: 5px 14px; background: transparent; border: none; color: #555; font-size: 12px; cursor: pointer; transition: all .15s; white-space: nowrap; }
+    .view-toggle { display: flex; border: 1px solid #dee2e6; border-radius: 20px; overflow: hidden; }
+    .view-btn    { padding: 5px 14px; background: transparent; border: none; color: #6c757d; font-size: 12px; cursor: pointer; transition: all .15s; white-space: nowrap; }
     .view-btn.active          { background: #ff5023; color: #fff; }
-    .view-btn:hover:not(.active) { color: #aaa; }
+    .view-btn:hover:not(.active) { color: #343a40; }
 
-    .btn-admin  { display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; background: transparent; border: 1px solid #2a2a2a; border-radius: 50%; color: #555; cursor: pointer; font-size: 15px; transition: all .15s; }
-    .btn-admin:hover  { border-color: #444; color: #aaa; }
+    .btn-admin  { display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; background: transparent; border: 1px solid #dee2e6; border-radius: 50%; color: #6c757d; cursor: pointer; font-size: 15px; transition: all .15s; }
+    .btn-admin:hover  { border-color: #adb5bd; color: #343a40; }
     #hub-btn-admin { border-color: rgba(255,255,255,.25); color: rgba(255,255,255,.6); }
 
-    .btn-logout { padding: 5px 12px; background: transparent; border: 1px solid #2a2a2a; border-radius: 20px; color: #555; font-size: 12px; cursor: pointer; transition: all .15s; white-space: nowrap; }
-    .btn-logout:hover { border-color: #444; color: #aaa; }
+    .btn-logout { padding: 5px 12px; background: transparent; border: 1px solid #dee2e6; border-radius: 20px; color: #6c757d; font-size: 12px; cursor: pointer; transition: all .15s; white-space: nowrap; }
+    .btn-logout:hover { border-color: #adb5bd; color: #343a40; }
 
     /* MAIN */
     .main { padding: 24px 28px; max-width: 1100px; margin: 0 auto; }
 
     /* FILTERS */
     .filters { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
-    .filter-btn { padding: 6px 14px; border-radius: 20px; border: 1px solid #2a2a2a; background: transparent; color: #666; font-size: 13px; cursor: pointer; transition: all .15s; white-space: nowrap; }
+    .filter-btn { padding: 6px 14px; border-radius: 20px; border: 1px solid #dee2e6; background: transparent; color: #6c757d; font-size: 13px; cursor: pointer; transition: all .15s; white-space: nowrap; }
     .filter-btn.active           { background: #ff5023; border-color: #ff5023; color: #fff; }
-    .filter-btn:hover:not(.active) { border-color: #444; color: #ccc; }
+    .filter-btn:hover:not(.active) { border-color: #adb5bd; color: #343a40; }
     .date-sep { flex: 1; min-width: 8px; }
-    .filters input[type="date"] { padding: 6px 10px; background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 8px; color: #aaa; font-size: 13px; outline: none; cursor: pointer; }
+    .filters input[type="date"] { padding: 6px 10px; background: #fff; border: 1px solid #dee2e6; border-radius: 8px; color: #495057; font-size: 13px; outline: none; cursor: pointer; }
     .filters input[type="date"]:focus { border-color: #ff5023; }
     .month-filters { display: flex; align-items: center; gap: 6px; margin-bottom: 20px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
     .month-filters::-webkit-scrollbar { display: none; }
-    .month-btn { padding: 4px 12px; border-radius: 20px; border: 1px solid #222; background: transparent; color: #555; font-size: 12px; cursor: pointer; transition: all .15s; white-space: nowrap; flex-shrink: 0; }
+    .month-btn { padding: 4px 12px; border-radius: 20px; border: 1px solid #dee2e6; background: transparent; color: #6c757d; font-size: 12px; cursor: pointer; transition: all .15s; white-space: nowrap; flex-shrink: 0; }
     .month-btn.active           { background: #ff5023; border-color: #ff5023; color: #fff; }
-    .month-btn:hover:not(.active) { border-color: #333; color: #aaa; }
+    .month-btn:hover:not(.active) { border-color: #adb5bd; color: #343a40; }
 
     /* STATS */
     .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 20px; }
     @media (max-width: 700px) { .stats-grid { grid-template-columns: 1fr 1fr; } }
-    .stat-card  { background: #1a1a1a; border: 1px solid #222; border-radius: 10px; padding: 18px 20px; }
-    .stat-label { font-size: 11px; color: #555; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 8px; }
-    .stat-value { font-size: 24px; font-weight: 700; color: #fff; }
-    .stat-sub   { font-size: 11px; color: #444; margin-top: 4px; }
+    .stat-card  { background: #fff; border: 1px solid #dee2e6; border-radius: 10px; padding: 18px 20px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+    .stat-label { font-size: 11px; color: #6c757d; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 8px; }
+    .stat-value { font-size: 24px; font-weight: 700; color: #212529; }
+    .stat-sub   { font-size: 11px; color: #adb5bd; margin-top: 4px; }
 
     /* CHARTS */
     .charts-row { display: grid; grid-template-columns: 2fr 1fr; gap: 14px; margin-bottom: 20px; }
     @media (max-width: 700px) { .charts-row { grid-template-columns: 1fr; } }
-    .card       { background: #1a1a1a; border: 1px solid #222; border-radius: 10px; padding: 18px 20px; }
-    .card-title { font-size: 13px; font-weight: 600; color: #aaa; margin-bottom: 14px; }
+    .card       { background: #fff; border: 1px solid #dee2e6; border-radius: 10px; padding: 18px 20px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+    .card-title { font-size: 13px; font-weight: 600; color: #495057; margin-bottom: 14px; }
     .chart-wrap { position: relative; height: 210px; }
 
     /* TABLE */
     table   { width: 100%; border-collapse: collapse; font-size: 13px; }
-    thead th { text-align: left; color: #444; font-weight: 500; padding: 8px 10px; border-bottom: 1px solid #222; font-size: 11px; text-transform: uppercase; }
+    thead th { text-align: left; color: #6c757d; font-weight: 500; padding: 8px 10px; border-bottom: 1px solid #dee2e6; font-size: 11px; text-transform: uppercase; }
     thead th:not(:first-child) { text-align: right; }
-    tbody tr:hover { background: #111; }
-    tbody td { padding: 10px 10px; border-bottom: 1px solid #1c1c1c; color: #ccc; }
+    tbody tr:hover { background: #f8f9fa; }
+    tbody td { padding: 10px 10px; border-bottom: 1px solid #e9ecef; color: #495057; }
     tbody td:not(:first-child) { text-align: right; }
-    .bar-bg   { background: #222; border-radius: 3px; height: 5px; width: 100%; margin-top: 4px; }
+    .bar-bg   { background: #e9ecef; border-radius: 3px; height: 5px; width: 100%; margin-top: 4px; }
     .bar-fill { background: #ff5023; border-radius: 3px; height: 5px; }
 
     /* CATEGORY FILTER */
@@ -221,172 +229,338 @@
 
     /* RESUMEN POR LOCAL */
     .resumen-grid       { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
-    .resumen-card       { background: #1a1a1a; border: 1px solid #222; border-radius: 10px; padding: 20px; }
-    .resumen-card-name  { font-size: 12px; color: #555; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 6px; }
-    .resumen-card-total { font-size: 26px; font-weight: 700; color: #fff; margin-bottom: 18px; padding-bottom: 14px; border-bottom: 1px solid #222; }
+    .resumen-card       { background: #fff; border: 1px solid #dee2e6; border-radius: 10px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+    .resumen-card-name  { font-size: 12px; color: #6c757d; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 6px; }
+    .resumen-card-total { font-size: 26px; font-weight: 700; color: #212529; margin-bottom: 18px; padding-bottom: 14px; border-bottom: 1px solid #dee2e6; }
     .pay-item           { margin-bottom: 12px; }
     .pay-item-header    { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 5px; }
-    .pay-item-label     { font-size: 13px; color: #aaa; }
-    .pay-item-amount    { font-size: 13px; font-weight: 600; color: #fff; }
-    .pay-item-pct       { font-size: 11px; color: #555; margin-left: 6px; }
+    .pay-item-label     { font-size: 13px; color: #6c757d; }
+    .pay-item-amount    { font-size: 13px; font-weight: 600; color: #212529; }
+    .pay-item-pct       { font-size: 11px; color: #adb5bd; margin-left: 6px; }
 
     /* LOADING / ERROR */
-    .loading  { display: flex; align-items: center; justify-content: center; min-height: 300px; flex-direction: column; gap: 12px; color: #444; }
-    .spinner  { width: 28px; height: 28px; border: 3px solid #222; border-top-color: #ff5023; border-radius: 50%; animation: spin .8s linear infinite; }
+    .loading  { display: flex; align-items: center; justify-content: center; min-height: 300px; flex-direction: column; gap: 12px; color: #6c757d; }
+    .spinner  { width: 28px; height: 28px; border: 3px solid #dee2e6; border-top-color: #ff5023; border-radius: 50%; animation: spin .8s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
     /* ── ADMIN MODAL ── */
     .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.7); z-index: 100; display: none; align-items: flex-start; justify-content: flex-end; }
     .modal-overlay.open { display: flex; }
-    .modal-panel { background: #141414; border-left: 1px solid #222; width: 480px; max-width: 100vw; height: 100vh; overflow-y: auto; display: flex; flex-direction: column; }
-    .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 20px 24px; border-bottom: 1px solid #1f1f1f; flex-shrink: 0; }
-    .modal-header h2 { font-size: 15px; font-weight: 600; color: #fff; }
-    .modal-close { background: transparent; border: none; color: #555; font-size: 20px; cursor: pointer; line-height: 1; }
-    .modal-close:hover { color: #aaa; }
-    .modal-tabs { display: flex; border-bottom: 1px solid #1f1f1f; flex-shrink: 0; }
-    .modal-tab  { flex: 1; padding: 12px; background: transparent; border: none; color: #555; font-size: 13px; cursor: pointer; border-bottom: 2px solid transparent; transition: all .15s; }
-    .modal-tab.active { color: #fff; border-bottom-color: #ff5023; }
+    .modal-panel { background: #fff; border-left: 1px solid #dee2e6; width: 480px; max-width: 100vw; height: 100vh; overflow-y: auto; display: flex; flex-direction: column; box-shadow: -4px 0 24px rgba(0,0,0,.1); }
+    .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 20px 24px; border-bottom: 1px solid #dee2e6; flex-shrink: 0; }
+    .modal-header h2 { font-size: 15px; font-weight: 600; color: #212529; }
+    .modal-close { background: transparent; border: none; color: #adb5bd; font-size: 20px; cursor: pointer; line-height: 1; }
+    .modal-close:hover { color: #495057; }
+    .modal-tabs { display: flex; border-bottom: 1px solid #dee2e6; flex-shrink: 0; }
+    .modal-tab  { flex: 1; padding: 12px; background: transparent; border: none; color: #6c757d; font-size: 13px; cursor: pointer; border-bottom: 2px solid transparent; transition: all .15s; }
+    .modal-tab.active { color: #212529; border-bottom-color: #ff5023; }
     .modal-body { padding: 20px 24px; flex: 1; }
 
     .admin-section { margin-bottom: 28px; }
-    .admin-section h3 { font-size: 12px; color: #555; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 14px; }
+    .admin-section h3 { font-size: 12px; color: #6c757d; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 14px; }
 
-    .admin-form { display: flex; flex-direction: column; gap: 10px; background: #1a1a1a; border: 1px solid #222; border-radius: 10px; padding: 16px; margin-bottom: 16px; }
-    .admin-form input, .admin-form select { padding: 9px 12px; background: #111; border: 1px solid #2a2a2a; border-radius: 8px; color: #fff; font-size: 13px; outline: none; }
+    .admin-form { display: flex; flex-direction: column; gap: 10px; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+    .admin-form input, .admin-form select { padding: 9px 12px; background: #fff; border: 1px solid #dee2e6; border-radius: 8px; color: #212529; font-size: 13px; outline: none; }
     .admin-form input:focus, .admin-form select:focus { border-color: #ff5023; }
-    .admin-form select option { background: #1a1a1a; }
+    .admin-form select option { background: #fff; }
     .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     .btn-add  { padding: 9px 16px; background: #ff5023; color: #fff; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; align-self: flex-start; }
     .btn-add:hover    { opacity: .9; }
     .btn-add:disabled { opacity: .5; cursor: not-allowed; }
 
     .admin-list { display: flex; flex-direction: column; gap: 8px; }
-    .admin-item { display: flex; align-items: center; justify-content: space-between; background: #1a1a1a; border: 1px solid #222; border-radius: 8px; padding: 12px 14px; gap: 10px; }
+    .admin-item { display: flex; align-items: center; justify-content: space-between; background: #fff; border: 1px solid #dee2e6; border-radius: 8px; padding: 12px 14px; gap: 10px; }
     .admin-item-info { flex: 1; min-width: 0; }
-    .admin-item-name { font-size: 13px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .admin-item-sub  { font-size: 11px; color: #555; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .btn-del  { padding: 5px 10px; background: transparent; border: 1px solid #3a1a1a; border-radius: 6px; color: #666; font-size: 12px; cursor: pointer; flex-shrink: 0; transition: all .15s; }
-    .btn-del:hover { border-color: #f87171; color: #f87171; }
-    .btn-edit { padding: 5px 10px; background: transparent; border: 1px solid #2a2a2a; border-radius: 6px; color: #666; font-size: 12px; cursor: pointer; flex-shrink: 0; transition: all .15s; margin-right: 4px; }
-    .btn-edit:hover { border-color: #555; color: #aaa; }
+    .admin-item-name { font-size: 13px; color: #212529; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .admin-item-sub  { font-size: 11px; color: #6c757d; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .btn-del  { padding: 5px 10px; background: transparent; border: 1px solid #f5c6cb; border-radius: 6px; color: #6c757d; font-size: 12px; cursor: pointer; flex-shrink: 0; transition: all .15s; }
+    .btn-del:hover { border-color: #dc3545; color: #dc3545; }
+    .btn-edit { padding: 5px 10px; background: transparent; border: 1px solid #dee2e6; border-radius: 6px; color: #6c757d; font-size: 12px; cursor: pointer; flex-shrink: 0; transition: all .15s; margin-right: 4px; }
+    .btn-edit:hover { border-color: #adb5bd; color: #343a40; }
 
-    .rest-checkboxes { display: flex; flex-direction: column; gap: 8px; max-height: 200px; overflow-y: auto; padding: 10px; background: #111; border: 1px solid #2a2a2a; border-radius: 8px; }
-    .rest-checkboxes label { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #aaa; cursor: pointer; }
+    .rest-checkboxes { display: flex; flex-direction: column; gap: 8px; max-height: 200px; overflow-y: auto; padding: 10px; background: #fff; border: 1px solid #dee2e6; border-radius: 8px; }
+    .rest-checkboxes label { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #495057; cursor: pointer; }
     .rest-checkboxes input[type="checkbox"] { accent-color: #ff5023; width: 14px; height: 14px; }
     .rest-check-row { display: flex; flex-direction: column; gap: 4px; }
     .prod-sections-wrap { display: flex; flex-wrap: wrap; gap: 4px 12px; padding: 4px 0 4px 22px; }
-    .prod-section-label { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #666; cursor: pointer; }
-    .field-label { font-size: 12px; color: #666; margin-bottom: 4px; }
+    .prod-section-label { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #6c757d; cursor: pointer; }
+    .field-label { font-size: 12px; color: #6c757d; margin-bottom: 4px; }
     .cierres-tabs { display:flex;gap:2px;margin-left:16px; }
-    .cierres-tab { padding:6px 18px;background:transparent;border:none;border-bottom:2px solid transparent;color:#444;font-size:13px;cursor:pointer;transition:all .15s;letter-spacing:.01em; }
-    .cierres-tab.active { color:#fff;border-bottom-color:#ec4899; }
+    .cierres-tab { padding:6px 18px;background:transparent;border:none;border-bottom:2px solid transparent;color:#adb5bd;font-size:13px;cursor:pointer;transition:all .15s;letter-spacing:.01em; }
+    .cierres-tab.active { color:#212529;border-bottom-color:#ff5023; }
     .analytics-kpi-grid { display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px; }
-    .analytics-kpi { background:#111;border:1px solid #1c1c1c;border-radius:12px;padding:18px 20px; }
-    .analytics-kpi-label { font-size:10px;color:#3a3a3a;text-transform:uppercase;letter-spacing:.7px;margin-bottom:10px; }
-    .analytics-kpi-value { font-size:21px;font-weight:600;color:#fff;letter-spacing:-.03em;line-height:1; }
-    .analytics-kpi-sub { font-size:11px;color:#2d2d2d;margin-top:6px; }
+    .analytics-kpi { background:#fff;border:1px solid #dee2e6;border-radius:12px;padding:18px 20px;box-shadow:0 1px 3px rgba(0,0,0,.06); }
+    .analytics-kpi-label { font-size:10px;color:#6c757d;text-transform:uppercase;letter-spacing:.7px;margin-bottom:10px; }
+    .analytics-kpi-value { font-size:21px;font-weight:600;color:#212529;letter-spacing:-.03em;line-height:1; }
+    .analytics-kpi-sub { font-size:11px;color:#adb5bd;margin-top:6px; }
     .analytics-grid { display:grid;grid-template-columns:repeat(3,1fr);gap:14px; }
-    .chart-card { background:#111;border:1px solid #1c1c1c;border-radius:12px;padding:22px 24px; }
+    .chart-card { background:#fff;border:1px solid #dee2e6;border-radius:12px;padding:22px 24px;box-shadow:0 1px 3px rgba(0,0,0,.08); }
     .chart-card-header { display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px; }
-    .chart-card-title { font-size:11px;color:#3a3a3a;text-transform:uppercase;letter-spacing:.6px;font-weight:500; }
-    .chart-card-badge { font-size:12px;color:#555;font-weight:500; }
+    .chart-card-title { font-size:11px;color:#6c757d;text-transform:uppercase;letter-spacing:.6px;font-weight:500; }
+    .chart-card-badge { font-size:12px;color:#495057;font-weight:500; }
     .chart-card.span3 { grid-column:1/-1; }
     .chart-card.span2 { grid-column:span 2; }
-    .analytics-year-sel { background:#111;border:1px solid #222;border-radius:8px;color:#666;font-size:12px;padding:5px 10px;outline:none;cursor:pointer; }
-    .analytics-year-sel:focus { border-color:#ec4899; }
-    .cierre-input { width:100%;padding:9px 12px;background:#111;border:1px solid #222;border-radius:8px;color:#fff;font-size:13px;outline:none; }
-    .cierre-input:focus { border-color:#ec4899; }
+    .analytics-year-sel { background:#fff;border:1px solid #dee2e6;border-radius:8px;color:#495057;font-size:12px;padding:5px 10px;outline:none;cursor:pointer; }
+    .analytics-year-sel:focus { border-color:#ff5023; }
+    .cierre-input { width:100%;padding:9px 12px;background:#fff;border:1px solid #dee2e6;border-radius:8px;color:#212529;font-size:13px;outline:none; }
+    .cierre-input:focus { border-color:#ff5023; }
     .cierres-table { width:100%;border-collapse:collapse;font-size:13px; }
-    .cierres-table th { color:#444;font-size:11px;text-transform:uppercase;letter-spacing:.4px;padding:0 12px 10px;text-align:right;font-weight:500; }
+    .cierres-table th { color:#6c757d;font-size:11px;text-transform:uppercase;letter-spacing:.4px;padding:0 12px 10px;text-align:right;font-weight:500; }
     .cierres-table th:first-child { text-align:left; }
-    .cierres-table td { padding:12px;border-top:1px solid #1a1a1a;color:#aaa;text-align:right; }
-    .cierres-table td:first-child { text-align:left;color:#fff;font-weight:500; }
-    .cierres-table tr:hover td { background:#0d0d0d; }
-    .cierre-calce-pos  { color:#10b981;font-weight:600; }
-    .cierre-calce-neg  { color:#ef4444;font-weight:600; }
+    .cierres-table td { padding:12px;border-top:1px solid #e9ecef;color:#495057;text-align:right; }
+    .cierres-table td:first-child { text-align:left;color:#212529;font-weight:500; }
+    .cierres-table tr:hover td { background:#f8f9fa; }
+    .cierre-calce-pos  { color:#28a745;font-weight:600; }
+    .cierre-calce-neg  { color:#dc3545;font-weight:600; }
     .prod-filters { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
-    .prod-filter-sel { background: #111; border: 1px solid #2a2a2a; border-radius: 8px; color: #aaa; font-size: 13px; padding: 7px 12px; cursor: pointer; outline: none; }
+    .prod-filter-sel { background: #fff; border: 1px solid #dee2e6; border-radius: 8px; color: #495057; font-size: 13px; padding: 7px 12px; cursor: pointer; outline: none; }
     .prod-filter-sel:focus { border-color: #ff5023; }
-    .prod-filter-clear { background: none; border: 1px solid #333; border-radius: 8px; color: #555; font-size: 12px; padding: 6px 10px; cursor: pointer; }
-    .prod-filter-clear:hover { border-color: #555; color: #aaa; }
+    .prod-filter-clear { background: none; border: 1px solid #dee2e6; border-radius: 8px; color: #6c757d; font-size: 12px; padding: 6px 10px; cursor: pointer; }
+    .prod-filter-clear:hover { border-color: #adb5bd; color: #343a40; }
 
     .role-badge      { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
-    .role-superadmin { background: #1a0a2a; color: #c084fc; }
-    .role-admin      { background: #2a1800; color: #ff5023; }
-    .role-user       { background: #1a1a2a; color: #666; }
+    .role-superadmin { background: #f3e8ff; color: #7c3aed; }
+    .role-admin      { background: #fff3ee; color: #ff5023; }
+    .role-user       { background: #f8f9fa; color: #6c757d; }
 
-    .inline-error { color: #f87171; font-size: 12px; margin-top: 6px; }
-    .inline-ok    { color: #4ade80; font-size: 12px; margin-top: 6px; }
+    .inline-error { color: #dc3545; font-size: 12px; margin-top: 6px; }
+    .inline-ok    { color: #28a745; font-size: 12px; margin-top: 6px; }
 
     /* ── INVENTARIO ── */
     #inventario { display: none; flex-direction: column; min-height: 100vh; }
-    .inv-topbar  { background: #141414; border-bottom: 1px solid #1f1f1f; padding: 0 28px; display: flex; align-items: center; height: 52px; gap: 0; }
+    .inv-topbar  { background: #fff; border-bottom: 1px solid #dee2e6; padding: 0 28px; display: flex; align-items: center; height: 52px; gap: 0; }
     .inv-tabs    { display: flex; align-items: center; gap: 2px; flex: 1; }
-    .inv-tab     { padding: 0 18px; height: 52px; border-bottom: 2px solid transparent; color: #555; font-size: 13px; cursor: pointer; background: transparent; border-top: none; border-left: none; border-right: none; transition: all .15s; white-space: nowrap; }
-    .inv-tab.active { color: #fff; border-bottom-color: #ff5023; }
-    .inv-tab:hover:not(.active) { color: #aaa; }
+    .inv-tab     { padding: 0 18px; height: 52px; border-bottom: 2px solid transparent; color: #adb5bd; font-size: 13px; cursor: pointer; background: transparent; border-top: none; border-left: none; border-right: none; transition: all .15s; white-space: nowrap; }
+    .inv-tab.active { color: #212529; border-bottom-color: #ff5023; }
+    .inv-tab:hover:not(.active) { color: #495057; }
     .inv-main    { padding: 24px 28px; max-width: 1000px; margin: 0 auto; width: 100%; }
 
     .inv-toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; flex-wrap: wrap; gap: 10px; }
-    .inv-toolbar h2 { font-size: 15px; font-weight: 600; color: #fff; }
+    .inv-toolbar h2 { font-size: 15px; font-weight: 600; color: #212529; }
     .btn-new { padding: 8px 16px; background: #ff5023; color: #fff; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; }
     .btn-new:hover { opacity: .9; }
 
     .inv-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    .inv-table thead th { text-align: left; color: #444; font-weight: 500; padding: 8px 12px; border-bottom: 1px solid #222; font-size: 11px; text-transform: uppercase; }
-    .inv-table tbody tr:hover { background: #111; }
-    .inv-table tbody td { padding: 11px 12px; border-bottom: 1px solid #1c1c1c; color: #ccc; vertical-align: middle; }
-    .tag { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; background: #1f1f1f; border: 1px solid #2a2a2a; color: #777; margin: 1px; }
-    .stock-low  { color: #f87171 !important; font-weight: 600; }
-    .stock-ok   { color: #4ade80 !important; }
-    .stock-none { color: #444 !important; }
+    .inv-table thead th { text-align: left; color: #6c757d; font-weight: 500; padding: 8px 12px; border-bottom: 1px solid #dee2e6; font-size: 11px; text-transform: uppercase; }
+    .inv-table tbody tr:hover { background: #f8f9fa; }
+    .inv-table tbody td { padding: 11px 12px; border-bottom: 1px solid #e9ecef; color: #495057; vertical-align: middle; }
+    .tag { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; background: #f8f9fa; border: 1px solid #dee2e6; color: #6c757d; margin: 1px; }
+    .stock-low  { color: #dc3545 !important; font-weight: 600; }
+    .stock-ok   { color: #28a745 !important; }
+    .stock-none { color: #adb5bd !important; }
 
-    .qty-input { width: 80px; padding: 5px 8px; background: #111; border: 1px solid #2a2a2a; border-radius: 6px; color: #fff; font-size: 13px; outline: none; text-align: right; }
+    .qty-input { width: 80px; padding: 5px 8px; background: #fff; border: 1px solid #dee2e6; border-radius: 6px; color: #212529; font-size: 13px; outline: none; text-align: right; }
     .qty-input:focus { border-color: #ff5023; }
     .btn-save-row { padding: 5px 10px; background: #ff5023; color: #fff; border: none; border-radius: 6px; font-size: 12px; cursor: pointer; margin-left: 6px; }
     .btn-save-row:hover { opacity: .9; }
 
     /* modal inventario */
-    .inv-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.7); z-index: 200; display: none; align-items: center; justify-content: center; padding: 20px; }
+    .inv-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 200; display: none; align-items: center; justify-content: center; padding: 20px; }
     .inv-modal-overlay.open { display: flex; }
-    .inv-modal { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 12px; padding: 28px; width: 100%; max-width: 460px; }
-    .inv-modal h3 { font-size: 15px; font-weight: 600; color: #fff; margin-bottom: 20px; }
+    .inv-modal { background: #fff; border: 1px solid #dee2e6; border-radius: 12px; padding: 28px; width: 100%; max-width: 460px; box-shadow: 0 4px 24px rgba(0,0,0,.12); }
+    .inv-modal h3 { font-size: 15px; font-weight: 600; color: #212529; margin-bottom: 20px; }
     .inv-modal .admin-form { background: transparent; border: none; padding: 0; margin: 0; }
     .inv-modal-btns { display: flex; gap: 10px; margin-top: 16px; }
-    .btn-cancel { padding: 9px 16px; background: transparent; border: 1px solid #333; border-radius: 8px; color: #666; font-size: 13px; cursor: pointer; }
-    .btn-cancel:hover { border-color: #555; color: #aaa; }
+    .btn-cancel { padding: 9px 16px; background: transparent; border: 1px solid #dee2e6; border-radius: 8px; color: #6c757d; font-size: 13px; cursor: pointer; }
+    .btn-cancel:hover { border-color: #adb5bd; color: #343a40; }
 
     .stock-selector { display: flex; gap: 8px; margin-bottom: 18px; flex-wrap: wrap; }
-    .stock-rest-btn { padding: 6px 14px; border-radius: 20px; border: 1px solid #2a2a2a; background: transparent; color: #666; font-size: 13px; cursor: pointer; transition: all .15s; }
+    .stock-rest-btn { padding: 6px 14px; border-radius: 20px; border: 1px solid #dee2e6; background: transparent; color: #6c757d; font-size: 13px; cursor: pointer; transition: all .15s; }
     .stock-rest-btn.active { background: #ff5023; border-color: #ff5023; color: #fff; }
 
     /* Historial inventarios */
     .hist-rest-sel { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
 
-    .hist-record   { background: #1a1a1a; border: 1px solid #222; border-radius: 10px; padding: 16px 20px; margin-bottom: 10px; cursor: pointer; transition: border-color .15s; display: flex; align-items: center; gap: 16px; }
-    .hist-record:hover { border-color: #333; }
-    .hist-date     { font-size: 15px; font-weight: 600; color: #fff; min-width: 110px; }
-    .hist-meta     { flex: 1; font-size: 13px; color: #555; }
-    .hist-count    { font-size: 12px; color: #444; }
-    .hist-detail   { background: #141414; border: 1px solid #1f1f1f; border-radius: 10px; padding: 20px; margin-top: 12px; }
+    .hist-record   { background: #fff; border: 1px solid #dee2e6; border-radius: 10px; padding: 16px 20px; margin-bottom: 10px; cursor: pointer; transition: border-color .15s; display: flex; align-items: center; gap: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+    .hist-record:hover { border-color: #adb5bd; }
+    .hist-date     { font-size: 15px; font-weight: 600; color: #212529; min-width: 110px; }
+    .hist-meta     { flex: 1; font-size: 13px; color: #6c757d; }
+    .hist-count    { font-size: 12px; color: #adb5bd; }
+    .hist-detail   { background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 10px; padding: 20px; margin-top: 12px; }
     .hist-detail-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
-    .hist-detail-title  { font-size: 14px; font-weight: 600; color: #fff; }
+    .hist-detail-title  { font-size: 14px; font-weight: 600; color: #212529; }
 
     /* Formulario añadir stock */
     .stock-form-cat   { margin-bottom: 24px; }
-    .stock-form-cat-title { font-size: 11px; color: #555; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid #1f1f1f; }
-    .stock-form-row   { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #1a1a1a; gap: 12px; }
-    .stock-form-name  { flex: 1; font-size: 14px; color: #ddd; }
-    .stock-form-cur   { font-size: 12px; color: #444; min-width: 60px; text-align: right; }
-    .stock-form-input { width: 90px; padding: 7px 10px; background: #111; border: 1px solid #2a2a2a; border-radius: 8px; color: #fff; font-size: 14px; outline: none; text-align: right; }
+    .stock-form-cat-title { font-size: 11px; color: #6c757d; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid #dee2e6; }
+    .stock-form-row   { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #e9ecef; gap: 12px; }
+    .stock-form-name  { flex: 1; font-size: 14px; color: #343a40; }
+    .stock-form-cur   { font-size: 12px; color: #adb5bd; min-width: 60px; text-align: right; }
+    .stock-form-input { width: 90px; padding: 7px 10px; background: #fff; border: 1px solid #dee2e6; border-radius: 8px; color: #212529; font-size: 14px; outline: none; text-align: right; }
     .stock-form-input:focus { border-color: #ff5023; }
-    .stock-form-unit  { font-size: 11px; color: #444; min-width: 40px; }
+    .stock-form-unit  { font-size: 11px; color: #adb5bd; min-width: 40px; }
     .btn-guardar-todo { width: 100%; padding: 14px; background: #ff5023; color: #fff; border: none; border-radius: 10px; font-size: 15px; font-weight: 600; cursor: pointer; margin-top: 24px; }
     .btn-guardar-todo:hover    { opacity: .9; }
     .btn-guardar-todo:disabled { opacity: .5; cursor: not-allowed; }
+
+    /* ── Reuniones ── */
+    .reun-section-item {
+      padding: 10px 12px; cursor: pointer; font-size: 13px; color: #6c757d;
+      border-left: 3px solid transparent; transition: all .15s;
+      display: flex; align-items: center; justify-content: space-between; gap: 6px;
+    }
+    .reun-section-item:hover { background: #f1f3f5; color: #343a40; }
+    .reun-section-item.active { color: #212529; background: #e9ecef; border-left-color: #ff5023; }
+    .reun-section-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .reun-page-item {
+      padding: 9px 12px; cursor: pointer; font-size: 13px; color: #6c757d;
+      transition: all .15s; display: flex; align-items: center; justify-content: space-between;
+    }
+    .reun-page-item:hover { background: #f1f3f5; color: #343a40; }
+    .reun-page-item.active { background: #e9ecef; color: #212529; }
+    .reun-page-name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .reun-page-del { background: none; border: none; color: #ced4da; font-size: 14px; cursor: pointer; padding: 0 2px; opacity: 0; transition: opacity .15s; }
+    .reun-page-item:hover .reun-page-del { opacity: 1; }
+    .reun-page-del:hover { color: #dc3545; }
+    .tb-btn {
+      background: #fff; border: 1px solid #dee2e6; color: #495057;
+      border-radius: 5px; padding: 3px 8px; font-size: 13px; cursor: pointer;
+      transition: background .15s; min-width: 28px;
+    }
+    .tb-btn:hover { background: #f8f9fa; color: #212529; }
+    #reun-content-editor:empty:before {
+      content: attr(placeholder); color: #adb5bd; pointer-events: none;
+    }
+    .reun-section-actions { display: flex; gap: 4px; opacity: 0; transition: opacity .15s; }
+    .reun-section-item:hover .reun-section-actions { opacity: 1; }
+    .reun-sect-btn { background: none; border: none; color: #adb5bd; font-size: 11px; cursor: pointer; padding: 0 2px; }
+    .reun-sect-btn:hover { color: #495057; }
+
+    /* ── AdminLTE colores (sidebar negro, content blanco) ── */
+    /* Sidebar: negro como AdminLTE default dark sidebar */
+    .main-sidebar,
+    .main-sidebar .sidebar { background: #343a40 !important; }
+    .main-sidebar .brand-link { background: #2c3136 !important; border-bottom: 1px solid #4b545c !important; }
+    .main-sidebar .brand-text { color: #fff !important; }
+    .main-sidebar .user-panel { border-bottom: 1px solid #4b545c !important; }
+    .nav-sidebar .nav-item .nav-link { color: #c2c7d0 !important; font-size: 13px; }
+    .nav-sidebar .nav-item .nav-link:hover { background: rgba(255,255,255,0.1) !important; color: #fff !important; }
+    .nav-sidebar .nav-item .nav-link.active { background: #ff5023 !important; color: #fff !important; }
+    .nav-sidebar .nav-item .nav-link .nav-icon { color: #c2c7d0; }
+    .brand-link:hover { background: #2c3136 !important; }
+    .sidebar-mini.sidebar-collapse .main-sidebar { width: 4.6rem !important; }
+
+    /* Navbar: blanco */
+    .main-header.navbar { background: #fff !important; border-bottom: 1px solid #dee2e6 !important; }
+    .main-header.navbar .nav-link { color: #495057 !important; }
+    .main-header.navbar .nav-link:hover { color: #343a40 !important; }
+    #admin-topbar-title { color: #495057 !important; }
+    #admin-topbar-user  { color: #6c757d !important; }
+
+    /* Content area: blanco/gris claro */
+    .wrapper { background: #f4f6f9; }
+    .content-wrapper { background: #f4f6f9 !important; }
+
+    /* AdminLTE layout fixes */
+    .main-header { position: fixed !important; top: 0; right: 0; left: 0; z-index: 1030; }
+    .main-sidebar { z-index: 1035; }
+    .content-wrapper { margin-top: 57px !important; }
+
+    /* Module containers inside AdminLTE */
+    #content-wrapper-inner > div {
+      padding: 0;
+      height: calc(100vh - 57px);
+      overflow: hidden;
+    }
+
+    /* Fix inv-topbar inside AdminLTE */
+    .inv-topbar {
+      position: sticky; top: 0; z-index: 100;
+    }
+
+    /* Reuniones inside AdminLTE */
+    #reuniones-module {
+      flex-direction: column;
+      height: calc(100vh - 57px) !important;
+    }
+
+    /* Mobile adjustments */
+    @media (max-width: 768px) {
+      #content-wrapper-inner > div {
+        height: calc(100vh - 57px);
+        overflow-y: auto;
+      }
+      .reun-sections-panel, .reun-pages-panel {
+        width: 160px !important; min-width: 120px !important;
+      }
+    }
+
+    /* Override Bootstrap body styles that conflict */
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important; background: #0f0f0f !important; color: #e5e5e5 !important; }
+    #admin-wrapper { min-height: 100vh; }
+    /* Fix scrolling inside content modules */
+    #content-wrapper-inner > div[style*="display: flex"],
+    #content-wrapper-inner > div[style*="display:flex"] {
+      overflow-y: auto;
+    }
+    /* Dashboard scroll */
+    #dashboard { overflow-y: auto; height: calc(100vh - 57px); }
+    /* Inventario scroll */
+    #inventario { overflow-y: auto; height: calc(100vh - 57px); }
+    /* Content modules scroll override */
+    #add-stock-module, #cierres-module, #usuarios-module, #pedidos-module,
+    #registro-inv-module, #pdf-upload-module, #pdf-view-module {
+      overflow-y: auto;
+      height: calc(100vh - 57px);
+    }
+    /* Override Bootstrap conflicting button class */
+    .btn-primary { width: 100%; padding: 13px; background: #ff5023 !important; color: #fff !important; border: none !important; border-radius: 8px !important; font-size: 14px; font-weight: 600; cursor: pointer; margin-top: 8px; letter-spacing: .3px; transition: opacity .15s; }
+    .btn-primary:hover { opacity: .88 !important; }
+    .btn-primary:disabled { opacity: .4 !important; cursor: not-allowed !important; }
+    /* Override Bootstrap table styles inside modules */
+    #content-wrapper-inner table { color: inherit; }
+    #content-wrapper-inner table thead th, #content-wrapper-inner table tbody td { color: inherit; border-color: #1c1c1c; }
+    /* Override Bootstrap form control styles — light theme */
+    .field input, .admin-form input, .admin-form select,
+    .inv-modal input, .inv-modal select, .inv-modal textarea { color: #212529 !important; background-color: #fff !important; border-color: #dee2e6 !important; }
+    /* Override all dark inline-style inputs across modules */
+    #content-wrapper-inner input:not([type="checkbox"]):not([type="radio"]):not([type="color"]),
+    #content-wrapper-inner select,
+    #content-wrapper-inner textarea { background-color: #fff !important; color: #212529 !important; border-color: #dee2e6 !important; }
+    #content-wrapper-inner input::placeholder,
+    #content-wrapper-inner textarea::placeholder { color: #adb5bd !important; }
+    /* Override dark background containers */
+    #content-wrapper-inner [style*="background:#111"],
+    #content-wrapper-inner [style*="background: #111"],
+    #content-wrapper-inner [style*="background:#1a1a1a"],
+    #content-wrapper-inner [style*="background: #1a1a1a"],
+    #content-wrapper-inner [style*="background:#141414"],
+    #content-wrapper-inner [style*="background: #141414"] { background-color: #fff !important; border-color: #dee2e6 !important; }
+    /* Override dark border colors inline */
+    #content-wrapper-inner [style*="border:1px solid #222"],
+    #content-wrapper-inner [style*="border: 1px solid #222"],
+    #content-wrapper-inner [style*="border-top:1px solid #1f1f1f"],
+    #content-wrapper-inner [style*="border-bottom:1px solid #1f1f1f"] { border-color: #dee2e6 !important; }
+    /* Base: todo el texto en módulos es oscuro por defecto */
+    #content-wrapper-inner { color: #212529; }
+    /* Forzar texto oscuro legible en tablas y celdas */
+    .cierres-table td { color: #343a40; }
+    .cierres-table td:first-child { color: #212529; font-weight: 600; }
+    .cierre-calce-pos { color: #28a745 !important; font-weight: 600; }
+    .cierre-calce-neg { color: #dc3545 !important; font-weight: 600; }
+    .cierres-table th { color: #6c757d !important; }
+    .inv-table td { color: #343a40 !important; }
+    .inv-table thead th { color: #6c757d !important; }
+    .inv-toolbar h2 { color: #212529 !important; }
+    /* Cualquier texto inline blanco/claro en tablas y filas */
+    #content-wrapper-inner td[style*="color:#fff"],
+    #content-wrapper-inner td[style*="color: #fff"],
+    #content-wrapper-inner td[style*="color:#ccc"],
+    #content-wrapper-inner td[style*="color: #ccc"],
+    #content-wrapper-inner td[style*="color:#aaa"],
+    #content-wrapper-inner td[style*="color: #aaa"] { color: #343a40 !important; }
+    /* Textos secundarios (no en tablas) de mensajes de estado */
+    #content-wrapper-inner div[style*="color:#555"],
+    #content-wrapper-inner div[style*="color: #555"],
+    #content-wrapper-inner div[style*="color:#444"],
+    #content-wrapper-inner div[style*="color: #444"] { color: #6c757d !important; }
+    /* Fix Bootstrap overriding custom scrollbar */
+    * { box-sizing: border-box; }
+    /* Prevent Bootstrap from adding blue outline on focus */
+    *:focus { outline: none !important; box-shadow: none !important; }
   </style>
 </head>
-<body>
+<body class="sidebar-mini layout-fixed">
 
 <!-- ── MOBILE SIDEBAR ── -->
 <div id="mob-overlay" onclick="if(document.getElementById('hub').style.display!=='flex') closeSidebar()"></div>
@@ -456,10 +630,64 @@
   </div>
 </div>
 
+<!-- ── AdminLTE App Wrapper ── -->
+<div id="admin-wrapper" class="wrapper" style="display:none; font-family:'Nunito',sans-serif;">
+
+  <!-- Navbar -->
+  <nav class="main-header navbar navbar-expand navbar-light" style="background:#fff;border-bottom:1px solid #dee2e6;">
+    <ul class="navbar-nav">
+      <li class="nav-item">
+        <a class="nav-link" data-widget="pushmenu" href="#" role="button" id="sidebar-toggle-btn">
+          <i class="fas fa-bars"></i>
+        </a>
+      </li>
+      <li class="nav-item d-none d-sm-inline-block">
+        <span class="nav-link" id="admin-topbar-title" style="color:#aaa;font-size:13px;"></span>
+      </li>
+    </ul>
+    <ul class="navbar-nav ms-auto">
+      <li class="nav-item">
+        <a class="nav-link" href="#" onclick="goToHub();return false;" title="Inicio">
+          <i class="fas fa-home"></i>
+        </a>
+      </li>
+      <li class="nav-item">
+        <span class="nav-link" id="admin-topbar-user" style="color:#aaa;font-size:13px;"></span>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" href="#" onclick="doLogout();return false;" title="Salir">
+          <i class="fas fa-sign-out-alt"></i>
+        </a>
+      </li>
+    </ul>
+  </nav>
+
+  <!-- Sidebar -->
+  <aside class="main-sidebar sidebar-dark-primary elevation-4" style="background:#343a40;">
+    <a href="#" class="brand-link" style="background:#2c3136;border-bottom:1px solid #4b545c;">
+      <span class="brand-text font-weight-bold" style="color:#fff;font-size:16px;">Fudo <span style="color:#ff5023;">Connect</span></span>
+    </a>
+    <div class="sidebar">
+      <div class="user-panel mt-3 pb-3 mb-3 d-flex" style="border-bottom:1px solid #2a2a4a;">
+        <div class="info">
+          <span id="sidebar-username" style="color:#aaa;font-size:13px;"></span>
+        </div>
+      </div>
+      <nav class="mt-2">
+        <ul class="nav nav-pills nav-sidebar flex-column" id="admin-sidebar-nav" role="menu">
+          <!-- Items populated by JS -->
+        </ul>
+      </nav>
+    </div>
+  </aside>
+
+  <!-- Content Wrapper -->
+  <div class="content-wrapper" style="background:#f4f6f9;min-height:100vh;">
+    <div id="content-wrapper-inner" style="height:100%;position:relative;">
+
 <!-- ── DASHBOARD ── -->
 <div id="dashboard">
   <div class="topbar">
-    <button onclick="goToHub()" style="background:transparent;border:none;color:#555;font-size:18px;cursor:pointer;padding:0 8px 0 0;line-height:1" title="Volver al inicio">←</button>
     <div class="topbar-brand">Ventas</div>
     <div class="rest-tabs" id="rest-tabs"></div>
     <div class="topbar-right">
@@ -485,11 +713,11 @@
     </div>
     <!-- Año -->
     <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:6px" id="ventas-year-row">
-      <span style="font-size:11px;color:#444;text-transform:uppercase;letter-spacing:.4px;min-width:40px">Año</span>
+      <span style="font-size:11px;color:#6c757d;text-transform:uppercase;letter-spacing:.4px;min-width:40px">Año</span>
     </div>
     <!-- Mes (rendered by renderVentasMonthRow()) -->
     <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:20px" id="ventas-month-row">
-      <span style="font-size:11px;color:#444;text-transform:uppercase;letter-spacing:.4px;min-width:40px">Mes</span>
+      <span style="font-size:11px;color:#6c757d;text-transform:uppercase;letter-spacing:.4px;min-width:40px">Mes</span>
     </div>
 
     <div id="content" style="display:none">
@@ -502,10 +730,8 @@
 <!-- ── AÑADIR STOCK ── -->
 <div id="add-stock-module" style="display:none;flex-direction:column;min-height:100vh">
   <div class="inv-topbar">
-    <button onclick="goToHub()" style="background:transparent;border:none;color:#555;font-size:18px;cursor:pointer;padding:0 12px 0 0;line-height:1">←</button>
     <div class="topbar-brand" style="margin-right:0">Añadir stock</div>
     <div style="flex:1"></div>
-    <button class="btn-logout" onclick="doLogout()">Salir</button>
   </div>
   <div class="inv-main" style="max-width:700px">
     <div id="add-stock-rest-sel" class="stock-selector" style="margin-bottom:20px"></div>
@@ -516,7 +742,6 @@
 <!-- ── CIERRES DE CAJA ── -->
 <div id="cierres-module" style="display:none;flex-direction:column;min-height:100vh">
   <div class="inv-topbar">
-    <button onclick="goToHub()" style="background:transparent;border:none;color:#555;font-size:18px;cursor:pointer;padding:0 12px 0 0;line-height:1">←</button>
     <span style="font-size:14px;font-weight:600;color:#fff">Cierres de caja</span>
     <div class="cierres-tabs">
       <button class="cierres-tab active" id="ctab-registros" onclick="switchCierresTab('registros')">Registros</button>
@@ -533,11 +758,11 @@
     <div id="cierres-tab-analitica" style="display:none">
       <div style="margin-bottom:20px">
         <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:8px">
-          <span style="font-size:11px;color:#444;text-transform:uppercase;letter-spacing:.4px;min-width:40px">Año</span>
+          <span style="font-size:11px;color:#6c757d;text-transform:uppercase;letter-spacing:.4px;min-width:40px">Año</span>
           <div id="analytics-year-btns" style="display:flex;gap:6px;flex-wrap:wrap"></div>
         </div>
         <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-          <span style="font-size:11px;color:#444;text-transform:uppercase;letter-spacing:.4px;min-width:40px">Mes</span>
+          <span style="font-size:11px;color:#6c757d;text-transform:uppercase;letter-spacing:.4px;min-width:40px">Mes</span>
           <div id="analytics-month-btns" style="display:flex;gap:6px;flex-wrap:wrap"></div>
         </div>
         <span id="analytics-count" style="font-size:12px;color:#333;display:block;margin-top:8px"></span>
@@ -609,7 +834,6 @@
 <!-- ── USUARIOS ── -->
 <div id="usuarios-module" style="display:none;flex-direction:column;min-height:100vh">
   <div class="inv-topbar">
-    <button onclick="goToHub()" style="background:transparent;border:none;color:#555;font-size:18px;cursor:pointer;padding:0 12px 0 0;line-height:1">←</button>
     <span style="font-size:14px;font-weight:600;color:#fff">Usuarios</span>
     <button class="btn-new" style="margin-left:auto" onclick="usuariosShowForm()">+ Nuevo usuario</button>
   </div>
@@ -621,9 +845,7 @@
 
 <div id="pedidos-module" style="display:none;flex-direction:column;min-height:100vh">
   <div class="inv-topbar">
-    <button onclick="goToHub()" style="background:transparent;border:none;color:#555;font-size:18px;cursor:pointer;padding:0 12px 0 0;line-height:1">←</button>
     <div class="topbar-brand">Pedidos</div>
-    <button class="btn-logout" onclick="doLogout()">Salir</button>
   </div>
   <div style="padding:24px;max-width:1000px">
     <div id="pedidos-filters" style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap"></div>
@@ -634,19 +856,105 @@
 <!-- ── REGISTRO DE INVENTARIOS ── -->
 <div id="registro-inv-module" style="display:none;flex-direction:column;min-height:100vh">
   <div class="inv-topbar">
-    <button onclick="goToHub()" style="background:transparent;border:none;color:#555;font-size:18px;cursor:pointer;padding:0 12px 0 0;line-height:1">←</button>
     <div class="topbar-brand" style="margin-right:24px">Registro de Inventarios</div>
-    <button class="btn-logout" onclick="doLogout()">Salir</button>
   </div>
   <div class="inv-main">
     <div id="inv-historial"></div>
   </div>
 </div>
 
+<!-- ── REUNIONES MODULE ── -->
+<div id="reuniones-module" style="display:none;flex-direction:column;height:100vh">
+  <div class="inv-topbar">
+    <div class="topbar-brand" style="margin-right:24px">Reuniones</div>
+  </div>
+  <div style="display:flex;flex:1;overflow:hidden">
+    <!-- Sections panel -->
+    <div id="reun-sections-panel" style="width:200px;min-width:160px;background:#111;border-right:1px solid #1a1a1a;display:flex;flex-direction:column;overflow:hidden">
+      <div style="padding:14px 12px 8px;display:flex;align-items:center;justify-content:space-between">
+        <span style="font-size:11px;color:#444;text-transform:uppercase;letter-spacing:.5px">Secciones</span>
+        <button id="btn-new-section" onclick="openNewSectionModal()" style="display:none;background:none;border:none;color:#ff5023;font-size:18px;cursor:pointer;line-height:1" title="Nueva sección">+</button>
+      </div>
+      <div id="reun-sections-list" style="flex:1;overflow-y:auto"></div>
+    </div>
+    <!-- Pages panel -->
+    <div id="reun-pages-panel" style="width:200px;min-width:160px;background:#0f0f0f;border-right:1px solid #1a1a1a;display:flex;flex-direction:column;overflow:hidden">
+      <div style="padding:14px 12px 8px;display:flex;align-items:center;justify-content:space-between">
+        <span id="reun-pages-title" style="font-size:11px;color:#444;text-transform:uppercase;letter-spacing:.5px">Páginas</span>
+        <button id="btn-new-page" onclick="addNewPage()" style="background:none;border:none;color:#ff5023;font-size:18px;cursor:pointer;line-height:1;display:none" title="Nueva página">+</button>
+      </div>
+      <div id="reun-pages-list" style="flex:1;overflow-y:auto"></div>
+    </div>
+    <!-- Editor panel -->
+    <div id="reun-editor-panel" style="flex:1;display:flex;flex-direction:column;overflow:hidden;background:#0f0f0f">
+      <div id="reun-editor-empty" style="flex:1;display:flex;align-items:center;justify-content:center;color:#333;font-size:14px">
+        Selecciona una sección y página para comenzar
+      </div>
+      <div id="reun-editor-area" style="display:none;flex-direction:column;flex:1;overflow:hidden">
+        <!-- Page title -->
+        <div style="padding:16px 24px 0;border-bottom:1px solid #1a1a1a">
+          <input id="reun-page-title-input" type="text" placeholder="Título de la página"
+            style="width:100%;background:none;border:none;outline:none;color:#fff;font-size:20px;font-weight:600;padding:0 0 12px"
+            oninput="schedulePageSave()">
+        </div>
+        <!-- Toolbar -->
+        <div id="reun-toolbar" style="display:flex;flex-wrap:wrap;gap:4px;padding:8px 12px;border-bottom:1px solid #1a1a1a;background:#111;align-items:center">
+          <select onchange="execFmt('fontSize',this.value);this.blur()" style="background:#1a1a1a;border:1px solid #2a2a2a;color:#ccc;border-radius:5px;padding:3px 6px;font-size:12px;outline:none;cursor:pointer">
+            <option value="3" selected>Normal</option>
+            <option value="1">Pequeño</option>
+            <option value="4">Grande</option>
+            <option value="5">Más grande</option>
+            <option value="6">Título</option>
+          </select>
+          <button class="tb-btn" onclick="execFmt('bold')" title="Negrita"><b>B</b></button>
+          <button class="tb-btn" onclick="execFmt('italic')" title="Cursiva"><i>I</i></button>
+          <button class="tb-btn" onclick="execFmt('underline')" title="Subrayado"><u>U</u></button>
+          <div style="width:1px;height:20px;background:#2a2a2a;margin:0 2px"></div>
+          <button class="tb-btn" onclick="execFmt('justifyLeft')" title="Izquierda">⬅</button>
+          <button class="tb-btn" onclick="execFmt('justifyCenter')" title="Centro">↔</button>
+          <button class="tb-btn" onclick="execFmt('justifyRight')" title="Derecha">➡</button>
+          <div style="width:1px;height:20px;background:#2a2a2a;margin:0 2px"></div>
+          <button class="tb-btn" onclick="execFmt('insertUnorderedList')" title="Lista">•</button>
+          <button class="tb-btn" onclick="execFmt('insertOrderedList')" title="Lista numerada">1.</button>
+          <div style="width:1px;height:20px;background:#2a2a2a;margin:0 2px"></div>
+          <input type="color" value="#ffffff" onchange="execFmt('foreColor',this.value)" title="Color de texto"
+            style="width:26px;height:26px;padding:1px;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:5px;cursor:pointer">
+          <div style="margin-left:auto;font-size:11px;color:#333" id="reun-save-status">Guardado</div>
+        </div>
+        <!-- Content editable -->
+        <div id="reun-content-editor" contenteditable="true"
+          style="flex:1;overflow-y:auto;padding:24px;outline:none;font-size:14px;line-height:1.7;color:#e5e5e5;min-height:0"
+          oninput="schedulePageSave()"
+          placeholder="Escribe aquí el contenido de la reunión...">
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal nueva sección -->
+<div class="modal-overlay" id="modal-new-section" onclick="if(event.target===this)closeModal('modal-new-section')">
+  <div class="inv-modal" style="max-width:400px">
+    <h3 id="mreun-title">Nueva sección</h3>
+    <input type="hidden" id="mreun-id">
+    <div class="admin-form">
+      <div class="field-label">Nombre</div>
+      <input type="text" id="mreun-name" placeholder="Ej: Reuniones de equipo">
+      <div class="field-label" style="margin-top:12px">Color</div>
+      <input type="color" id="mreun-color" value="#ff5023" style="width:60px;height:36px;padding:2px;border:1px solid #2a2a2a;border-radius:6px;background:#1a1a1a;cursor:pointer">
+      <div class="field-label" style="margin-top:12px">Acceso (usuarios)</div>
+      <div id="mreun-users" style="max-height:180px;overflow-y:auto;background:#0f0f0f;border:1px solid #1f1f1f;border-radius:8px;padding:8px"></div>
+    </div>
+    <div class="inv-modal-btns">
+      <button class="btn-new" onclick="saveSection()">Guardar</button>
+      <button class="btn-cancel" onclick="closeModal('modal-new-section')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
 <!-- ── INVENTARIO ── -->
 <div id="inventario">
   <div class="inv-topbar">
-    <button onclick="goToHub()" style="background:transparent;border:none;color:#555;font-size:18px;cursor:pointer;padding:0 12px 0 0;line-height:1">←</button>
     <div class="topbar-brand" style="margin-right:24px">Gestión de Clientes y Proveedor</div>
     <div class="inv-tabs">
       <button class="inv-tab active" id="itab-clientes"    onclick="switchInvTab('clientes')">Clientes</button>
@@ -655,7 +963,6 @@
       <button class="inv-tab"        id="itab-proveedores" onclick="switchInvTab('proveedores')">Proveedores</button>
       <button class="inv-tab"        id="itab-alertas"     onclick="switchInvTab('alertas')" style="display:none">Alertas</button>
     </div>
-    <button class="btn-logout" onclick="doLogout()">Salir</button>
   </div>
   <div class="inv-main">
     <div id="inv-clientes"></div>
@@ -784,7 +1091,7 @@
             <option value="pote">Pote</option>
           </select>
         </div>
-        <div><div class="field-label">Precio actual ($)</div><input type="number" id="mcat-price" placeholder="0" min="0" step="1"></div>
+        <div><div class="field-label">Precio neto ($)</div><input type="number" id="mcat-price" placeholder="0" min="0" step="1"></div>
       </div>
       <div id="mcat-msg"></div>
     </div>
@@ -836,6 +1143,8 @@ let userModules    = ['ventas'];
 let userCategories = [];
 let currentView    = 'resumen';
 let salesChart   = null, payChart = null;
+let userName = '';
+let currentUserEmail = '';
 
 async function getToken() {
   return await auth.currentUser?.getIdToken();
@@ -893,17 +1202,35 @@ document.addEventListener('keydown', e => {
 async function doLogout() {
   await auth.signOut();
   restaurants = []; activeRestId = null; activeRestIds = []; userRole = null; currentView = 'resumen';
-  document.getElementById('hub').style.display       = 'none';
-  document.getElementById('dashboard').style.display = 'none';
+  document.getElementById('hub').style.display          = 'none';
+  document.getElementById('dashboard').style.display    = 'none';
+  document.getElementById('admin-wrapper').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
 }
 
-const ALL_MODULES_EL = ['hub','dashboard','inventario','registro-inv-module','add-stock-module','cierres-module','pdf-upload-module','pdf-view-module','usuarios-module','pedidos-module'];
+const ALL_MODULES_EL = ['hub','dashboard','inventario','registro-inv-module','add-stock-module','cierres-module','pdf-upload-module','pdf-view-module','usuarios-module','pedidos-module','reuniones-module'];
 function hideAll() { ALL_MODULES_EL.forEach(id => { const el = document.getElementById(id); if(el) el.style.display = 'none'; }); }
+// Note: hideAll() does NOT hide #admin-wrapper — goToHub() handles that separately
 
 function goTo(module) {
   hideAll();
   closeSidebar();
   setSidebarVisibility(module !== 'hub');
+  // Mostrar AdminLTE wrapper
+  document.getElementById('hub').style.display = 'none';
+  document.getElementById('admin-wrapper').style.display = 'block';
+  // Actualizar topbar título
+  const moduleNames = {
+    ventas: 'Ventas', stock: 'Añadir stock', inventario: 'Gestión de Clientes y Proveedor',
+    'registro-inv': 'Registro de Inventarios', cierres: 'Cierres de caja', pedidos: 'Pedidos',
+    'pdf-upload': 'Añadir PDF', 'pdf-view': 'Ver Manual', usuarios: 'Usuarios', reuniones: 'Reuniones'
+  };
+  const titleEl = document.getElementById('admin-topbar-title');
+  if (titleEl) titleEl.textContent = moduleNames[module] || module;
+  // Actualizar sidebar activo
+  document.querySelectorAll('#admin-sidebar-nav .nav-link').forEach(el => {
+    el.classList.toggle('active', el.dataset.module === module);
+  });
   if (module === 'ventas') {
     document.getElementById('dashboard').style.display = 'block';
     applyDefaultRange();
@@ -940,12 +1267,16 @@ function goTo(module) {
   } else if (module === 'pedidos') {
     document.getElementById('pedidos-module').style.display = 'flex';
     initPedidosModule();
+  } else if (module === 'reuniones') {
+    document.getElementById('reuniones-module').style.display = 'flex';
+    loadReuniones();
   }
 }
 
 function goToHub() {
   hideAll();
   setSidebarVisibility(true);
+  document.getElementById('admin-wrapper').style.display = 'none';
   document.getElementById('hub').style.display = 'flex';
   document.getElementById('hub-btn-admin').style.display = userRole === 'superadmin' ? 'flex' : 'none';
   if (window.innerWidth <= 768) openSidebar();
@@ -973,18 +1304,23 @@ async function initDashboard() {
     document.getElementById('btn-clear-cache').style.display = userRole === 'superadmin' ? 'inline-block' : 'none';
     const rawName = data.name || data.email || '';
     const displayName = rawName.includes('@') ? rawName.split('@')[0] : rawName;
+    userName = displayName;
+    currentUserEmail = data.email || '';
     document.getElementById('hub-user-name').textContent = displayName;
     const firstName = displayName.split(' ')[0];
     document.getElementById('hub-greeting-name').textContent = firstName;
-    loadCatThresholds(); // load thresholds in background for inventory colors
+    loadCatThresholds();
     renderSidebar();
+    renderAdminSidebar();
     setSidebarVisibility(true);
     renderHub();
-    if (window.innerWidth <= 768) openSidebar();
 
-    // Show hub
-    document.getElementById('hub').style.display       = 'flex';
-    document.getElementById('dashboard').style.display = 'none';
+    // Ir directo al admin wrapper
+    document.getElementById('hub').style.display           = 'none';
+    document.getElementById('dashboard').style.display     = 'none';
+    document.getElementById('admin-wrapper').style.display = 'block';
+    const firstModule = userRole === 'superadmin' ? 'ventas' : (userModules[0] || 'ventas');
+    goTo(firstModule);
   } catch(e) {
     document.getElementById('login-screen').style.display = 'flex';
     document.getElementById('login-error').textContent    = e.message;
@@ -1708,6 +2044,7 @@ async function renderAdminUsuarios() {
             <label><input type="checkbox" class="nu-module" value="registro-inv"> Registro de Inventarios</label>
             <label><input type="checkbox" class="nu-module" value="cierres"> Cierres de caja</label>
             <label><input type="checkbox" class="nu-module" value="pedidos"> Pedidos</label>
+            <label><input type="checkbox" class="nu-module" value="reuniones"> Reuniones</label>
             <label><input type="checkbox" class="nu-module" value="pdf-view"> Ver Manual</label>
           </div>
         </div>
@@ -1814,6 +2151,7 @@ async function editPermisos(uid, name) {
           <label><input type="checkbox" class="ep-module" value="registro-inv"  ${currentMods.includes('registro-inv')?'checked':''}> Registro de Inventarios</label>
           <label><input type="checkbox" class="ep-module" value="cierres"       ${currentMods.includes('cierres')?'checked':''}> Cierres de caja</label>
           <label><input type="checkbox" class="ep-module" value="pedidos"       ${currentMods.includes('pedidos')?'checked':''}> Pedidos</label>
+          <label><input type="checkbox" class="ep-module" value="reuniones"     ${currentMods.includes('reuniones')?'checked':''}> Reuniones</label>
           <label><input type="checkbox" class="ep-module" value="pdf-view"      ${currentMods.includes('pdf-view')?'checked':''}> Ver Manual</label>
         </div>
         <div class="field-label" style="margin-top:12px">Categorías de inventario (vacío = todas)</div>
@@ -1873,7 +2211,7 @@ function renderUsuariosPage() {
   const MODULE_NAMES = {
     ventas: 'Ventas', stock: 'Añadir stock', inventario: 'Gestión de Clientes y Proveedor',
     'registro-inv': 'Registro de Inventarios',
-    cierres: 'Cierres de caja', pedidos: 'Pedidos', 'pdf-view': 'Ver Manual', usuarios: 'Usuarios'
+    cierres: 'Cierres de caja', pedidos: 'Pedidos', 'pdf-view': 'Ver Manual', reuniones: 'Reuniones', usuarios: 'Usuarios'
   };
   const roleLabel = r => r === 'superadmin' ? 'Superadmin' : r === 'admin' ? 'Admin' : 'Usuario';
   const roleClass = r => r === 'superadmin' ? 'role-superadmin' : r === 'admin' ? 'role-admin' : 'role-user';
@@ -1963,6 +2301,7 @@ async function usuariosShowForm() {
             <label><input type="checkbox" class="nu-module" value="registro-inv"> Registro de Inventarios</label>
             <label><input type="checkbox" class="nu-module" value="cierres"> Cierres de caja</label>
             <label><input type="checkbox" class="nu-module" value="pedidos"> Pedidos</label>
+            <label><input type="checkbox" class="nu-module" value="reuniones"> Reuniones</label>
             <label><input type="checkbox" class="nu-module" value="pdf-view"> Ver Manual</label>
           </div>
         </div>
@@ -2041,6 +2380,7 @@ async function usuariosEditUser(uid, name) {
           <label><input type="checkbox" class="ep-module" value="registro-inv"  ${currentMods.includes('registro-inv')?'checked':''}> Registro de Inventarios</label>
           <label><input type="checkbox" class="ep-module" value="cierres"       ${currentMods.includes('cierres')?'checked':''}> Cierres de caja</label>
           <label><input type="checkbox" class="ep-module" value="pedidos"       ${currentMods.includes('pedidos')?'checked':''}> Pedidos</label>
+          <label><input type="checkbox" class="ep-module" value="reuniones"     ${currentMods.includes('reuniones')?'checked':''}> Reuniones</label>
           <label><input type="checkbox" class="ep-module" value="pdf-view"      ${currentMods.includes('pdf-view')?'checked':''}> Ver Manual</label>
         </div>
         <div class="field-label" style="margin-top:12px">Categorías de inventario (vacío = todas)</div>
@@ -2209,6 +2549,63 @@ function switchInvTab(tab) {
   if (tab === 'alertas')     renderInvAlertas();
 }
 
+// ── AdminLTE Sidebar ────────────────────────────────────────
+function renderAdminSidebar() {
+  const allModules = [
+    { id: 'ventas',       icon: 'fas fa-chart-bar',      name: 'Ventas',                      adminOnly: false },
+    { id: 'stock',        icon: 'fas fa-boxes',           name: 'Añadir stock',                adminOnly: false },
+    { id: 'inventario',   icon: 'fas fa-address-book',    name: 'Clientes y Proveedores',      adminOnly: false },
+    { id: 'registro-inv', icon: 'fas fa-clipboard-list',  name: 'Registro de Inventarios',     adminOnly: false },
+    { id: 'cierres',      icon: 'fas fa-cash-register',   name: 'Cierres de caja',             adminOnly: false },
+    { id: 'pedidos',      icon: 'fas fa-shopping-cart',   name: 'Pedidos',                     adminOnly: false },
+    { id: 'reuniones',    icon: 'fas fa-users',           name: 'Reuniones',                   adminOnly: false },
+    { id: 'pdf-upload',   icon: 'fas fa-file-upload',     name: 'Añadir PDF',                  adminOnly: true  },
+    { id: 'pdf-view',     icon: 'fas fa-book',            name: 'Ver Manual',                  adminOnly: false },
+    { id: 'usuarios',     icon: 'fas fa-user-cog',        name: 'Usuarios',                    adminOnly: true  },
+  ];
+  const visible = allModules.filter(m => {
+    if (m.adminOnly) return userRole === 'superadmin';
+    return userRole === 'superadmin' || userModules.includes(m.id);
+  });
+  const nav = document.getElementById('admin-sidebar-nav');
+  if (!nav) return;
+  nav.innerHTML = visible.map(m => `
+    <li class="nav-item">
+      <a href="#" class="nav-link" data-module="${m.id}">
+        <i class="nav-icon ${m.icon}"></i>
+        <p>${m.name}</p>
+      </a>
+    </li>`).join('');
+
+  // Bind clicks via addEventListener (onclick inline doesn't fire reliably on mobile in AdminLTE)
+  nav.querySelectorAll('.nav-link[data-module]').forEach(link => {
+    link.addEventListener('click', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      const mod = this.dataset.module;
+      closePushMenu();
+      goTo(mod);
+    });
+  });
+
+  // Update user display
+  const sidebarUser = document.getElementById('sidebar-username');
+  const topbarUser  = document.getElementById('admin-topbar-user');
+  const name = userName || currentUserEmail || '';
+  if (sidebarUser) sidebarUser.textContent = name;
+  if (topbarUser)  topbarUser.textContent  = name;
+}
+
+function closePushMenu() {
+  // Close AdminLTE pushmenu overlay on mobile if open
+  if (window.innerWidth < 992) {
+    try { $('[data-widget="pushmenu"]').PushMenu('collapse'); } catch(e) {}
+    document.body.classList.remove('sidebar-open');
+    const overlay = document.querySelector('.sidebar-overlay');
+    if (overlay) overlay.remove();
+  }
+}
+
 // ── Mobile sidebar ──────────────────────────────────────────
 function openSidebar() {
   document.getElementById('mob-sidebar').classList.add('open');
@@ -2228,6 +2625,7 @@ function renderSidebar() {
     { id: 'pedidos',       icon: '🛒', name: 'Pedidos',                       bg: 'linear-gradient(135deg,#b45309,#f59e0b)', adminOnly: false },
     { id: 'pdf-upload',    icon: '📤', name: 'Añadir PDF',                    bg: 'linear-gradient(135deg,#2563b0,#3b82f6)', adminOnly: true  },
     { id: 'pdf-view',      icon: '📄', name: 'Ver Manual',                    bg: 'linear-gradient(135deg,#0e7490,#06b6d4)', adminOnly: false },
+    { id: 'reuniones',     icon: '📋', name: 'Reuniones',                     bg: 'linear-gradient(135deg,#5b6af0,#7c8cf8)', adminOnly: false },
     { id: 'usuarios',      icon: '👥', name: 'Usuarios',                      bg: 'linear-gradient(135deg,#c95e6b,#e07585)', adminOnly: true  },
   ];
   const visible = allModules.filter(m => {
@@ -2262,6 +2660,7 @@ function renderHub() {
     { id: 'pedidos',       icon: '🛒', name: 'Pedidos',                       bg: 'linear-gradient(135deg,#b45309,#f59e0b)', adminOnly: false },
     { id: 'pdf-upload',    icon: '📤', name: 'Añadir PDF',                    bg: 'linear-gradient(135deg,#2563b0,#3b82f6)', adminOnly: true  },
     { id: 'pdf-view',      icon: '📄', name: 'Ver Manual',                    bg: 'linear-gradient(135deg,#0e7490,#06b6d4)', adminOnly: false },
+    { id: 'reuniones',     icon: '📋', name: 'Reuniones',                     bg: 'linear-gradient(135deg,#5b6af0,#7c8cf8)', adminOnly: false },
     { id: 'usuarios',      icon: '👥', name: 'Usuarios',                      bg: 'linear-gradient(135deg,#c95e6b,#e07585)', adminOnly: true  },
   ];
   const visible = allModules.filter(m => {
@@ -2798,10 +3197,14 @@ function renderCatalogoTable() {
   el.innerHTML = `
     <div class="inv-toolbar">
       <h2>Catálogo de productos</h2>
-      ${(userRole === 'admin' || userRole === 'superadmin') ? '<button class="btn-new" onclick="openModalCatalogo()">+ Nuevo producto</button>' : ''}
+      ${(userRole === 'admin' || userRole === 'superadmin') ? `
+        <div style="display:flex;gap:8px">
+          <button class="btn-new" onclick="saveHistorialPrecios()" style="background:#1f1f1f;border:1px solid #333;color:#aaa;font-size:12px" id="btn-save-hist">Guardar historial</button>
+          <button class="btn-new" onclick="openModalCatalogo()">+ Nuevo producto</button>
+        </div>` : ''}
     </div>
     <table class="inv-table">
-      <thead><tr><th>Nombre</th><th>Categoría</th><th>Unidad</th><th>Precio actual</th><th>Vigente desde</th>${(userRole==='admin'||userRole==='superadmin')?'<th></th>':''}</tr></thead>
+      <thead><tr><th>Nombre</th><th>Categoría</th><th>Unidad</th><th>Precio neto</th><th>Vigente desde</th>${(userRole==='admin'||userRole==='superadmin')?'<th></th>':''}</tr></thead>
       <tbody>
         ${invCatalogo.length === 0
           ? `<tr><td colspan="6" style="color:#444;padding:20px">Sin productos en catálogo</td></tr>`
@@ -2830,7 +3233,7 @@ function renderCatalogoTable() {
                     : `<table style="font-size:12px;border-collapse:collapse">
                         <thead><tr>
                           <th style="color:#444;font-weight:400;text-align:left;padding:4px 24px 4px 0">Mes</th>
-                          <th style="color:#444;font-weight:400;text-align:left;padding:4px 0">Precio</th>
+                          <th style="color:#444;font-weight:400;text-align:left;padding:4px 0">Precio neto</th>
                         </tr></thead>
                         <tbody>
                           ${[...hist].reverse().map(h => `
@@ -2891,6 +3294,27 @@ async function delCatalogo(id, name) {
   await apiFetch(`/api/inv/catalog/${id}`, { method: 'DELETE' });
   invCatalogo = invCatalogo.filter(p => p.id !== id);
   renderCatalogoTable();
+}
+
+async function saveHistorialPrecios() {
+  if (!invCatalogo.length) return;
+  const btn = document.getElementById('btn-save-hist');
+  btn.disabled = true;
+  btn.textContent = 'Guardando...';
+  try {
+    const res  = await apiFetch('/api/inv/price-history', {
+      method: 'POST',
+      body:   JSON.stringify({ items: invCatalogo }),
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    btn.textContent = `✓ Guardado (${data.saved})`;
+    setTimeout(() => { btn.textContent = 'Guardar historial'; btn.disabled = false; }, 2500);
+  } catch(e) {
+    alert('Error al guardar: ' + e.message);
+    btn.textContent = 'Guardar historial';
+    btn.disabled = false;
+  }
 }
 
 // ── Historial de inventarios ───────────────────────────────
@@ -3158,7 +3582,8 @@ async function saveStock(productId) {
 }
 
 // ── Modal helpers ──────────────────────────────────────────
-function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function openModal(id)  { const el = document.getElementById(id); if(el) { el.classList.add('open'); if(!el.style.display || el.style.display === 'none') el.style.display = 'flex'; } }
+function closeModal(id) { const el = document.getElementById(id); if(el) { el.classList.remove('open'); } }
 function closeModalIfOutside(e, id) { if (e.target.id === id) closeModal(id); }
 
 async function delUsuario(uid, name) {
@@ -3231,13 +3656,13 @@ function renderCierresYearMonthFilters() {
   if (!years.length) { container.innerHTML = ''; return; }
   container.innerHTML = `
     <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:6px">
-      <span style="font-size:11px;color:#444;text-transform:uppercase;letter-spacing:.4px;min-width:40px">Año</span>
+      <span style="font-size:11px;color:#6c757d;text-transform:uppercase;letter-spacing:.4px;min-width:40px">Año</span>
       ${years.map(y => `
         <button class="month-btn ${cierresSelYears.has(y) ? 'active' : ''}"
           onclick="toggleCierresYear('${y}', this)">${y}</button>`).join('')}
     </div>
     <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-      <span style="font-size:11px;color:#444;text-transform:uppercase;letter-spacing:.4px;min-width:40px">Mes</span>
+      <span style="font-size:11px;color:#6c757d;text-transform:uppercase;letter-spacing:.4px;min-width:40px">Mes</span>
       ${MONTH_LABELS.map((m, i) => `
         <button class="month-btn ${cierresSelMonths.has(i+1) ? 'active' : ''}"
           onclick="toggleCierresMonth(${i+1}, this)">${m}</button>`).join('')}
@@ -3320,15 +3745,15 @@ function renderCierresTable() {
         ${filtered.map(c => {
           const ingresoReal = (c.transbank||0) + (c.gastos||0) + (c.efectivo||0) - (c.propinaAMano||0);
           const diff = c.totalPrograma != null ? (c.totalPrograma||0) - ingresoReal : null;
-          const diffColor = diff == null || Math.abs(diff) < 1 ? '#555' : diff > 0 ? '#fca5a5' : '#86efac';
+          const diffClass = diff == null || Math.abs(diff) < 1 ? '' : diff > 0 ? 'cierre-calce-neg' : 'cierre-calce-pos';
           return `<tr>
             <td>${c.fecha}</td>
             <td>${fmt(c.totalPrograma)}</td>
             <td>${fmt(c.transbank)}</td>
             <td>${fmt(c.efectivo)}</td>
             <td>${fmt(c.gastos)}</td>
-            <td style="color:#aaa;font-weight:600">${fmt(ingresoReal)}</td>
-            <td style="color:${diffColor};font-weight:600">${diff != null ? fmt(diff) : '—'}</td>
+            <td style="font-weight:600">${fmt(ingresoReal)}</td>
+            <td class="${diffClass}" style="font-weight:600">${diff != null ? fmt(diff) : '—'}</td>
             ${(userRole==='admin'||userRole==='superadmin')?`<td style="white-space:nowrap">
               <button class="btn-edit" onclick="openModalCierre('${c.id}')">Editar</button>
               <button class="btn-del"  onclick="delCierre('${c.id}')">Eliminar</button>
@@ -4039,15 +4464,225 @@ async function saveGeneralConfig() {
     setTimeout(() => { msg.textContent = ''; }, 3000);
   } catch(e) { msg.style.color = '#f87171'; msg.textContent = e.message; }
 }
+
+// ── Reuniones ────────────────────────────────────────────────
+let reunSections    = [];
+let reunPages       = [];
+let activeSectionId = null;
+let activePageId    = null;
+let reunSaveTimer   = null;
+let reunAllUsers    = [];  // para el modal de acceso
+
+async function loadReuniones() {
+  if (userRole === 'superadmin') {
+    document.getElementById('btn-new-section').style.display = 'block';
+  }
+  const res  = await apiFetch('/api/reuniones/sections');
+  const data = await res.json();
+  reunSections = data.sections || [];
+  renderSectionsList();
+  if (reunSections.length > 0) selectSection(reunSections[0].id);
+}
+
+function renderSectionsList() {
+  const el = document.getElementById('reun-sections-list');
+  if (!reunSections.length) {
+    el.innerHTML = '<div style="padding:12px;color:#333;font-size:12px">Sin secciones</div>';
+    return;
+  }
+  el.innerHTML = reunSections.map(s => `
+    <div class="reun-section-item ${s.id === activeSectionId ? 'active' : ''}"
+      style="border-left-color:${s.id === activeSectionId ? s.color : 'transparent'}"
+      onclick="selectSection('${s.id}')">
+      <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0">
+        <div class="reun-section-dot" style="background:${s.color}"></div>
+        <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.name}</span>
+      </div>
+      ${userRole === 'superadmin' ? `
+        <div class="reun-section-actions">
+          <button class="reun-sect-btn" onclick="event.stopPropagation();openEditSectionModal('${s.id}')" title="Editar">✏️</button>
+          <button class="reun-sect-btn" onclick="event.stopPropagation();deleteSection('${s.id}','${s.name.replace(/'/g,"\\'")}')" title="Eliminar">🗑</button>
+        </div>` : ''}
+    </div>`).join('');
+}
+
+async function selectSection(sectionId) {
+  activeSectionId = sectionId;
+  activePageId    = null;
+  renderSectionsList();
+  document.getElementById('btn-new-page').style.display = 'block';
+  const section = reunSections.find(s => s.id === sectionId);
+  document.getElementById('reun-pages-title').textContent = section?.name || 'Páginas';
+
+  const res  = await apiFetch(`/api/reuniones/sections/${sectionId}/pages`);
+  const data = await res.json();
+  reunPages = data.pages || [];
+  renderPagesList();
+  showEditorEmpty();
+}
+
+function renderPagesList() {
+  const el = document.getElementById('reun-pages-list');
+  if (!reunPages.length) {
+    el.innerHTML = '<div style="padding:12px;color:#333;font-size:12px">Sin páginas. Presiona + para crear.</div>';
+    return;
+  }
+  el.innerHTML = reunPages.map(p => `
+    <div class="reun-page-item ${p.id === activePageId ? 'active' : ''}" onclick="selectPage('${p.id}')">
+      <span class="reun-page-name">${p.name || 'Sin título'}</span>
+      <button class="reun-page-del" onclick="event.stopPropagation();deletePage('${p.id}')" title="Eliminar">×</button>
+    </div>`).join('');
+}
+
+async function selectPage(pageId) {
+  // Save current page first if dirty
+  if (activePageId && reunSaveTimer) {
+    clearTimeout(reunSaveTimer);
+    await saveCurrentPage();
+  }
+  activePageId = pageId;
+  renderPagesList();
+  const page = reunPages.find(p => p.id === pageId);
+  if (!page) return;
+
+  document.getElementById('reun-page-title-input').value = page.name || '';
+  document.getElementById('reun-content-editor').innerHTML = page.content || '';
+  showEditorContent();
+  document.getElementById('reun-save-status').textContent = 'Guardado';
+}
+
+function showEditorEmpty() {
+  document.getElementById('reun-editor-empty').style.display = 'flex';
+  document.getElementById('reun-editor-area').style.display = 'none';
+}
+
+function showEditorContent() {
+  document.getElementById('reun-editor-empty').style.display = 'none';
+  document.getElementById('reun-editor-area').style.display = 'flex';
+}
+
+async function addNewPage() {
+  if (!activeSectionId) return;
+  const res  = await apiFetch(`/api/reuniones/sections/${activeSectionId}/pages`, {
+    method: 'POST',
+    body: JSON.stringify({ name: 'Nueva página' }),
+  });
+  const data = await res.json();
+  if (data.error) return;
+  // Refresh pages
+  await selectSection(activeSectionId);
+  // Select new page
+  const newPage = reunPages[reunPages.length - 1];
+  if (newPage) selectPage(newPage.id);
+}
+
+function schedulePageSave() {
+  document.getElementById('reun-save-status').textContent = 'Guardando...';
+  clearTimeout(reunSaveTimer);
+  reunSaveTimer = setTimeout(saveCurrentPage, 1200);
+}
+
+async function saveCurrentPage() {
+  if (!activePageId) return;
+  reunSaveTimer = null;
+  const name    = document.getElementById('reun-page-title-input').value.trim() || 'Sin título';
+  const content = document.getElementById('reun-content-editor').innerHTML;
+  // Update local state
+  const idx = reunPages.findIndex(p => p.id === activePageId);
+  if (idx !== -1) reunPages[idx].name = name;
+  renderPagesList();
+  try {
+    await apiFetch(`/api/reuniones/pages/${activePageId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ name, content }),
+    });
+    document.getElementById('reun-save-status').textContent = 'Guardado ✓';
+  } catch(e) {
+    document.getElementById('reun-save-status').textContent = 'Error al guardar';
+  }
+}
+
+async function deletePage(pageId) {
+  if (!confirm('¿Eliminar esta página?')) return;
+  await apiFetch(`/api/reuniones/pages/${pageId}`, { method: 'DELETE' });
+  if (activePageId === pageId) { activePageId = null; showEditorEmpty(); }
+  reunPages = reunPages.filter(p => p.id !== pageId);
+  renderPagesList();
+}
+
+function execFmt(cmd, value) {
+  document.getElementById('reun-content-editor').focus();
+  document.execCommand(cmd, false, value || null);
+}
+
+// Section modals
+async function openNewSectionModal() {
+  document.getElementById('mreun-title').textContent = 'Nueva sección';
+  document.getElementById('mreun-id').value = '';
+  document.getElementById('mreun-name').value = '';
+  document.getElementById('mreun-color').value = '#ff5023';
+  await loadUsersForModal([]);
+  document.getElementById('modal-new-section').classList.add('open');
+}
+
+async function openEditSectionModal(sectionId) {
+  const s = reunSections.find(x => x.id === sectionId);
+  if (!s) return;
+  document.getElementById('mreun-title').textContent = 'Editar sección';
+  document.getElementById('mreun-id').value = sectionId;
+  document.getElementById('mreun-name').value = s.name;
+  document.getElementById('mreun-color').value = s.color || '#ff5023';
+  await loadUsersForModal(s.allowedUids || []);
+  document.getElementById('modal-new-section').classList.add('open');
+}
+
+async function loadUsersForModal(currentAllowed) {
+  const el = document.getElementById('mreun-users');
+  el.innerHTML = '<div style="color:#444;font-size:12px;padding:4px">Cargando...</div>';
+  if (!reunAllUsers.length) {
+    const res  = await apiFetch('/api/admin/users');
+    const data = await res.json();
+    reunAllUsers = (data.users || []).filter(u => u.role !== 'superadmin');
+  }
+  if (!reunAllUsers.length) { el.innerHTML = '<div style="color:#444;font-size:12px;padding:4px">Sin usuarios</div>'; return; }
+  el.innerHTML = reunAllUsers.map(u => `
+    <label style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:13px;color:#aaa;cursor:pointer">
+      <input type="checkbox" class="mreun-uid" value="${u.uid}" ${currentAllowed.includes(u.uid)?'checked':''}>
+      ${u.name || u.email}
+    </label>`).join('');
+}
+
+async function saveSection() {
+  const id    = document.getElementById('mreun-id').value;
+  const name  = document.getElementById('mreun-name').value.trim();
+  const color = document.getElementById('mreun-color').value;
+  if (!name) return alert('Ingresa un nombre');
+  const allowedUids = [...document.querySelectorAll('.mreun-uid:checked')].map(c => c.value);
+  const body = JSON.stringify({ name, color, allowedUids });
+  if (id) {
+    await apiFetch(`/api/reuniones/sections/${id}`, { method: 'PUT', body });
+  } else {
+    await apiFetch('/api/reuniones/sections', { method: 'POST', body });
+  }
+  closeModal('modal-new-section');
+  await loadReuniones();
+}
+
+async function deleteSection(sectionId, name) {
+  if (!confirm(`¿Eliminar la sección "${name}" y todas sus páginas?`)) return;
+  await apiFetch(`/api/reuniones/sections/${sectionId}`, { method: 'DELETE' });
+  if (activeSectionId === sectionId) { activeSectionId = null; activePageId = null; showEditorEmpty(); }
+  reunSections = reunSections.filter(s => s.id !== sectionId);
+  renderSectionsList();
+  document.getElementById('reun-pages-list').innerHTML = '';
+}
 </script>
 
 <!-- ── MÓDULO: AÑADIR PDF ── -->
 <div id="pdf-upload-module" style="display:none;flex-direction:column;min-height:100vh">
   <div class="inv-topbar">
-    <button onclick="goToHub()" style="background:transparent;border:none;color:#555;font-size:18px;cursor:pointer;padding:0 12px 0 0;line-height:1">←</button>
     <div class="topbar-brand" style="margin-right:0">Añadir PDF</div>
     <div style="flex:1"></div>
-    <button class="btn-logout" onclick="doLogout()">Salir</button>
   </div>
   <div class="inv-main" style="max-width:680px;padding:32px 28px">
 
@@ -4092,10 +4727,8 @@ async function saveGeneralConfig() {
 <!-- ── MÓDULO: VER MANUAL ── -->
 <div id="pdf-view-module" style="display:none;flex-direction:column;min-height:100vh">
   <div class="inv-topbar">
-    <button onclick="goToHub()" style="background:transparent;border:none;color:#555;font-size:18px;cursor:pointer;padding:0 12px 0 0;line-height:1">←</button>
     <div class="topbar-brand" style="margin-right:0">Manuales</div>
     <div style="flex:1"></div>
-    <button class="btn-logout" onclick="doLogout()">Salir</button>
   </div>
   <div class="inv-main" style="max-width:680px;padding:32px 28px">
     <div style="font-size:13px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.5px;margin-bottom:16px">Documentos disponibles</div>
@@ -4135,6 +4768,15 @@ async function saveGeneralConfig() {
   </div>
 </div>
 
+    </div><!-- /#content-wrapper-inner -->
+  </div><!-- /.content-wrapper -->
+
+  <!-- Footer -->
+  <footer class="main-footer" style="background:#0a0a0a;border-top:1px solid #1a1a1a;color:#444;font-size:12px;">
+    <strong>Fudo Connect</strong> &copy; 2026
+  </footer>
+</div><!-- /#admin-wrapper -->
+
 <div id="pdf-viewer-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:1000;flex-direction:column">
   <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:#111;border-bottom:1px solid #1f1f1f;flex-shrink:0">
     <span id="pdf-viewer-title" style="font-size:14px;font-weight:600;color:#fff"></span>
@@ -4144,5 +4786,11 @@ async function saveGeneralConfig() {
   <iframe id="pdf-viewer-frame" src="" style="flex:1;border:none;width:100%;background:#1a1a1a"></iframe>
 </div>
 
+<!-- jQuery (required by AdminLTE) -->
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+<!-- Bootstrap 5 JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<!-- AdminLTE JS -->
+<script src="https://cdn.jsdelivr.net/npm/admin-lte@3.2.0/dist/js/adminlte.min.js"></script>
 </body>
 </html>

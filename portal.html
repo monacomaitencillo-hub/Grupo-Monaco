@@ -219,17 +219,36 @@
     }
 
     .order-item-row {
-      display: flex; justify-content: space-between;
-      padding: 8px 0; border-bottom: 1px solid #1a1a1a;
-      font-size: 13px;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 0; border-bottom: 1px solid #1a1a1a;
+      font-size: 13px; gap: 10px;
     }
-    .order-item-row:last-child { border-bottom: none; }
-    .order-item-name { color: #ccc; }
-    .order-item-price { color: #fff; font-weight: 600; white-space: nowrap; }
+    .order-item-name { color: #ccc; flex: 1; }
+    .order-item-price { color: #fff; font-weight: 600; white-space: nowrap; min-width: 70px; text-align: right; }
+    .cart-qty-row { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+    .cart-qty-btn {
+      width: 26px; height: 26px; border-radius: 6px;
+      background: #1f1f1f; border: 1px solid #2a2a2a;
+      color: #fff; font-size: 15px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: background .15s;
+    }
+    .cart-qty-btn:hover { background: #2a2a2a; }
+    .cart-qty-num { min-width: 20px; text-align: center; font-size: 13px; font-weight: 600; color: #fff; }
+    .cart-remove-btn {
+      background: none; border: none; color: #444; font-size: 18px;
+      cursor: pointer; line-height: 1; padding: 0 2px;
+      transition: color .15s; flex-shrink: 0;
+    }
+    .cart-remove-btn:hover { color: #f87171; }
 
     .order-total-row {
       display: flex; justify-content: space-between;
-      padding: 14px 0 0;
+      padding: 8px 0 0; font-size: 13px; color: #aaa;
+    }
+    .order-total-row.grand {
+      padding-top: 10px; margin-top: 4px;
+      border-top: 1px solid #2a2a2a;
       font-size: 15px; font-weight: 700; color: #fff;
     }
 
@@ -270,7 +289,7 @@
     .loading-text { color: #444; font-size: 13px; padding: 40px 0; text-align: center; }
 
     .catalog-search {
-      margin-bottom: 20px;
+      margin-bottom: 14px;
     }
     .catalog-search input {
       width: 100%; max-width: 340px; padding: 10px 14px;
@@ -280,6 +299,17 @@
     }
     .catalog-search input:focus { border-color: #ff5023; }
     .catalog-search input::placeholder { color: #333; }
+
+    .catalog-filters {
+      display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px;
+    }
+    .filter-chip {
+      padding: 5px 13px; border-radius: 20px; font-size: 12px;
+      background: #1a1a1a; border: 1px solid #2a2a2a; color: #777;
+      cursor: pointer; transition: all .15s; white-space: nowrap;
+    }
+    .filter-chip:hover { border-color: #444; color: #ccc; }
+    .filter-chip.active { background: #ff5023; border-color: #ff5023; color: #fff; }
   </style>
 </head>
 <body>
@@ -309,7 +339,7 @@
   <div class="topbar">
     <div class="topbar-logo">Portal <span>de compras</span></div>
     <div class="topbar-user" id="topbar-user"></div>
-    <button class="btn-cart" id="btn-cart-top" onclick="switchTab('catalogo')" style="display:none">
+    <button class="btn-cart" id="btn-cart-top" onclick="openCheckout()" style="display:none">
       Carrito (<span id="cart-count">0</span>)
     </button>
     <button class="btn-logout" onclick="doLogout()">Salir</button>
@@ -330,6 +360,7 @@
       <div class="catalog-search">
         <input type="text" id="catalog-search-input" placeholder="Buscar producto..." oninput="filterCatalog()">
       </div>
+      <div class="catalog-filters" id="catalog-filters"></div>
       <div id="catalog-grid" class="catalog-grid">
         <div class="loading-text">Cargando catálogo...</div>
       </div>
@@ -392,6 +423,7 @@ let catalogItems = [];
 let cart = {}; // { productId: { item, quantity } }
 let currentUser = null;
 let currentView = 'catalogo';
+let activeCategory = '';
 
 // ── Helpers ───────────────────────────────────────────────
 async function portalFetch(path, opts = {}) {
@@ -503,17 +535,39 @@ async function loadCatalog() {
     const data = await res.json();
     if (data.error) throw new Error(data.error);
     catalogItems = data.catalog || [];
+    renderCategoryFilters();
     renderCatalog(catalogItems);
   } catch(e) {
     gridEl.innerHTML = `<div class="loading-text" style="color:#f87171">${e.message}</div>`;
   }
 }
 
+function renderCategoryFilters() {
+  const categories = [...new Set(catalogItems.map(p => p.category || '').filter(Boolean))].sort();
+  const filtersEl = document.getElementById('catalog-filters');
+  if (!categories.length) { filtersEl.innerHTML = ''; return; }
+  filtersEl.innerHTML = `
+    <button class="filter-chip active" id="chip-all" onclick="selectCategory('')">Todos</button>
+    ${categories.map(c => `<button class="filter-chip" id="chip-${c.replace(/\s/g,'_')}" onclick="selectCategory('${c.replace(/'/g,"\\'")}')">${c}</button>`).join('')}
+  `;
+}
+
+function selectCategory(cat) {
+  activeCategory = cat;
+  document.querySelectorAll('.filter-chip').forEach(el => el.classList.remove('active'));
+  const chipId = cat ? `chip-${cat.replace(/\s/g,'_')}` : 'chip-all';
+  const chip = document.getElementById(chipId);
+  if (chip) chip.classList.add('active');
+  filterCatalog();
+}
+
 function filterCatalog() {
   const q = document.getElementById('catalog-search-input').value.toLowerCase();
-  const filtered = q ? catalogItems.filter(p =>
-    p.name.toLowerCase().includes(q) || (p.category || '').toLowerCase().includes(q)
-  ) : catalogItems;
+  const filtered = catalogItems.filter(p => {
+    const matchQ = !q || p.name.toLowerCase().includes(q) || (p.category || '').toLowerCase().includes(q);
+    const matchCat = !activeCategory || p.category === activeCategory;
+    return matchQ && matchCat;
+  });
   renderCatalog(filtered);
 }
 
@@ -524,66 +578,73 @@ function renderCatalog(items) {
     return;
   }
   gridEl.innerHTML = items.map(p => {
-    const qty = cart[p.id]?.quantity || 0;
-    const inCart = qty > 0;
+    const inCart = !!cart[p.id];
+    const displayQty = localQty[p.id] || 1;
     return `
     <div class="product-card" id="pc-${p.id}">
       <div class="product-category">${p.category || ''}</div>
       <div class="product-name">${p.name}</div>
       <div class="product-price">${fmtPrice(p.currentPrice)}</div>
-      <div class="product-unit">por ${p.unit || 'unidad'}</div>
+      <div class="product-unit">precio neto</div>
       <div class="qty-row">
         <button class="qty-btn" onclick="changeQty('${p.id}',-1)">−</button>
-        <div class="qty-num" id="qty-${p.id}">${qty}</div>
+        <div class="qty-num" id="qty-${p.id}">${displayQty}</div>
         <button class="qty-btn" onclick="changeQty('${p.id}',1)">+</button>
       </div>
       <button class="btn-add-cart ${inCart ? 'in-cart' : ''}" id="addBtn-${p.id}"
         onclick="addToCart('${p.id}')">
-        ${inCart ? '✓ En carrito' : 'Agregar'}
+        ${inCart ? '✓ En carrito' : 'Agregar al carrito'}
       </button>
     </div>`;
   }).join('');
 }
 
+// localQty tracks pending quantity (not yet in cart)
+const localQty = {};
+
 function changeQty(productId, delta) {
-  const item = catalogItems.find(p => p.id === productId);
-  if (!item) return;
-  const current = cart[productId]?.quantity || 0;
-  const newQty = Math.max(0, current + delta);
+  const current = localQty[productId] || 1;
+  const newQty = Math.max(1, current + delta);
+  localQty[productId] = newQty;
   const qtyEl = document.getElementById(`qty-${productId}`);
   if (qtyEl) qtyEl.textContent = newQty;
-  if (newQty === 0) {
-    delete cart[productId];
-  } else {
-    cart[productId] = { item, quantity: newQty };
-  }
-  updateAddBtn(productId);
-  updateCartBar();
 }
 
 function addToCart(productId) {
   const item = catalogItems.find(p => p.id === productId);
   if (!item) return;
-  const current = cart[productId]?.quantity || 0;
-  if (current === 0) {
-    cart[productId] = { item, quantity: 1 };
-    const qtyEl = document.getElementById(`qty-${productId}`);
-    if (qtyEl) qtyEl.textContent = 1;
+  const qty = localQty[productId] || 1;
+  if (cart[productId]) {
+    cart[productId].quantity += qty;
   } else {
-    delete cart[productId];
-    const qtyEl = document.getElementById(`qty-${productId}`);
-    if (qtyEl) qtyEl.textContent = 0;
+    cart[productId] = { item, quantity: qty };
   }
+  // Reset local counter
+  localQty[productId] = 1;
+  const qtyEl = document.getElementById(`qty-${productId}`);
+  if (qtyEl) qtyEl.textContent = 1;
   updateAddBtn(productId);
   updateCartBar();
+}
+
+function removeFromCart(productId) {
+  delete cart[productId];
+  localQty[productId] = 1;
+  updateAddBtn(productId);
+  updateCartBar();
+  if (!Object.keys(cart).length) {
+    closeCheckout();
+  } else {
+    renderCartItems();
+  }
 }
 
 function updateAddBtn(productId) {
   const btn = document.getElementById(`addBtn-${productId}`);
   if (!btn) return;
-  const inCart = (cart[productId]?.quantity || 0) > 0;
+  const inCart = !!cart[productId];
   btn.className = `btn-add-cart ${inCart ? 'in-cart' : ''}`;
-  btn.textContent = inCart ? '✓ En carrito' : 'Agregar';
+  btn.textContent = inCart ? '✓ Agregar más' : 'Agregar al carrito';
 }
 
 function updateCartBar() {
@@ -604,24 +665,49 @@ function updateCartBar() {
 
 // ── Checkout modal ────────────────────────────────────────
 function openCheckout() {
+  if (!Object.keys(cart).length) return;
+  renderCartItems();
+  document.getElementById('checkout-modal').classList.add('open');
+}
+
+function renderCartItems() {
   const items = Object.values(cart);
-  if (!items.length) return;
-  const total = cartTotal();
+  const neto  = cartTotal();
+  const iva   = Math.round(neto * 0.19);
+  const total = neto + iva;
 
   const itemsHtml = items.map(({ item, quantity }) => `
     <div class="order-item-row">
-      <span class="order-item-name">${quantity}× ${item.name}</span>
+      <span class="order-item-name">${item.name}</span>
+      <div class="cart-qty-row">
+        <button class="cart-qty-btn" onclick="cartChangeQty('${item.id}',-1)">−</button>
+        <span class="cart-qty-num">${quantity}</span>
+        <button class="cart-qty-btn" onclick="cartChangeQty('${item.id}',1)">+</button>
+      </div>
       <span class="order-item-price">${fmtPrice(item.currentPrice * quantity)}</span>
+      <button class="cart-remove-btn" onclick="removeFromCart('${item.id}')" title="Eliminar">×</button>
     </div>`).join('');
 
-  document.getElementById('checkout-items').innerHTML = `
+  document.getElementById('checkout-items').innerHTML = items.length ? `
     ${itemsHtml}
-    <div class="order-total-row">
-      <span>Total</span>
-      <span>${fmtPrice(total)}</span>
-    </div>`;
-  document.getElementById('checkout-notes').value = '';
-  document.getElementById('checkout-modal').classList.add('open');
+    <div style="border-top:1px solid #1f1f1f;margin-top:10px;padding-top:4px">
+      <div class="order-total-row"><span>Total neto</span><span>${fmtPrice(neto)}</span></div>
+      <div class="order-total-row"><span>IVA (19%)</span><span>${fmtPrice(iva)}</span></div>
+      <div class="order-total-row grand"><span>Total</span><span>${fmtPrice(total)}</span></div>
+    </div>
+  ` : '<div style="color:#444;font-size:13px;padding:12px 0">El carrito está vacío</div>';
+}
+
+function cartChangeQty(productId, delta) {
+  if (!cart[productId]) return;
+  const newQty = cart[productId].quantity + delta;
+  if (newQty <= 0) {
+    removeFromCart(productId);
+    return;
+  }
+  cart[productId].quantity = newQty;
+  updateCartBar();
+  renderCartItems();
 }
 
 function closeCheckout() {

@@ -1209,6 +1209,134 @@ app.delete('/api/inv/catalog/:id', requireAuth, async (req, res) => {
   res.json({ ok: true });
 });
 
+app.post('/api/inv/price-history', requireAuth, async (req, res) => {
+  console.log('[price-history] POST received from', req.email);
+  try {
+    if (!await isEditor(req.uid)) return res.status(403).json({ error: 'Sin permisos' });
+    const { items } = req.body;
+    if (!Array.isArray(items) || !items.length) return res.status(400).json({ error: 'Sin items' });
+
+    const now  = new Date();
+    const date = now.toISOString().substring(0, 10); // "2026-03-18"
+    const mes  = now.toISOString().substring(0, 7);  // "2026-03"
+
+    await db.collection('price_history').add({
+      savedAt:  admin.firestore.FieldValue.serverTimestamp(),
+      savedBy:  req.email,
+      date,
+      mes,
+      items: items
+        .filter(p => p.currentPrice != null)
+        .map(p => ({
+          productId: p.id,
+          name:      p.name,
+          category:  p.category || '',
+          unit:      p.unit || '',
+          price:     p.currentPrice,
+        })),
+    });
+
+    console.log('[price-history] Snapshot guardado:', date, '—', items.length, 'productos');
+    res.json({ ok: true, saved: items.length, date });
+  } catch(e) {
+    console.error('[price-history] Error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── Reuniones ───────────────────────────────────────────────
+// Sections
+app.get('/api/reuniones/sections', requireAuth, async (req, res) => {
+  const userDoc = await db.collection('users').doc(req.uid).get();
+  const role = userDoc.data()?.role;
+  let snap;
+  if (role === 'superadmin') {
+    snap = await db.collection('reuniones_sections').get();
+  } else {
+    snap = await db.collection('reuniones_sections')
+      .where('allowedUids', 'array-contains', req.uid).get();
+  }
+  const sections = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+  res.json({ sections });
+});
+
+app.post('/api/reuniones/sections', requireAuth, async (req, res) => {
+  if (!await isAdmin(req.uid)) return res.status(403).json({ error: 'Solo superadmin' });
+  const { name, color, allowedUids } = req.body;
+  if (!name) return res.status(400).json({ error: 'Nombre requerido' });
+  const ref = await db.collection('reuniones_sections').add({
+    name,
+    color: color || '#ff5023',
+    allowedUids: allowedUids || [],
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    createdBy: req.uid,
+  });
+  res.json({ id: ref.id });
+});
+
+app.put('/api/reuniones/sections/:id', requireAuth, async (req, res) => {
+  if (!await isAdmin(req.uid)) return res.status(403).json({ error: 'Solo superadmin' });
+  const { name, color, allowedUids } = req.body;
+  const update = {};
+  if (name !== undefined) update.name = name;
+  if (color !== undefined) update.color = color;
+  if (allowedUids !== undefined) update.allowedUids = allowedUids;
+  await db.collection('reuniones_sections').doc(req.params.id).update(update);
+  res.json({ ok: true });
+});
+
+app.delete('/api/reuniones/sections/:id', requireAuth, async (req, res) => {
+  if (!await isAdmin(req.uid)) return res.status(403).json({ error: 'Solo superadmin' });
+  // Delete all pages in section
+  const pages = await db.collection('reuniones_pages').where('sectionId', '==', req.params.id).get();
+  const batch = db.batch();
+  pages.docs.forEach(d => batch.delete(d.ref));
+  batch.delete(db.collection('reuniones_sections').doc(req.params.id));
+  await batch.commit();
+  res.json({ ok: true });
+});
+
+// Pages
+app.get('/api/reuniones/sections/:sectionId/pages', requireAuth, async (req, res) => {
+  const snap = await db.collection('reuniones_pages')
+    .where('sectionId', '==', req.params.sectionId)
+    .get();
+  const pages = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+    .sort((a, b) => {
+      const ta = a.createdAt?._seconds ?? 0;
+      const tb = b.createdAt?._seconds ?? 0;
+      return ta - tb;
+    });
+  res.json({ pages });
+});
+
+app.post('/api/reuniones/sections/:sectionId/pages', requireAuth, async (req, res) => {
+  const { name } = req.body;
+  const ref = await db.collection('reuniones_pages').add({
+    sectionId: req.params.sectionId,
+    name: name || 'Nueva página',
+    content: '',
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+  res.json({ id: ref.id });
+});
+
+app.put('/api/reuniones/pages/:id', requireAuth, async (req, res) => {
+  const { name, content } = req.body;
+  const update = { updatedAt: admin.firestore.FieldValue.serverTimestamp() };
+  if (name !== undefined) update.name = name;
+  if (content !== undefined) update.content = content;
+  await db.collection('reuniones_pages').doc(req.params.id).update(update);
+  res.json({ ok: true });
+});
+
+app.delete('/api/reuniones/pages/:id', requireAuth, async (req, res) => {
+  await db.collection('reuniones_pages').doc(req.params.id).delete();
+  res.json({ ok: true });
+});
+
 // ── Cierres de caja ───────────────────────────────────────
 const cierresCache = {}; // { [restaurantId]: { data, cachedAt } }
 const CIERRES_TTL  = 10 * 60 * 1000; // 10 min
