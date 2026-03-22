@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express        = require('express');
 const fetch          = require('node-fetch');
 const admin          = require('firebase-admin');
@@ -6,6 +7,8 @@ const fs             = require('fs');
 const os             = require('os');
 const path           = require('path');
 const { randomUUID } = require('crypto');
+
+const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || '';
 const upload = multer({
   storage: multer.diskStorage({
     destination: (req, file, cb) => cb(null, os.tmpdir()),
@@ -34,7 +37,7 @@ const db     = admin.firestore();
 const bucket = admin.storage().bucket();
 
 const app = express();
-app.use(express.json());
+app.use(express.json({ limit: '5mb' }));
 app.get('/', (req, res) => {
   res.set('Cache-Control', 'no-store');
   res.sendFile(path.join(__dirname, 'landing.html'));
@@ -131,7 +134,9 @@ async function fetchDaysFromFudo(auth, days) {
 
   const result = {};
   for (const day of days) {
-    const dateFilter = `filter%5BcreatedAt%5D%5Bfrom%5D=${day}T00%3A00%3A00&filter%5BcreatedAt%5D%5Bto%5D=${day}T23%3A59%3A59`;
+    // Chile es UTC-3: día Chile empieza 03:00 UTC y termina 02:59 UTC del día siguiente
+    const nextDay = new Date(new Date(day + 'T00:00:00Z').getTime() + 86400000).toISOString().substring(0, 10);
+    const dateFilter = `filter%5BcreatedAt%5D=${encodeURIComponent(`gte.${day}T03:00:00,lte.${nextDay}T02:59:59`)}`;
     let allSales = [], allIncluded = [], page = 1, keepGoing = true;
     while (keepGoing) {
       const salesData = await fetchFudoPage(auth,
@@ -165,15 +170,15 @@ async function fetchDaysFromFudo(auth, days) {
 
     const dayData = { total: 0, tips: 0, ordersCount: 0, byPayMethod: {}, byType: {}, products: {} };
     allSales.forEach(sale => {
-      if (sale.attributes.saleState !== 'CLOSED') return;
+      // Igual que Fudo: sumar attributes.total de todas las órdenes (todos los estados)
+      const amount = sale.attributes.total || 0;
       const tips   = (sale.relationships?.tips?.data || []).reduce((s, r) => s + (tipLookup[r.id] || 0), 0);
-      let amount = 0;
+      // byPayMethod: solo pagos reales completados
       (sale.relationships?.payments?.data || []).forEach(r => {
         const pay = paymentLookup[r.id];
         if (pay && !pay.canceled) {
           const m = paymentMethods[pay.methodId] || 'Otro';
           dayData.byPayMethod[m] = (dayData.byPayMethod[m] || 0) + pay.amount;
-          amount += pay.amount;
         }
       });
       dayData.total       += amount;
@@ -429,31 +434,30 @@ async function buildSummary(auth, dateFrom, dateTo) {
 
   allSales.forEach(sale => {
     const attrs = sale.attributes;
-    if (!attrs.createdAt || attrs.saleState !== 'CLOSED') return;
-    const day  = toChileDate(attrs.createdAt);
-    const tips = (sale.relationships?.tips?.data || [])
+    if (!attrs.createdAt) return;
+    const day    = toChileDate(attrs.createdAt);
+    const amount = attrs.total || 0;
+    const tips   = (sale.relationships?.tips?.data || [])
       .reduce((s, r) => s + (tipLookup[r.id] || 0), 0);
 
     if (!perDay[day]) perDay[day] = { total: 0, tips: 0, ordersCount: 0, byPayMethod: {}, byType: {}, products: {} };
     perDay[day].tips        += tips;
     perDay[day].ordersCount += 1;
+    perDay[day].total       += amount;
 
     const stype = attrs.saleType || 'OTHER';
     if (!perDay[day].byType[stype]) perDay[day].byType[stype] = { count: 0, revenue: 0 };
     perDay[day].byType[stype].count++;
+    perDay[day].byType[stype].revenue += amount;
 
-    let amount = 0;
     (sale.relationships?.payments?.data || []).forEach(payRef => {
       const pay = paymentLookup[payRef.id];
       if (pay && !pay.canceled) {
         const m = paymentMethods[pay.methodId] || 'Otro';
         if (!perDay[day].byPayMethod[m]) perDay[day].byPayMethod[m] = 0;
         perDay[day].byPayMethod[m] += pay.amount;
-        amount += pay.amount;
       }
     });
-    perDay[day].total               += amount;
-    perDay[day].byType[stype].revenue += amount;
 
     (sale.relationships?.items?.data || []).forEach(itemRef => {
       const item = itemLookup[itemRef.id];
@@ -535,7 +539,7 @@ app.get('/api/summary/:restaurantId', requireAuth, async (req, res) => {
     const userDoc = await db.collection('users').doc(req.uid).get();
     if (!userDoc.exists) return res.status(403).json({ error: 'Usuario no autorizado' });
     const userData = userDoc.data();
-    if (userData.role !== 'admin' && !(userData.restaurantIds || []).includes(restaurantId)) {
+    if (userData.role !== 'admin' && userData.role !== 'superadmin' && !(userData.restaurantIds || []).includes(restaurantId)) {
       return res.status(403).json({ error: 'Sin acceso a este local' });
     }
 
@@ -803,24 +807,65 @@ app.get('/api/inv/products', requireAuth, async (req, res) => {
 
 app.post('/api/inv/products', requireAuth, async (req, res) => {
   if (!await isEditor(req.uid)) return res.status(403).json({ error: 'Sin permisos' });
-  const { name, category, unit, supplierIds, restaurantIds, restaurantSections } = req.body;
+  const { name, category, unit, supplierIds, restaurantIds, restaurantSections, esGDD } = req.body;
   if (!name) return res.status(400).json({ error: 'Nombre requerido' });
   const ref = await db.collection('products').add({
     name, category: category||'', unit: unit||'unidad',
     supplierIds: supplierIds||[], restaurantIds: restaurantIds||[],
-    restaurantSections: restaurantSections||{}
+    restaurantSections: restaurantSections||{},
+    esGDD: esGDD === true
   });
   res.json({ id: ref.id });
 });
 
 app.put('/api/inv/products/:id', requireAuth, async (req, res) => {
   if (!await isEditor(req.uid)) return res.status(403).json({ error: 'Sin permisos' });
-  const { name, category, unit, supplierIds, restaurantIds, restaurantSections } = req.body;
+  const { name, category, unit, supplierIds, restaurantIds, restaurantSections, esGDD } = req.body;
   await db.collection('products').doc(req.params.id).update({
     name, category: category||'', unit: unit||'unidad',
     supplierIds: supplierIds||[], restaurantIds: restaurantIds||[],
-    restaurantSections: restaurantSections||{}
+    restaurantSections: restaurantSections||{},
+    esGDD: esGDD === true
   });
+  res.json({ ok: true });
+});
+
+// ── Historial de Precios por Producto ─────────────────────
+app.get('/api/inv/products/:id/prices', requireAuth, async (req, res) => {
+  const snap = await db.collection('product_price_history')
+    .where('productId', '==', req.params.id)
+    .get();
+  const prices = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+    .sort((a, b) => b.mes.localeCompare(a.mes));
+  res.json({ prices });
+});
+
+app.post('/api/inv/products/:id/prices', requireAuth, async (req, res) => {
+  if (!await isEditor(req.uid)) return res.status(403).json({ error: 'Sin permisos' });
+  const { mes, precio } = req.body;
+  if (!mes || precio == null) return res.status(400).json({ error: 'Faltan campos' });
+  // Upsert: if same productId+mes exists, overwrite
+  const existing = await db.collection('product_price_history')
+    .where('productId', '==', req.params.id)
+    .where('mes', '==', mes)
+    .get();
+  if (!existing.empty) {
+    await existing.docs[0].ref.update({ precio: Number(precio), updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+    res.json({ id: existing.docs[0].id });
+  } else {
+    const ref = await db.collection('product_price_history').add({
+      productId: req.params.id,
+      mes,
+      precio: Number(precio),
+      createdAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+    res.json({ id: ref.id });
+  }
+});
+
+app.delete('/api/inv/products/:id/prices/:entryId', requireAuth, async (req, res) => {
+  if (!await isEditor(req.uid)) return res.status(403).json({ error: 'Sin permisos' });
+  await db.collection('product_price_history').doc(req.params.entryId).delete();
   res.json({ ok: true });
 });
 
@@ -836,7 +881,7 @@ app.get('/api/inv/stock/:restaurantId', requireAuth, async (req, res) => {
   const userDoc = await db.collection('users').doc(req.uid).get();
   if (!userDoc.exists) return res.status(403).json({ error: 'Sin acceso' });
   const userData = userDoc.data();
-  if (userData.role !== 'admin' && !(userData.restaurantIds||[]).includes(restaurantId)) {
+  if (userData.role !== 'admin' && userData.role !== 'superadmin' && !(userData.restaurantIds||[]).includes(restaurantId)) {
     return res.status(403).json({ error: 'Sin acceso a este local' });
   }
 
@@ -888,7 +933,7 @@ app.put('/api/inv/stock/:restaurantId/:productId', requireAuth, async (req, res)
   const userDoc = await db.collection('users').doc(req.uid).get();
   if (!userDoc.exists) return res.status(403).json({ error: 'Sin acceso' });
   const userData = userDoc.data();
-  if (userData.role !== 'admin' && !(userData.restaurantIds||[]).includes(restaurantId)) {
+  if (userData.role !== 'admin' && userData.role !== 'superadmin' && !(userData.restaurantIds||[]).includes(restaurantId)) {
     return res.status(403).json({ error: 'Sin acceso a este local' });
   }
 
@@ -909,7 +954,7 @@ app.post('/api/inv/inventories/:restaurantId', requireAuth, async (req, res) => 
   const userDoc = await db.collection('users').doc(req.uid).get();
   if (!userDoc.exists) return res.status(403).json({ error: 'Sin acceso' });
   const userData = userDoc.data();
-  if (userData.role !== 'admin' && !(userData.restaurantIds||[]).includes(restaurantId)) {
+  if (userData.role !== 'admin' && userData.role !== 'superadmin' && !(userData.restaurantIds||[]).includes(restaurantId)) {
     return res.status(403).json({ error: 'Sin acceso a este local' });
   }
 
@@ -955,7 +1000,7 @@ app.get('/api/inv/inventories/:restaurantId', requireAuth, async (req, res) => {
   const userDoc = await db.collection('users').doc(req.uid).get();
   if (!userDoc.exists) return res.status(403).json({ error: 'Sin acceso' });
   const userData = userDoc.data();
-  if (userData.role !== 'admin' && !(userData.restaurantIds||[]).includes(restaurantId)) {
+  if (userData.role !== 'admin' && userData.role !== 'superadmin' && !(userData.restaurantIds||[]).includes(restaurantId)) {
     return res.status(403).json({ error: 'Sin acceso a este local' });
   }
 
@@ -985,7 +1030,7 @@ app.get('/api/inv/inventories/:restaurantId/:recordId', requireAuth, async (req,
   const userDoc = await db.collection('users').doc(req.uid).get();
   if (!userDoc.exists) return res.status(403).json({ error: 'Sin acceso' });
   const userData = userDoc.data();
-  if (userData.role !== 'admin' && !(userData.restaurantIds||[]).includes(restaurantId)) {
+  if (userData.role !== 'admin' && userData.role !== 'superadmin' && !(userData.restaurantIds||[]).includes(restaurantId)) {
     return res.status(403).json({ error: 'Sin acceso a este local' });
   }
 
@@ -1016,13 +1061,22 @@ app.get('/api/inv/inventories/:restaurantId/:recordId', requireAuth, async (req,
   res.json({ id: doc.id, ...data, items: enrichedItems });
 });
 
+app.delete('/api/inv/inventories/:restaurantId/:recordId', requireAuth, async (req, res) => {
+  try {
+    if (!await isAdmin(req.uid)) return res.status(403).json({ error: 'Solo superadmin' });
+    const { recordId } = req.params;
+    await db.collection('inventoryRecords').doc(recordId).delete();
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // Añadir cantidad al stock existente
 app.post('/api/inv/stock/:restaurantId/:productId/add', requireAuth, async (req, res) => {
   const { restaurantId, productId } = req.params;
   const userDoc = await db.collection('users').doc(req.uid).get();
   if (!userDoc.exists) return res.status(403).json({ error: 'Sin acceso' });
   const userData = userDoc.data();
-  if (userData.role !== 'admin' && !(userData.restaurantIds||[]).includes(restaurantId)) {
+  if (userData.role !== 'admin' && userData.role !== 'superadmin' && !(userData.restaurantIds||[]).includes(restaurantId)) {
     return res.status(403).json({ error: 'Sin acceso a este local' });
   }
 
@@ -1360,7 +1414,7 @@ app.get('/api/cierres/:restaurantId', requireAuth, async (req, res) => {
   const userDoc = await db.collection('users').doc(req.uid).get();
   if (!userDoc.exists) return res.status(403).json({ error: 'Sin acceso' });
   const userData = userDoc.data();
-  if (userData.role !== 'admin' && !(userData.restaurantIds||[]).includes(restaurantId)) {
+  if (userData.role !== 'admin' && userData.role !== 'superadmin' && !(userData.restaurantIds||[]).includes(restaurantId)) {
     return res.status(403).json({ error: 'Sin acceso a este local' });
   }
   let cierres = await getCierresForRest(restaurantId);
@@ -1377,28 +1431,29 @@ app.post('/api/cierres', requireAuth, async (req, res) => {
     envioDelivery, propinasDelivery, montoDelivery, cantidadDelivery,
     cantidadRetiro, montoRetiro, bookingTotal } = req.body;
   if (!restaurantId || !fecha) return res.status(400).json({ error: 'Local y fecha requeridos' });
-  if (userData.role !== 'admin' && !(userData.restaurantIds||[]).includes(restaurantId)) {
+  if (userData.role !== 'admin' && userData.role !== 'superadmin' && !(userData.restaurantIds||[]).includes(restaurantId)) {
     return res.status(403).json({ error: 'Sin acceso a este local' });
   }
+  const n0 = v => v != null && v !== '' ? Number(v) : 0;
   const ref = await db.collection('ingresos').add({
     restaurantId, fecha, local: local||'',
-    totalPrograma:    totalPrograma    != null ? Number(totalPrograma)    : null,
-    propinasPrograma: propinasPrograma != null ? Number(propinasPrograma) : null,
-    transbank:        transbank        != null ? Number(transbank)        : null,
-    transbankPropinas:transbankPropinas!= null ? Number(transbankPropinas): null,
-    efectivo:         efectivo         != null ? Number(efectivo)         : null,
-    propinaAMano:     propinaAMano     != null ? Number(propinaAMano)     : null,
-    gastos:           gastos           != null ? Number(gastos)           : null,
-    garzones:         garzones         != null ? Number(garzones)         : null,
-    propnasPagadas:   propnasPagadas   || null,
+    totalPrograma:    totalPrograma    != null && totalPrograma    !== '' ? Number(totalPrograma)    : null,
+    propinasPrograma: n0(propinasPrograma),
+    transbank:        n0(transbank),
+    transbankPropinas:n0(transbankPropinas),
+    efectivo:         n0(efectivo),
+    propinaAMano:     n0(propinaAMano),
+    gastos:           n0(gastos),
+    garzones:         n0(garzones),
+    propnasPagadas:   n0(propnasPagadas),
     comentarios:      comentarios      || null,
-    envioDelivery:    envioDelivery    != null ? Number(envioDelivery)    : null,
-    propinasDelivery: propinasDelivery != null ? Number(propinasDelivery) : null,
-    montoDelivery:    montoDelivery    != null ? Number(montoDelivery)    : null,
-    cantidadDelivery: cantidadDelivery != null ? Number(cantidadDelivery) : null,
-    cantidadRetiro:   cantidadRetiro   != null ? Number(cantidadRetiro)   : null,
-    montoRetiro:      montoRetiro      != null ? Number(montoRetiro)      : null,
-    bookingTotal:     bookingTotal     != null ? Number(bookingTotal)     : null,
+    envioDelivery:    n0(envioDelivery),
+    propinasDelivery: n0(propinasDelivery),
+    montoDelivery:    n0(montoDelivery),
+    cantidadDelivery: n0(cantidadDelivery),
+    cantidadRetiro:   n0(cantidadRetiro),
+    montoRetiro:      n0(montoRetiro),
+    bookingTotal:     n0(bookingTotal),
     createdAt:   new Date().toISOString(),
     createdBy:   req.email,
     createdByName: userData.name || req.email,
@@ -1414,18 +1469,19 @@ app.put('/api/cierres/:id', requireAuth, async (req, res) => {
     efectivo, propinaAMano, gastos, garzones, propnasPagadas, comentarios,
     envioDelivery, propinasDelivery, montoDelivery, cantidadDelivery,
     cantidadRetiro, montoRetiro, bookingTotal } = req.body;
-  const n = v => v != null && v !== '' ? Number(v) : null;
+  const n  = v => v != null && v !== '' ? Number(v) : null; // solo para totalPrograma
+  const n0 = v => v != null && v !== '' ? Number(v) : 0;
   await db.collection('ingresos').doc(req.params.id).update({
     fecha, local: local||'', restaurantId,
-    totalPrograma: n(totalPrograma), propinasPrograma: n(propinasPrograma),
-    transbank: n(transbank), transbankPropinas: n(transbankPropinas),
-    efectivo: n(efectivo), propinaAMano: n(propinaAMano),
-    gastos: n(gastos), garzones: n(garzones),
-    propnasPagadas: propnasPagadas||null, comentarios: comentarios||null,
-    envioDelivery: n(envioDelivery), propinasDelivery: n(propinasDelivery),
-    montoDelivery: n(montoDelivery), cantidadDelivery: n(cantidadDelivery),
-    cantidadRetiro: n(cantidadRetiro), montoRetiro: n(montoRetiro),
-    bookingTotal: n(bookingTotal),
+    totalPrograma: n(totalPrograma),
+    propinasPrograma: n0(propinasPrograma), transbankPropinas: n0(transbankPropinas),
+    transbank: n0(transbank), efectivo: n0(efectivo), propinaAMano: n0(propinaAMano),
+    gastos: n0(gastos), garzones: n0(garzones), propnasPagadas: n0(propnasPagadas),
+    comentarios: comentarios||null,
+    envioDelivery: n0(envioDelivery), propinasDelivery: n0(propinasDelivery),
+    montoDelivery: n0(montoDelivery), cantidadDelivery: n0(cantidadDelivery),
+    cantidadRetiro: n0(cantidadRetiro), montoRetiro: n0(montoRetiro),
+    bookingTotal: n0(bookingTotal),
   });
   if (restaurantId) delete cierresCache[restaurantId];
   res.json({ ok: true });
@@ -1599,6 +1655,113 @@ app.put('/api/orders/:id/status', requireAuth, async (req, res) => {
   if (!await isEditor(req.uid)) return res.status(403).json({ error: 'Sin permisos' });
   const { status } = req.body;
   await db.collection('orders').doc(req.params.id).update({ status });
+  res.json({ ok: true });
+});
+
+// ── GDD: Guías de Despacho ────────────────────────────────
+app.post('/api/gdd/scan', requireAuth, upload.single('file'), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'No se recibió archivo' });
+  if (!ANTHROPIC_API_KEY) return res.status(500).json({ error: 'ANTHROPIC_API_KEY no configurada' });
+
+  try {
+    const buf      = fs.readFileSync(req.file.path);
+    const b64      = buf.toString('base64');
+    const mime     = req.file.mimetype;
+    const isPdf    = mime === 'application/pdf';
+
+    const contentBlock = isPdf
+      ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: b64 } }
+      : { type: 'image',    source: { type: 'base64', media_type: mime,               data: b64 } };
+
+    const prompt = `Eres un asistente que extrae datos de guías de despacho chilenas.
+Analiza la imagen/documento y extrae la siguiente información en JSON puro (sin markdown):
+{
+  "proveedor": "nombre del proveedor del encabezado",
+  "fecha": "fecha en formato YYYY-MM-DD si se puede leer, sino null",
+  "items": [
+    { "categoria": "CATEGORÍA", "producto": "nombre del producto", "unidad": "unidad extraída del nombre entre paréntesis o inferida", "cantidad": número o null si está vacío, "comentarios": "texto si hay" }
+  ]
+}
+IMPORTANTE:
+- Incluye TODOS los productos de la tabla, tengan o no cantidad
+- Si la cantidad está vacía/no marcada, ponla como null
+- Extrae la unidad desde el nombre del producto si aparece entre paréntesis (ej: "Galleta (un)" → unidad: "un", "Carne (kg)" → unidad: "kg")
+- Sé preciso con las cantidades manuscritas (números escritos a mano)
+- Si una categoría agrupa varias filas, repite la categoría en cada item
+Devuelve SOLO el JSON, nada más.`;
+
+    const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key':         ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+        'content-type':      'application/json'
+      },
+      body: JSON.stringify({
+        model:      'claude-opus-4-6',
+        max_tokens: 2048,
+        messages: [{ role: 'user', content: [contentBlock, { type: 'text', text: prompt }] }]
+      })
+    });
+
+    const anthropicData = await anthropicRes.json();
+    if (!anthropicRes.ok) throw new Error(anthropicData.error?.message || 'Error Claude API');
+
+    const raw  = anthropicData.content?.[0]?.text || '';
+    const json = raw.replace(/```json|```/g, '').trim();
+    const data = JSON.parse(json);
+
+    fs.unlinkSync(req.file.path);
+    res.json({ ok: true, data });
+  } catch(e) {
+    try { fs.unlinkSync(req.file.path); } catch {}
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/gdd/records', requireAuth, async (req, res) => {
+  const { proveedor, fecha, items, restaurantId } = req.body;
+  if (!items?.length) return res.status(400).json({ error: 'Items requeridos' });
+  const userDoc  = await db.collection('users').doc(req.uid).get();
+  const userData = userDoc.data();
+  const ref = await db.collection('gdd_records').add({
+    proveedor:    proveedor || '',
+    fecha:        fecha || '',
+    items,
+    restaurantId: restaurantId || '',
+    createdAt:    new Date().toISOString(),
+    createdBy:    req.email,
+    createdByName: userData?.name || req.email
+  });
+  res.json({ ok: true, id: ref.id });
+});
+
+app.get('/api/gdd/records', requireAuth, async (req, res) => {
+  const snap = await db.collection('gdd_records').orderBy('createdAt', 'desc').limit(50).get();
+  res.json({ records: snap.docs.map(d => ({ id: d.id, ...d.data() })) });
+});
+
+app.get('/api/gdd/export-data', requireAuth, async (req, res) => {
+  const [gddSnap, prodSnap, priceSnap, restSnap] = await Promise.all([
+    db.collection('gdd_records').orderBy('createdAt', 'desc').get(),
+    db.collection('products').get(),
+    db.collection('product_price_history').get(),
+    db.collection('restaurants').get()
+  ]);
+  res.json({
+    records:      gddSnap.docs.map(d  => ({ id: d.id,  ...d.data()  })),
+    products:     prodSnap.docs.map(d => ({ id: d.id,  ...d.data()  })),
+    priceHistory: priceSnap.docs.map(d=> ({ id: d.id,  ...d.data()  })),
+    restaurants:  restSnap.docs.map(d => ({ id: d.id,  ...d.data()  }))
+  });
+});
+
+app.patch('/api/gdd/records/:id', requireAuth, async (req, res) => {
+  const allowed = ['fecha', 'proveedor'];
+  const update = {};
+  allowed.forEach(k => { if (req.body[k] !== undefined) update[k] = req.body[k]; });
+  if (!Object.keys(update).length) return res.status(400).json({ error: 'Sin campos' });
+  await db.collection('gdd_records').doc(req.params.id).update(update);
   res.json({ ok: true });
 });
 

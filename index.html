@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dashboard</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
   <!-- Bootstrap 5 -->
@@ -158,7 +159,8 @@
     .topbar { background: #fff; border-bottom: 1px solid #dee2e6; padding: 0 28px; display: flex; align-items: center; gap: 0; height: 52px; }
     .topbar-brand { font-size: 14px; font-weight: 700; color: #ff5023; margin-right: 24px; white-space: nowrap; }
 
-    .rest-tabs { display: flex; align-items: center; gap: 2px; flex: 1; overflow-x: auto; }
+    .rest-tabs { display: flex; align-items: center; gap: 2px; flex: 1; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+    .rest-tabs::-webkit-scrollbar { display: none; }
     .rest-tab  { display: flex; align-items: center; gap: 8px; padding: 0 16px; height: 52px; border-bottom: 2px solid transparent; color: #adb5bd; font-size: 13px; cursor: pointer; white-space: nowrap; transition: all .15s; user-select: none; }
     .rest-tab:hover  { color: #495057; }
     .rest-tab.active { color: #212529; border-bottom-color: #ff5023; }
@@ -228,7 +230,7 @@
     .cat-btn:hover:not(.active) { border-color: #444; color: #ccc; }
 
     /* RESUMEN POR LOCAL */
-    .resumen-grid       { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
+    .resumen-grid       { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
     .resumen-card       { background: #fff; border: 1px solid #dee2e6; border-radius: 10px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
     .resumen-card-name  { font-size: 12px; color: #6c757d; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 6px; }
     .resumen-card-total { font-size: 26px; font-weight: 700; color: #212529; margin-bottom: 18px; padding-bottom: 14px; border-bottom: 1px solid #dee2e6; }
@@ -278,7 +280,9 @@
     .btn-edit { padding: 5px 10px; background: transparent; border: 1px solid #dee2e6; border-radius: 6px; color: #6c757d; font-size: 12px; cursor: pointer; flex-shrink: 0; transition: all .15s; margin-right: 4px; }
     .btn-edit:hover { border-color: #adb5bd; color: #343a40; }
 
-    .rest-checkboxes { display: flex; flex-direction: column; gap: 8px; max-height: 200px; overflow-y: auto; padding: 10px; background: #fff; border: 1px solid #dee2e6; border-radius: 8px; }
+    .inv-input { width: 100%; padding: 9px 12px; border: 1px solid #dee2e6; border-radius: 8px; font-size: 13px; color: #212529; background: #fff; outline: none; transition: border-color .15s; }
+    .inv-input:focus { border-color: #ff5023; }
+    .rest-checkboxes { display: flex; flex-direction: column; gap: 8px; max-height: 150px; overflow-y: auto; padding: 10px; background: #fff; border: 1px solid #dee2e6; border-radius: 8px; }
     .rest-checkboxes label { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #495057; cursor: pointer; }
     .rest-checkboxes input[type="checkbox"] { accent-color: #ff5023; width: 14px; height: 14px; }
     .rest-check-row { display: flex; flex-direction: column; gap: 4px; }
@@ -355,9 +359,9 @@
     .btn-save-row:hover { opacity: .9; }
 
     /* modal inventario */
-    .inv-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 200; display: none; align-items: center; justify-content: center; padding: 20px; }
+    .inv-modal-overlay { position: fixed; top: 10vh; left: 20vw; right: 0; bottom: 0; background: rgba(0,0,0,.45); z-index: 200; display: none; align-items: flex-start; justify-content: center; padding: 24px 20px 40px; overflow-y: auto; }
     .inv-modal-overlay.open { display: flex; }
-    .inv-modal { background: #fff; border: 1px solid #dee2e6; border-radius: 12px; padding: 28px; width: 100%; max-width: 460px; box-shadow: 0 4px 24px rgba(0,0,0,.12); }
+    .inv-modal { background: #fff; border: 1px solid #dee2e6; border-radius: 12px; padding: 28px; width: 100%; max-width: 640px; box-shadow: 0 4px 24px rgba(0,0,0,.12); }
     .inv-modal h3 { font-size: 15px; font-weight: 600; color: #212529; margin-bottom: 20px; }
     .inv-modal .admin-form { background: transparent; border: none; padding: 0; margin: 0; }
     .inv-modal-btns { display: flex; gap: 10px; margin-top: 16px; }
@@ -386,12 +390,33 @@
     .stock-form-row   { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #e9ecef; gap: 12px; }
     .stock-form-name  { flex: 1; font-size: 14px; color: #212529; font-weight: 500; }
     .stock-form-cur   { font-size: 13px; color: #495057; min-width: 60px; text-align: right; font-weight: 600; }
-    .stock-form-input { width: 90px; padding: 7px 10px; background: #fff; border: 1px solid #dee2e6; border-radius: 8px; color: #212529; font-size: 14px; outline: none; text-align: right; }
+    .stock-form-input { width: 90px; padding: 7px 10px; background: #fff; border: 1px solid #dee2e6; border-radius: 8px; color: #212529; font-size: 14px; outline: none; text-align: right; transition: border-color .15s; }
     .stock-form-input:focus { border-color: #ff5023; }
+    .stock-form-input.sf-error { border-color: #dc3545; background: #fff5f5; }
     .stock-form-unit  { font-size: 12px; color: #495057; min-width: 40px; }
+    .sf-error-hint { font-size: 11px; color: #dc3545; margin-top: 2px; display: none; }
+    .sf-error-hint.visible { display: block; }
+    /* Toast de validación */
+    #stock-validation-toast {
+      position: fixed; top: 70px; left: 50%; transform: translateX(-50%) translateY(-12px);
+      background: #dc3545; color: #fff; padding: 12px 22px; border-radius: 10px;
+      font-size: 13px; font-weight: 500; z-index: 9999; opacity: 0;
+      transition: opacity .2s, transform .2s; pointer-events: none;
+      box-shadow: 0 4px 16px rgba(0,0,0,.18); white-space: nowrap;
+    }
+    #stock-validation-toast.show {
+      opacity: 1; transform: translateX(-50%) translateY(0);
+    }
     .btn-guardar-todo { width: 100%; padding: 14px; background: #ff5023; color: #fff; border: none; border-radius: 10px; font-size: 15px; font-weight: 600; cursor: pointer; margin-top: 24px; }
     .btn-guardar-todo:hover    { opacity: .9; }
     .btn-guardar-todo:disabled { opacity: .5; cursor: not-allowed; }
+
+    /* ── GDD ── */
+    .gdd-upload-card {
+      background: #fff; border: 2px dashed #dee2e6; border-radius: 16px;
+      padding: 40px 24px; text-align: center; transition: all .2s;
+    }
+    .gdd-upload-card:hover { border-color: #ff5023; background: #fff8f6; }
 
     /* ── Reuniones ── */
     .reun-section-item {
@@ -454,7 +479,7 @@
     /* AdminLTE layout fixes */
     .main-header { position: fixed !important; top: 0; right: 0; left: 0; z-index: 1030; }
     .main-sidebar { z-index: 1050 !important; }
-    .content-wrapper { margin-top: 57px !important; }
+    .content-wrapper { margin-top: 57px !important; max-height: calc(100vh - 57px) !important; overflow-y: auto !important; }
     /* En móvil, ocultar sidebar AdminLTE y usar sidebar custom */
     @media (max-width: 991px) {
       .main-sidebar { display: none !important; }
@@ -530,8 +555,7 @@
     #content-wrapper-inner > div[style*="display:flex"] {
       overflow-y: auto;
     }
-    /* Dashboard scroll */
-    #dashboard { overflow-y: auto; height: calc(100vh - 57px); }
+    #dashboard .topbar { position: sticky; top: 0; z-index: 10; }
     /* Inventario scroll */
     #inventario { overflow-y: auto; height: calc(100vh - 57px); }
     /* Content modules scroll override */
@@ -704,7 +728,7 @@
   <!-- Sidebar -->
   <aside class="main-sidebar sidebar-dark-primary elevation-4" style="background:#343a40;">
     <a href="#" class="brand-link" style="background:#2c3136;border-bottom:1px solid #4b545c;">
-      <img src="logo-monaco.png" alt="Mónaco" style="height:36px;width:auto;filter:brightness(0) invert(1);margin-left:4px;">
+      <img src="logo-monaco.png" alt="Mónaco" style="width:100%;max-width:180px;height:auto;filter:brightness(0) invert(1);padding:8px 16px;box-sizing:border-box;display:block;margin:0 auto;">
     </a>
     <div class="sidebar">
       <div class="user-panel mt-3 pb-3 mb-3 d-flex" style="border-bottom:1px solid #2a2a4a;">
@@ -721,8 +745,8 @@
   </aside>
 
   <!-- Content Wrapper -->
-  <div class="content-wrapper" style="background:#f4f6f9;min-height:100vh;">
-    <div id="content-wrapper-inner" style="height:100%;position:relative;">
+  <div class="content-wrapper" style="background:#f4f6f9;min-height:100vh;overflow:visible;">
+    <div id="content-wrapper-inner" style="position:relative;">
 
 <!-- ── DASHBOARD ── -->
 <div id="dashboard">
@@ -903,6 +927,88 @@
 </div>
 
 <!-- ── REUNIONES MODULE ── -->
+<!-- ── GDD MODULE ── -->
+<div id="gdd-module" style="display:none;flex-direction:column;min-height:100vh">
+  <div class="inv-topbar">
+    <span style="font-size:14px;font-weight:600;color:#fff">Guías de Despacho</span>
+    <div class="cierres-tabs" style="margin-left:24px">
+      <button class="cierres-tab active" id="gdd-tab-nueva"     onclick="gddSwitchTab('nueva')">Nueva guía</button>
+      <button class="cierres-tab"        id="gdd-tab-historial" onclick="gddSwitchTab('historial')">Historial</button>
+    </div>
+    <button id="gdd-export-btn" onclick="gddExportExcel()"
+      style="margin-left:auto;background:#198754;color:#fff;border:none;border-radius:8px;padding:7px 16px;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px">
+      ↓ Exportar Excel
+    </button>
+  </div>
+
+  <!-- TAB: Nueva guía -->
+  <div id="gdd-tab-nueva-content" style="flex:1;padding:32px 28px;max-width:900px;width:100%;margin:0 auto">
+
+    <div id="gdd-step-upload">
+      <p style="font-size:13px;color:#6c757d;margin-bottom:28px">Sube una foto o PDF de la guía de despacho para extraer los productos automáticamente.</p>
+      <div style="display:flex;gap:16px;flex-wrap:wrap">
+        <label for="gdd-file-input" style="flex:1;min-width:200px;cursor:pointer">
+          <div class="gdd-upload-card">
+            <div style="font-size:36px;margin-bottom:12px">📁</div>
+            <div style="font-size:15px;font-weight:600;color:#212529;margin-bottom:6px">Subir PDF o imagen</div>
+            <div style="font-size:12px;color:#6c757d">JPG, PNG, PDF</div>
+          </div>
+        </label>
+        <input type="file" id="gdd-file-input" accept=".pdf,image/*" style="display:none" onchange="gddHandleFile(this)">
+
+        <label for="gdd-camera-input" style="flex:1;min-width:200px;cursor:pointer">
+          <div class="gdd-upload-card">
+            <div style="font-size:36px;margin-bottom:12px">📷</div>
+            <div style="font-size:15px;font-weight:600;color:#212529;margin-bottom:6px">Abrir cámara</div>
+            <div style="font-size:12px;color:#6c757d">Escanear desde el celular</div>
+          </div>
+        </label>
+        <input type="file" id="gdd-camera-input" accept="image/*" capture="environment" style="display:none" onchange="gddHandleFile(this)">
+      </div>
+    </div>
+
+    <div id="gdd-step-loading" style="display:none;text-align:center;padding:60px 0">
+      <div style="font-size:40px;margin-bottom:16px">🔍</div>
+      <div style="font-size:15px;font-weight:600;color:#212529;margin-bottom:8px">Analizando documento...</div>
+      <div style="font-size:13px;color:#6c757d">Claude está leyendo la guía de despacho</div>
+    </div>
+
+    <div id="gdd-step-result" style="display:none">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px">
+        <div>
+          <div style="font-size:16px;font-weight:700;color:#212529" id="gdd-result-proveedor"></div>
+          <div style="font-size:12px;color:#6c757d;margin-top:2px" id="gdd-result-fecha"></div>
+        </div>
+        <div style="display:flex;gap:10px">
+          <button onclick="gddReset()" style="padding:8px 16px;background:transparent;border:1px solid #dee2e6;border-radius:8px;font-size:13px;cursor:pointer;color:#6c757d">Nueva guía</button>
+          <button onclick="gddSave()" id="gdd-save-btn" style="padding:8px 20px;background:#ff5023;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;color:#fff">Guardar en BD</button>
+        </div>
+      </div>
+      <div style="font-size:12px;color:#6c757d;margin-bottom:12px">Revisá y editá las cantidades antes de guardar.</div>
+      <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:13px">
+          <thead>
+            <tr style="border-bottom:2px solid #dee2e6">
+              <th style="text-align:left;padding:8px 10px;color:#6c757d;font-weight:600;font-size:11px;text-transform:uppercase">Categoría</th>
+              <th style="text-align:left;padding:8px 10px;color:#6c757d;font-weight:600;font-size:11px;text-transform:uppercase">Producto</th>
+              <th style="text-align:center;padding:8px 10px;color:#6c757d;font-weight:600;font-size:11px;text-transform:uppercase">Unidad</th>
+              <th style="text-align:center;padding:8px 10px;color:#6c757d;font-weight:600;font-size:11px;text-transform:uppercase">Cantidad</th>
+              <th style="text-align:left;padding:8px 10px;color:#6c757d;font-weight:600;font-size:11px;text-transform:uppercase">Comentarios</th>
+            </tr>
+          </thead>
+          <tbody id="gdd-result-tbody"></tbody>
+        </table>
+      </div>
+      <div id="gdd-save-msg" style="margin-top:14px;font-size:13px;text-align:center"></div>
+    </div>
+  </div>
+
+  <!-- TAB: Historial -->
+  <div id="gdd-tab-historial-content" style="display:none;flex:1;padding:32px 28px;max-width:900px;width:100%;margin:0 auto">
+    <div id="gdd-history-list"><div style="color:#6c757d;font-size:13px">Cargando...</div></div>
+  </div>
+</div>
+
 <div id="reuniones-module" style="display:none;flex-direction:column;height:100vh">
   <div class="inv-topbar">
     <div class="topbar-brand" style="margin-right:24px">Reuniones</div>
@@ -967,6 +1073,7 @@
         <div id="reun-content-editor" contenteditable="true"
           style="flex:1;overflow-y:auto;padding:24px;outline:none;font-size:14px;line-height:1.7;color:#212529;min-height:0"
           oninput="schedulePageSave()"
+          onpaste="handleEditorPaste(event)"
           placeholder="Escribe aquí el contenido de la reunión...">
         </div>
       </div>
@@ -1037,11 +1144,37 @@
       </div>
       <div><div class="field-label">Locales donde se usa</div><div class="rest-checkboxes" id="mprod-restaurants"></div></div>
       <div><div class="field-label">Proveedores</div><div class="rest-checkboxes" id="mprod-suppliers"></div></div>
+      <div style="margin-top:12px">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:#212529">
+          <input type="checkbox" id="mprod-gdd" style="width:16px;height:16px;accent-color:#ff5023">
+          Viene por Guía de Despacho (GDD)
+        </label>
+      </div>
       <div id="mprod-msg"></div>
     </div>
     <div class="inv-modal-btns">
       <button class="btn-new"    onclick="saveProducto()">Guardar</button>
       <button class="btn-cancel" onclick="closeModal('modal-producto')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- modal historial precios -->
+<div class="inv-modal-overlay" id="modal-precios" onclick="closeModalIfOutside(event,'modal-precios')">
+  <div class="inv-modal" style="max-width:520px">
+    <h3 id="mprecios-title">Historial de precios</h3>
+    <div style="margin-bottom:14px">
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+        <input type="month" id="mprecios-mes" style="flex:1;padding:8px 10px;background:#1e1e1e;border:1px solid #2a2a2a;border-radius:6px;color:#fff;font-size:13px">
+        <input type="number" id="mprecios-precio" placeholder="Precio (CLP)" min="0" step="1"
+          style="flex:1;padding:8px 10px;background:#1e1e1e;border:1px solid #2a2a2a;border-radius:6px;color:#fff;font-size:13px">
+        <button class="btn-new" onclick="addPrecioEntry()" style="flex-shrink:0">Agregar</button>
+      </div>
+      <div id="mprecios-msg" style="font-size:12px;color:#f87171;min-height:16px"></div>
+    </div>
+    <div id="mprecios-list" style="max-height:320px;overflow-y:auto"></div>
+    <div class="inv-modal-btns">
+      <button class="btn-cancel" onclick="closeModal('modal-precios')">Cerrar</button>
     </div>
   </div>
 </div>
@@ -1194,10 +1327,13 @@ async function getToken() {
 
 async function apiFetch(path, opts = {}) {
   const token = await getToken();
-  const res = await fetch(path, {
-    ...opts,
-    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json', ...(opts.headers || {}) }
-  });
+  const isFormData = opts.body instanceof FormData;
+  const headers = {
+    'Authorization': `Bearer ${token}`,
+    ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
+    ...(opts.headers || {})
+  };
+  const res = await fetch(path, { ...opts, headers });
   if (res.status === 401) { await doLogout(); throw new Error('Sesión expirada'); }
   return res;
 }
@@ -1250,7 +1386,7 @@ async function doLogout() {
   document.getElementById('login-screen').style.display = 'flex';
 }
 
-const ALL_MODULES_EL = ['hub','dashboard','inventario','registro-inv-module','add-stock-module','cierres-module','pdf-upload-module','pdf-view-module','usuarios-module','pedidos-module','reuniones-module'];
+const ALL_MODULES_EL = ['hub','dashboard','inventario','registro-inv-module','add-stock-module','cierres-module','pdf-upload-module','pdf-view-module','usuarios-module','pedidos-module','reuniones-module','gdd-module'];
 function hideAll() { ALL_MODULES_EL.forEach(id => { const el = document.getElementById(id); if(el) el.style.display = 'none'; }); }
 // Note: hideAll() does NOT hide #admin-wrapper — goToHub() handles that separately
 
@@ -1265,7 +1401,8 @@ function goTo(module) {
   const moduleNames = {
     ventas: 'Ventas', stock: 'Añadir stock', inventario: 'Gestión de Clientes y Proveedor',
     'registro-inv': 'Registro de Inventarios', cierres: 'Cierres de caja', pedidos: 'Pedidos',
-    'pdf-upload': 'Añadir PDF', 'pdf-view': 'Ver Manual', usuarios: 'Usuarios', reuniones: 'Reuniones'
+    'pdf-upload': 'Añadir PDF', 'pdf-view': 'Ver Manual', usuarios: 'Usuarios', reuniones: 'Reuniones',
+    gdd: 'Guías de Despacho'
   };
   const titleEl = document.getElementById('admin-topbar-title');
   if (titleEl) titleEl.textContent = moduleNames[module] || module;
@@ -1312,6 +1449,10 @@ function goTo(module) {
   } else if (module === 'reuniones') {
     document.getElementById('reuniones-module').style.display = 'flex';
     loadReuniones();
+  } else if (module === 'gdd') {
+    document.getElementById('gdd-module').style.display = 'flex';
+    gddReset();
+    gddSwitchTab('nueva');
   }
 }
 
@@ -2087,6 +2228,7 @@ async function renderAdminUsuarios() {
             <label><input type="checkbox" class="nu-module" value="cierres"> Cierres de caja</label>
             <label><input type="checkbox" class="nu-module" value="pedidos"> Pedidos</label>
             <label><input type="checkbox" class="nu-module" value="reuniones"> Reuniones</label>
+            <label><input type="checkbox" class="nu-module" value="gdd"> Guías de Despacho</label>
             <label><input type="checkbox" class="nu-module" value="pdf-view"> Ver Manual</label>
           </div>
         </div>
@@ -2194,6 +2336,7 @@ async function editPermisos(uid, name) {
           <label><input type="checkbox" class="ep-module" value="cierres"       ${currentMods.includes('cierres')?'checked':''}> Cierres de caja</label>
           <label><input type="checkbox" class="ep-module" value="pedidos"       ${currentMods.includes('pedidos')?'checked':''}> Pedidos</label>
           <label><input type="checkbox" class="ep-module" value="reuniones"     ${currentMods.includes('reuniones')?'checked':''}> Reuniones</label>
+          <label><input type="checkbox" class="ep-module" value="gdd"           ${currentMods.includes('gdd')?'checked':''}> Guías de Despacho</label>
           <label><input type="checkbox" class="ep-module" value="pdf-view"      ${currentMods.includes('pdf-view')?'checked':''}> Ver Manual</label>
         </div>
         <div class="field-label" style="margin-top:12px">Categorías de inventario (vacío = todas)</div>
@@ -2344,6 +2487,7 @@ async function usuariosShowForm() {
             <label><input type="checkbox" class="nu-module" value="cierres"> Cierres de caja</label>
             <label><input type="checkbox" class="nu-module" value="pedidos"> Pedidos</label>
             <label><input type="checkbox" class="nu-module" value="reuniones"> Reuniones</label>
+            <label><input type="checkbox" class="nu-module" value="gdd"> Guías de Despacho</label>
             <label><input type="checkbox" class="nu-module" value="pdf-view"> Ver Manual</label>
           </div>
         </div>
@@ -2423,6 +2567,7 @@ async function usuariosEditUser(uid, name) {
           <label><input type="checkbox" class="ep-module" value="cierres"       ${currentMods.includes('cierres')?'checked':''}> Cierres de caja</label>
           <label><input type="checkbox" class="ep-module" value="pedidos"       ${currentMods.includes('pedidos')?'checked':''}> Pedidos</label>
           <label><input type="checkbox" class="ep-module" value="reuniones"     ${currentMods.includes('reuniones')?'checked':''}> Reuniones</label>
+          <label><input type="checkbox" class="ep-module" value="gdd"           ${currentMods.includes('gdd')?'checked':''}> Guías de Despacho</label>
           <label><input type="checkbox" class="ep-module" value="pdf-view"      ${currentMods.includes('pdf-view')?'checked':''}> Ver Manual</label>
         </div>
         <div class="field-label" style="margin-top:12px">Categorías de inventario (vacío = todas)</div>
@@ -2601,6 +2746,7 @@ function renderAdminSidebar() {
     { id: 'cierres',      icon: 'fas fa-cash-register',   name: 'Cierres de caja',             adminOnly: false },
     { id: 'pedidos',      icon: 'fas fa-shopping-cart',   name: 'Pedidos',                     adminOnly: false },
     { id: 'reuniones',    icon: 'fas fa-users',           name: 'Reuniones',                   adminOnly: false },
+    { id: 'gdd',          icon: 'fas fa-file-invoice',    name: 'Guías de Despacho',           adminOnly: false },
     { id: 'pdf-upload',   icon: 'fas fa-file-upload',     name: 'Añadir PDF',                  adminOnly: true  },
     { id: 'pdf-view',     icon: 'fas fa-book',            name: 'Ver Manual',                  adminOnly: false },
     { id: 'usuarios',     icon: 'fas fa-user-cog',        name: 'Usuarios',                    adminOnly: true  },
@@ -2670,6 +2816,7 @@ function renderSidebar() {
     { id: 'pdf-upload',    icon: '📤', name: 'Añadir PDF',                    bg: 'linear-gradient(135deg,#2563b0,#3b82f6)', adminOnly: true  },
     { id: 'pdf-view',      icon: '📄', name: 'Ver Manual',                    bg: 'linear-gradient(135deg,#0e7490,#06b6d4)', adminOnly: false },
     { id: 'reuniones',     icon: '📋', name: 'Reuniones',                     bg: 'linear-gradient(135deg,#5b6af0,#7c8cf8)', adminOnly: false },
+    { id: 'gdd',           icon: '📦', name: 'Guías de Despacho',             bg: 'linear-gradient(135deg,#0e7490,#06b6d4)', adminOnly: false },
     { id: 'usuarios',      icon: '👥', name: 'Usuarios',                      bg: 'linear-gradient(135deg,#c95e6b,#e07585)', adminOnly: true  },
   ];
   const visible = allModules.filter(m => {
@@ -2703,6 +2850,7 @@ function renderHub() {
     { id: 'pdf-upload',    icon: '📤', name: 'Añadir PDF',                    bg: 'linear-gradient(135deg,#2563b0,#3b82f6)', adminOnly: true  },
     { id: 'pdf-view',      icon: '📄', name: 'Ver Manual',                    bg: 'linear-gradient(135deg,#0e7490,#06b6d4)', adminOnly: false },
     { id: 'reuniones',     icon: '📋', name: 'Reuniones',                     bg: 'linear-gradient(135deg,#5b6af0,#7c8cf8)', adminOnly: false },
+    { id: 'gdd',           icon: '📦', name: 'Guías de Despacho',             bg: 'linear-gradient(135deg,#0e7490,#06b6d4)', adminOnly: false },
     { id: 'usuarios',      icon: '👥', name: 'Usuarios',                      bg: 'linear-gradient(135deg,#c95e6b,#e07585)', adminOnly: true  },
   ];
   const visible = allModules.filter(m => {
@@ -2799,19 +2947,23 @@ async function loadAddStockForm() {
         <div class="stock-form-row">
           <div class="stock-form-name">${item.name}</div>
           <div class="stock-form-cur" title="Stock actual">${item.quantity !== null ? item.quantity : '—'}</div>
-          <input class="stock-form-input" type="number" min="0" step="0.1"
-            placeholder="—"
-            id="sf-${item.id}"
-            data-product="${item.id}"
-            data-name="${item.name.replace(/"/g,'&quot;')}"
-            data-category="${(item.category||'').replace(/"/g,'&quot;')}"
-            data-unit="${item.unit}">
+          <div style="display:flex;flex-direction:column;align-items:flex-end">
+            <input class="stock-form-input" type="number" min="0" step="0.1"
+              placeholder="—"
+              id="sf-${item.id}"
+              data-product="${item.id}"
+              data-name="${item.name.replace(/"/g,'&quot;')}"
+              data-category="${(item.category||'').replace(/"/g,'&quot;')}"
+              data-unit="${item.unit}"
+              oninput="this.classList.remove('sf-error');this.parentElement.querySelector('.sf-error-hint').classList.remove('visible')">
+            <div class="sf-error-hint">Requerido</div>
+          </div>
           <div class="stock-form-unit">${item.unit}</div>
         </div>`).join('')}
     </div>`).join('');
 
   wrap.innerHTML = `
-    <form onsubmit="guardarInventario(event)">
+    <form onsubmit="guardarInventario(event)" novalidate>
       <div style="display:flex;align-items:center;gap:16px;margin-bottom:24px;padding-bottom:20px;border-bottom:1px solid #1f1f1f">
         <div style="flex:1">
           <div class="field-label" style="font-size:11px;color:#555;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Fecha del inventario</div>
@@ -2832,6 +2984,19 @@ async function loadAddStockForm() {
     </form>`;
 }
 
+function showStockToast(msg) {
+  let toast = document.getElementById('stock-validation-toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'stock-validation-toast';
+    document.body.appendChild(toast);
+  }
+  toast.textContent = msg;
+  toast.classList.add('show');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => toast.classList.remove('show'), 3500);
+}
+
 async function guardarInventario(e) {
   e.preventDefault();
   const btn  = document.getElementById('btn-guardar-todo');
@@ -2840,27 +3005,39 @@ async function guardarInventario(e) {
 
   if (!date) { msg.className = 'inline-error'; msg.textContent = 'Selecciona una fecha'; return; }
 
-  const inputs = document.querySelectorAll('[data-product]');
-  const items  = [];
+  // Validar que todos los campos estén llenos
+  const inputs = [...document.querySelectorAll('[data-product]')];
+  let firstEmpty = null;
   inputs.forEach(inp => {
-    if (inp.value !== '') {
-      const stockItem = addStockItems.find(s => s.id === inp.dataset.product);
-      items.push({
-        productId:     inp.dataset.product,
-        name:          inp.dataset.name,
-        category:      inp.dataset.category,
-        unit:          inp.dataset.unit,
-        quantity:      Number(inp.value),
-        supplierIds:   stockItem?.supplierIds   || [],
-        supplierNames: stockItem?.supplierNames || []
-      });
+    const hint = inp.parentElement?.querySelector('.sf-error-hint');
+    if (inp.value === '' || inp.value === null) {
+      inp.classList.add('sf-error');
+      if (hint) hint.classList.add('visible');
+      if (!firstEmpty) firstEmpty = inp;
+    } else {
+      inp.classList.remove('sf-error');
+      if (hint) hint.classList.remove('visible');
     }
   });
-
-  if (!items.length) {
-    msg.className = 'inline-error'; msg.textContent = 'Ingresa al menos una cantidad';
+  if (firstEmpty) {
+    showStockToast('⚠ Te faltó rellenar algunos datos');
+    firstEmpty.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    firstEmpty.focus();
     return;
   }
+
+  const items = inputs.map(inp => {
+    const stockItem = addStockItems.find(s => s.id === inp.dataset.product);
+    return {
+      productId:     inp.dataset.product,
+      name:          inp.dataset.name,
+      category:      inp.dataset.category,
+      unit:          inp.dataset.unit,
+      quantity:      Number(inp.value),
+      supplierIds:   stockItem?.supplierIds   || [],
+      supplierNames: stockItem?.supplierNames || []
+    };
+  });
 
   btn.disabled = true; btn.textContent = 'Guardando...';
   try {
@@ -2954,6 +3131,8 @@ async function delProveedor(id, name) {
 // ── Productos ──────────────────────────────────────────────
 let prodFilterCat = '';
 let prodFilterSup = '';
+let prodFilterSearch = '';
+let prodFilterGDD = false;
 
 async function renderInvProductos() {
   const el = document.getElementById('inv-productos');
@@ -2963,6 +3142,8 @@ async function renderInvProductos() {
   invSuppliers = (await sr.json()).suppliers || [];
   prodFilterCat = '';
   prodFilterSup = '';
+  prodFilterSearch = '';
+  prodFilterGDD = false;
   renderProdTable();
 }
 
@@ -2973,6 +3154,8 @@ function renderProdTable() {
   let filtered = invProducts;
   if (prodFilterCat) filtered = filtered.filter(p => p.category === prodFilterCat);
   if (prodFilterSup) filtered = filtered.filter(p => (p.supplierIds||[]).includes(prodFilterSup));
+  if (prodFilterSearch) { const q = prodFilterSearch.toLowerCase(); filtered = filtered.filter(p => p.name.toLowerCase().includes(q)); }
+  if (prodFilterGDD) filtered = filtered.filter(p => p.esGDD === true);
 
   el.innerHTML = `
     <div class="inv-toolbar">
@@ -2980,6 +3163,8 @@ function renderProdTable() {
       ${(userRole === 'admin' || userRole === 'superadmin') ? '<button class="btn-new" onclick="openModalProducto()">+ Nuevo producto</button>' : ''}
     </div>
     <div class="prod-filters">
+      <input class="prod-filter-sel" type="search" placeholder="Buscar producto..." value="${prodFilterSearch}"
+        oninput="clearTimeout(this._t);this._t=setTimeout(()=>{prodFilterSearch=this.value;renderProdTable()},350)" style="min-width:180px">
       <select class="prod-filter-sel" onchange="prodFilterCat=this.value;renderProdTable()">
         <option value="">Todas las categorías</option>
         ${cats.map(c => `<option value="${c}" ${prodFilterCat===c?'selected':''}>${c}</option>`).join('')}
@@ -2988,7 +3173,11 @@ function renderProdTable() {
         <option value="">Todos los proveedores</option>
         ${invSuppliers.map(s => `<option value="${s.id}" ${prodFilterSup===s.id?'selected':''}>${s.name}</option>`).join('')}
       </select>
-      ${(prodFilterCat||prodFilterSup) ? `<button class="prod-filter-clear" onclick="prodFilterCat='';prodFilterSup='';renderProdTable()">✕ Limpiar</button>` : ''}
+      <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#495057;cursor:pointer;white-space:nowrap;flex-shrink:0">
+        <input type="checkbox" ${prodFilterGDD?'checked':''} onchange="prodFilterGDD=this.checked;renderProdTable()" style="accent-color:#ff5023;width:14px;height:14px">
+        Solo GDD
+      </label>
+      ${(prodFilterCat||prodFilterSup||prodFilterSearch||prodFilterGDD) ? `<button class="prod-filter-clear" onclick="prodFilterCat='';prodFilterSup='';prodFilterSearch='';prodFilterGDD=false;renderProdTable()">✕ Limpiar</button>` : ''}
       <span style="margin-left:auto;font-size:12px;color:#444">${filtered.length} productos</span>
     </div>
     <table class="inv-table">
@@ -2998,7 +3187,7 @@ function renderProdTable() {
           ? `<tr><td colspan="5" style="color:#444;padding:20px">Sin resultados</td></tr>`
           : filtered.map(p => `
             <tr>
-              <td style="color:#fff;font-weight:500">${p.name}</td>
+              <td style="color:#fff;font-weight:500">${p.name}${p.esGDD ? ' <span style="background:#1a3a2a;color:#4ade80;font-size:10px;padding:1px 6px;border-radius:4px;font-weight:600;vertical-align:middle">GDD</span>' : ''}</td>
               <td>${p.category || '—'}</td>
               <td><span class="tag">${p.unit}</span></td>
               <td>${(p.supplierNames||[]).map(s=>`<span class="tag">${s}</span>`).join(' ') || '<span style="color:#444">—</span>'}</td>
@@ -3013,47 +3202,170 @@ function renderProdTable() {
 
 function openModalProducto(id) {
   const p = id ? invProducts.find(x => x.id === id) : null;
-  document.getElementById('mprod-title').textContent = p ? 'Editar producto' : 'Nuevo producto';
-  document.getElementById('mprod-id').value   = p?.id       || '';
-  document.getElementById('mprod-name').value = p?.name     || '';
-  document.getElementById('mprod-cat').value  = p?.category || '';
-  document.getElementById('mprod-unit').value = p?.unit     || 'unidad';
-  document.getElementById('mprod-msg').textContent = '';
-
   const currentRests    = p?.restaurantIds    || [];
   const currentSections = p?.restaurantSections || {};
-  document.getElementById('mprod-restaurants').innerHTML = restaurants.length
+  const currentSups     = p?.supplierIds || [];
+
+  const restsHtml = restaurants.length
     ? restaurants.map(r => {
         const checked = currentRests.includes(r.id);
         const hasSections = (r.sections || []).length > 0;
-        return `
-          <div class="rest-check-row">
-            <label>
-              <input type="checkbox" value="${r.id}"
-                onchange="toggleProdRestaurant('${r.id}', this.checked)"
-                ${checked ? 'checked' : ''}> ${r.name}
-            </label>
-            ${hasSections ? `
-            <div id="psec-${r.id}" class="prod-sections-wrap" ${checked ? '' : 'style="display:none"'}>
-              ${r.sections.map(s => `
-                <label class="prod-section-label">
-                  <input type="checkbox" name="psec-${r.id}" value="${s}"
-                    ${(currentSections[r.id]||[]).includes(s)?'checked':''}> ${s}
-                </label>`).join('')}
-            </div>` : ''}
-          </div>`;
+        return `<div class="rest-check-row">
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#495057;cursor:pointer">
+            <input type="checkbox" value="${r.id}" onchange="toggleProdRestaurant('${r.id}',this.checked)" ${checked?'checked':''} style="accent-color:#ff5023;width:15px;height:15px"> ${r.name}
+          </label>
+          ${hasSections ? `<div id="psec-${r.id}" class="prod-sections-wrap" ${checked?'':'style="display:none"'}>${r.sections.map(s=>`<label class="prod-section-label"><input type="checkbox" name="psec-${r.id}" value="${s}" ${(currentSections[r.id]||[]).includes(s)?'checked':''}> ${s}</label>`).join('')}</div>` : ''}
+        </div>`;
       }).join('')
-    : '<span style="color:#444;font-size:12px">Sin locales creados</span>';
+    : '<span style="color:#888;font-size:13px">Sin locales creados</span>';
 
-  const currentSups = p?.supplierIds || [];
-  document.getElementById('mprod-suppliers').innerHTML = invSuppliers.length
-    ? invSuppliers.map(s => `
-        <label>
-          <input type="checkbox" value="${s.id}" ${currentSups.includes(s.id)?'checked':''}> ${s.name}
-        </label>`).join('')
-    : '<span style="color:#444;font-size:12px">Sin proveedores creados</span>';
+  const supsHtml = invSuppliers.length
+    ? invSuppliers.map(s => `<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#495057;cursor:pointer"><input type="checkbox" value="${s.id}" ${currentSups.includes(s.id)?'checked':''} style="accent-color:#ff5023;width:15px;height:15px"> ${s.name}</label>`).join('')
+    : '<span style="color:#888;font-size:13px">Sin proveedores creados</span>';
 
-  document.getElementById('modal-producto').classList.add('open');
+  document.getElementById('inv-productos').innerHTML = `
+    <div style="max-width:680px">
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:28px">
+        <button onclick="renderProdTable()" style="background:none;border:1px solid #dee2e6;border-radius:8px;padding:7px 14px;font-size:13px;color:#495057;cursor:pointer;display:flex;align-items:center;gap:6px">
+          ← Volver
+        </button>
+        <h2 style="font-size:18px;font-weight:700;color:#212529;margin:0">${p ? 'Editar producto' : 'Nuevo producto'}</h2>
+      </div>
+
+      <input type="hidden" id="mprod-id" value="${p?.id||''}">
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+        <div>
+          <div class="field-label">Nombre</div>
+          <input id="mprod-name" class="inv-input" value="${p?.name||''}" placeholder="Nombre del producto">
+        </div>
+        <div>
+          <div class="field-label">Categoría</div>
+          <input id="mprod-cat" class="inv-input" value="${p?.category||''}" placeholder="Ej: Lácteos">
+        </div>
+      </div>
+
+      <div style="margin-bottom:16px">
+        <div class="field-label">Unidad</div>
+        <select id="mprod-unit" class="inv-input" style="max-width:200px">
+          <option value="unidad" ${(p?.unit||'unidad')==='unidad'?'selected':''}>Unidad</option>
+          <option value="kg"     ${p?.unit==='kg'?'selected':''}>Kilogramo (kg)</option>
+          <option value="g"      ${p?.unit==='g'?'selected':''}>Gramo (g)</option>
+          <option value="L"      ${p?.unit==='L'?'selected':''}>Litro (L)</option>
+          <option value="ml"     ${p?.unit==='ml'?'selected':''}>Mililitro (ml)</option>
+          <option value="caja"   ${p?.unit==='caja'?'selected':''}>Caja</option>
+          <option value="bolsa"  ${p?.unit==='bolsa'?'selected':''}>Bolsa</option>
+          <option value="botella"${p?.unit==='botella'?'selected':''}>Botella</option>
+        </select>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+        <div>
+          <div class="field-label">Locales donde se usa</div>
+          <div class="rest-checkboxes" id="mprod-restaurants">${restsHtml}</div>
+        </div>
+        <div>
+          <div class="field-label">Proveedores</div>
+          <div class="rest-checkboxes" id="mprod-suppliers">${supsHtml}</div>
+        </div>
+      </div>
+
+      <div style="margin-bottom:20px">
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;color:#212529;padding:12px 14px;border:1px solid #dee2e6;border-radius:8px;width:fit-content">
+          <input type="checkbox" id="mprod-gdd" ${p?.esGDD?'checked':''} style="width:16px;height:16px;accent-color:#ff5023">
+          Viene por Guía de Despacho (GDD)
+        </label>
+      </div>
+
+      <div id="mprod-msg" style="font-size:13px;min-height:18px;margin-bottom:12px"></div>
+
+      <div style="display:flex;gap:10px;margin-bottom:32px">
+        <button onclick="saveProducto()" style="background:#ff5023;color:#fff;border:none;border-radius:8px;padding:11px 28px;font-size:14px;font-weight:600;cursor:pointer">Guardar</button>
+        <button onclick="renderProdTable()" style="background:transparent;border:1px solid #dee2e6;border-radius:8px;padding:11px 20px;font-size:14px;color:#6c757d;cursor:pointer">Cancelar</button>
+      </div>
+
+      ${p?.id ? `
+      <hr style="border:none;border-top:1px solid #e9ecef;margin-bottom:24px">
+      <div>
+        <h3 style="font-size:15px;font-weight:700;color:#212529;margin-bottom:16px">Historial de precios</h3>
+        <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+          <input type="month" id="pp-mes" style="padding:8px 12px;border:1px solid #dee2e6;border-radius:8px;font-size:13px;color:#212529"
+            value="${new Date().toISOString().substring(0,7)}">
+          <div style="display:flex;align-items:center;border:1px solid #dee2e6;border-radius:8px;overflow:hidden;background:#fff">
+            <span style="padding:0 10px;color:#888;font-size:13px">$</span>
+            <input type="number" id="pp-precio" placeholder="Precio CLP" min="0" step="1"
+              style="border:none;outline:none;padding:8px 10px 8px 0;font-size:13px;color:#212529;width:140px"
+              onkeydown="if(event.key==='Enter'){event.preventDefault();ppAgregarPrecio()}">
+          </div>
+          <button onclick="ppAgregarPrecio()" style="background:#ff5023;color:#fff;border:none;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:600;cursor:pointer">Agregar</button>
+        </div>
+        <div id="pp-msg" style="font-size:12px;min-height:16px;margin-bottom:8px"></div>
+        <div id="pp-list" style="color:#888;font-size:13px">Cargando...</div>
+      </div>` : ''}
+    </div>`;
+
+  // cargar historial de precios si es edición
+  if (p?.id) {
+    priceHistoryProductId = p.id;
+    priceHistoryData = [];
+    apiFetch(`/api/inv/products/${p.id}/prices`)
+      .then(r => r.json())
+      .then(d => { priceHistoryData = d.prices || []; ppRenderList(); })
+      .catch(() => { const el = document.getElementById('pp-list'); if(el) el.textContent = 'Error al cargar'; });
+  }
+}
+
+function ppRenderList() {
+  const el = document.getElementById('pp-list');
+  if (!el) return;
+  if (!priceHistoryData.length) {
+    el.innerHTML = '<span style="color:#aaa">Sin precios registrados aún.</span>';
+    return;
+  }
+  const sorted = [...priceHistoryData].sort((a, b) => b.mes.localeCompare(a.mes));
+  el.innerHTML = sorted.map(p => `
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#fff;border:1px solid #e9ecef;border-radius:8px;margin-bottom:8px">
+      <span style="width:80px;font-size:13px;color:#6c757d;font-weight:500;flex-shrink:0">${p.mes}</span>
+      <div style="flex:1;display:flex;align-items:center;border:1px solid #dee2e6;border-radius:8px;overflow:hidden;background:#fafafa">
+        <span style="padding:0 10px;color:#888;font-size:13px;flex-shrink:0">$</span>
+        <input type="number" value="${p.precio}" min="0" step="1" id="ph-inp-${p.id}"
+          style="flex:1;border:none;outline:none;padding:8px 8px 8px 0;font-size:13px;color:#212529;background:transparent;min-width:0"
+          onkeydown="if(event.key==='Enter'){event.preventDefault();savePrecioInline('${p.id}','${p.mes}')}">
+      </div>
+      <button onclick="savePrecioInline('${p.id}','${p.mes}')"
+        style="flex-shrink:0;background:#212529;color:#fff;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:600;cursor:pointer">
+        Guardar
+      </button>
+      <button onclick="ppEliminar('${p.id}')"
+        style="flex-shrink:0;background:none;border:1px solid #fca5a5;color:#ef4444;border-radius:8px;width:32px;height:32px;font-size:14px;cursor:pointer">✕</button>
+    </div>`).join('');
+}
+
+async function ppAgregarPrecio() {
+  const mes    = document.getElementById('pp-mes')?.value;
+  const precio = document.getElementById('pp-precio')?.value;
+  const msgEl  = document.getElementById('pp-msg');
+  if (!mes || !precio) { if(msgEl){msgEl.style.color='#f87171';msgEl.textContent='Completa mes y precio.';} return; }
+  try {
+    const res = await apiFetch(`/api/inv/products/${priceHistoryProductId}/prices`, {
+      method: 'POST', body: JSON.stringify({ mes, precio: Number(precio) })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    document.getElementById('pp-precio').value = '';
+    const r2 = await apiFetch(`/api/inv/products/${priceHistoryProductId}/prices`);
+    priceHistoryData = (await r2.json()).prices || [];
+    ppRenderList();
+    if(msgEl){msgEl.style.color='#22c55e';msgEl.textContent='Agregado.';setTimeout(()=>{msgEl.textContent=''},1500);}
+  } catch(e) { if(msgEl){msgEl.style.color='#f87171';msgEl.textContent=e.message;} }
+}
+
+async function ppEliminar(entryId) {
+  try {
+    await apiFetch(`/api/inv/products/${priceHistoryProductId}/prices/${entryId}`, { method: 'DELETE' });
+    priceHistoryData = priceHistoryData.filter(p => p.id !== entryId);
+    ppRenderList();
+  } catch(e) { const el=document.getElementById('pp-msg'); if(el){el.style.color='#f87171';el.textContent=e.message;} }
 }
 
 function toggleProdRestaurant(restId, checked) {
@@ -3062,7 +3374,7 @@ function toggleProdRestaurant(restId, checked) {
 }
 
 async function saveProducto() {
-  const id  = document.getElementById('mprod-id').value;
+  const id = document.getElementById('mprod-id').value;
   const restaurantIds = [...document.querySelectorAll('#mprod-restaurants input[type=checkbox]:not([name^="psec-"]):checked')].map(c => c.value);
   const restaurantSections = {};
   document.querySelectorAll('#mprod-restaurants [id^="psec-"]').forEach(wrap => {
@@ -3071,25 +3383,26 @@ async function saveProducto() {
     if (secs.length) restaurantSections[restId] = secs;
   });
   const body = {
-    name:          document.getElementById('mprod-name').value.trim(),
-    category:      document.getElementById('mprod-cat').value.trim(),
-    unit:          document.getElementById('mprod-unit').value,
+    name:     document.getElementById('mprod-name').value.trim(),
+    category: document.getElementById('mprod-cat').value.trim(),
+    unit:     document.getElementById('mprod-unit').value,
     restaurantIds,
-    supplierIds:   [...document.querySelectorAll('#mprod-suppliers input:checked')].map(c => c.value),
-    restaurantSections
+    supplierIds: [...document.querySelectorAll('#mprod-suppliers input:checked')].map(c => c.value),
+    restaurantSections,
+    esGDD: document.getElementById('mprod-gdd').checked
   };
   const msg = document.getElementById('mprod-msg');
-  if (!body.name) { msg.className = 'inline-error'; msg.textContent = 'Nombre requerido'; return; }
+  if (!body.name) { msg.style.color='#f87171'; msg.textContent = 'El nombre es requerido.'; return; }
+  msg.style.color = '#888'; msg.textContent = 'Guardando...';
   try {
     const res  = await apiFetch(id ? `/api/inv/products/${id}` : '/api/inv/products',
       { method: id ? 'PUT' : 'POST', body: JSON.stringify(body) });
     const data = await res.json();
     if (data.error) throw new Error(data.error);
-    closeModal('modal-producto');
     const pr2 = await apiFetch('/api/inv/products');
     invProducts = (await pr2.json()).products || [];
     renderProdTable();
-  } catch(e) { msg.className = 'inline-error'; msg.textContent = e.message; }
+  } catch(e) { msg.style.color='#f87171'; msg.textContent = e.message; }
 }
 
 async function delProducto(id, name) {
@@ -3097,6 +3410,109 @@ async function delProducto(id, name) {
   await apiFetch(`/api/inv/products/${id}`, { method: 'DELETE' });
   invProducts = invProducts.filter(p => p.id !== id);
   renderProdTable();
+}
+
+// ── Historial de Precios ───────────────────────────────────
+let priceHistoryProductId = '';
+let priceHistoryData = [];
+
+async function openPriceHistory(id, name) {
+  priceHistoryProductId = id;
+  document.getElementById('mprecios-title').textContent = `Precios: ${name}`;
+  document.getElementById('mprecios-msg').textContent = '';
+  // Set default month to current
+  const now = new Date();
+  document.getElementById('mprecios-mes').value = now.toISOString().substring(0, 7);
+  document.getElementById('mprecios-precio').value = '';
+  document.getElementById('modal-precios').classList.add('open');
+  await loadPriceHistory();
+}
+
+async function loadPriceHistory() {
+  const listEl = document.getElementById('mprecios-list');
+  listEl.innerHTML = '<span style="color:#444;font-size:12px">Cargando...</span>';
+  try {
+    const res = await apiFetch(`/api/inv/products/${priceHistoryProductId}/prices`);
+    priceHistoryData = (await res.json()).prices || [];
+    renderPriceHistoryList();
+  } catch(e) {
+    listEl.innerHTML = `<span style="color:#f87171;font-size:12px">${e.message}</span>`;
+  }
+}
+
+function renderPriceHistoryList() {
+  const listEl = document.getElementById('mprecios-list');
+  if (!priceHistoryData.length) {
+    listEl.innerHTML = '<p style="color:#888;font-size:13px;margin:8px 0">Sin precios registrados aún.</p>';
+    return;
+  }
+  const sorted = [...priceHistoryData].sort((a, b) => b.mes.localeCompare(a.mes));
+  listEl.innerHTML = sorted.map(p => `
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #f0f0f0">
+      <span style="width:80px;font-size:13px;color:#555;flex-shrink:0;font-weight:500">${p.mes}</span>
+      <div style="flex:1;display:flex;gap:6px;align-items:center">
+        <div style="flex:1;display:flex;align-items:center;border:1.5px solid #e0e0e0;border-radius:8px;overflow:hidden;background:#fff">
+          <span style="padding:0 8px;color:#888;font-size:13px;flex-shrink:0">$</span>
+          <input type="number" id="ph-inp-${p.id}" value="${p.precio}" min="0" step="1"
+            style="flex:1;padding:9px 8px 9px 0;border:none;outline:none;font-size:13px;color:#212529;background:transparent;min-width:0"
+            onkeydown="if(event.key==='Enter'){event.preventDefault();savePrecioInline('${p.id}','${p.mes}')}">
+        </div>
+        <button onclick="savePrecioInline('${p.id}','${p.mes}')"
+          style="flex-shrink:0;background:#ff5023;color:#fff;border:none;border-radius:8px;padding:9px 14px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap">
+          Guardar
+        </button>
+      </div>
+      <button onclick="delPrecioEntry('${p.id}')"
+        style="flex-shrink:0;background:none;border:1.5px solid #fca5a5;color:#ef4444;border-radius:8px;width:34px;height:34px;font-size:14px;cursor:pointer">
+        ✕
+      </button>
+    </div>`).join('');
+}
+
+async function savePrecioInline(id, mes) {
+  const inp = document.getElementById(`ph-inp-${id}`);
+  if (!inp) return;
+  const nuevo = Number(inp.value);
+  if (isNaN(nuevo) || nuevo < 0) return;
+  const msgEl = document.getElementById('mprecios-msg');
+  try {
+    const res = await apiFetch(`/api/inv/products/${priceHistoryProductId}/prices`, {
+      method: 'POST', body: JSON.stringify({ mes, precio: nuevo })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    const entry = priceHistoryData.find(p => p.id === id);
+    if (entry) entry.precio = nuevo;
+    msgEl.style.color = '#22c55e';
+    msgEl.textContent = 'Guardado';
+    setTimeout(() => { msgEl.textContent = ''; }, 1500);
+  } catch(e) { msgEl.style.color = '#f87171'; msgEl.textContent = e.message; }
+}
+
+async function addPrecioEntry() {
+  const mes    = document.getElementById('mprecios-mes').value;
+  const precio = document.getElementById('mprecios-precio').value.trim();
+  const msgEl  = document.getElementById('mprecios-msg');
+  msgEl.textContent = '';
+  if (!mes || !precio) { msgEl.textContent = 'Completa mes y precio.'; return; }
+  if (isNaN(Number(precio)) || Number(precio) < 0) { msgEl.textContent = 'Precio inválido.'; return; }
+  try {
+    const res = await apiFetch(`/api/inv/products/${priceHistoryProductId}/prices`, {
+      method: 'POST',
+      body: JSON.stringify({ mes, precio: Number(precio) })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    document.getElementById('mprecios-precio').value = '';
+    await loadPriceHistory();
+  } catch(e) { msgEl.textContent = e.message; }
+}
+
+async function delPrecioEntry(entryId) {
+  try {
+    await apiFetch(`/api/inv/products/${priceHistoryProductId}/prices/${entryId}`, { method: 'DELETE' });
+    await loadPriceHistory();
+  } catch(e) { document.getElementById('mprecios-msg').textContent = e.message; }
 }
 
 // ── Clientes ───────────────────────────────────────────────
@@ -3435,9 +3851,18 @@ function renderHistRecordsList() {
       <div class="hist-meta">${r.createdByName || r.createdBy}</div>
       ${r.section ? `<div style="font-size:11px;color:#555;background:#1a1a1a;padding:2px 8px;border-radius:10px;white-space:nowrap">${r.section}</div>` : ''}
       <div class="hist-count" style="margin-left:auto">${r.itemCount} producto${r.itemCount !== 1 ? 's' : ''}</div>
+      ${userRole === 'superadmin' ? `<button class="btn-del" onclick="event.stopPropagation();deleteInvRecord('${r.id}','${r.date}')">Eliminar</button>` : ''}
       <div style="color:#333;font-size:12px">▾</div>
     </div>
     <div id="hd-${r.id}" style="display:none"></div>`).join('');
+}
+
+async function deleteInvRecord(id, date) {
+  if (!confirm(`¿Eliminar el inventario del ${date}? Esta acción no se puede deshacer.`)) return;
+  const res = await apiFetch(`/api/inv/inventories/${histRestId}/${id}`, { method: 'DELETE' });
+  if (res.ok) { loadHistList(); return; }
+  const body = await res.json().catch(() => ({}));
+  alert('Error al eliminar: ' + (body.error || res.status));
 }
 
 async function loadHistList() {
@@ -3767,7 +4192,7 @@ function renderCierresTable() {
     return va < vb ? -cierresSortDir : va > vb ? cierresSortDir : 0;
   });
 
-  const fmt = v => v != null ? Number(v).toLocaleString('es-CL', { style:'currency', currency:'CLP', maximumFractionDigits:0 }) : '—';
+  const fmt = v => { const n = Number(v); return (isNaN(n) ? 0 : n).toLocaleString('es-CL', { style:'currency', currency:'CLP', maximumFractionDigits:0 }); };
   const arrow = col => cierresSortCol === col ? (cierresSortDir === -1 ? ' ↓' : ' ↑') : '';
   const thStyle = 'cursor:pointer;user-select:none';
 
@@ -4009,15 +4434,16 @@ function renderAnalyticsCharts(data) {
 
   // ── Agrupar por mes ──
   const byMonth = {};
+  const safeNum = v => { const n = Number(v); return isNaN(n) ? 0 : n; };
   data.forEach(c => {
     const m = c.fecha?.slice(5,7); if (!m) return;
     if (!byMonth[m]) byMonth[m] = { totalPrograma:0, transbank:0, efectivo:0, gastos:0, montoDelivery:0, neto:0, count:0 };
-    byMonth[m].totalPrograma += c.totalPrograma || 0;
-    byMonth[m].transbank     += c.transbank     || 0;
-    byMonth[m].efectivo      += c.efectivo      || 0;
-    byMonth[m].gastos        += c.gastos        || 0;
-    byMonth[m].montoDelivery += c.montoDelivery || 0;
-    byMonth[m].neto          += (c.transbank||0) + (c.efectivo||0) - (c.gastos||0);
+    byMonth[m].totalPrograma += safeNum(c.totalPrograma);
+    byMonth[m].transbank     += safeNum(c.transbank);
+    byMonth[m].efectivo      += safeNum(c.efectivo);
+    byMonth[m].gastos        += safeNum(c.gastos);
+    byMonth[m].montoDelivery += safeNum(c.montoDelivery);
+    byMonth[m].neto          += safeNum(c.transbank) + safeNum(c.efectivo) - safeNum(c.gastos);
     byMonth[m].count++;
   });
   const mKeys  = Object.keys(byMonth).sort();
@@ -4040,11 +4466,11 @@ function renderAnalyticsCharts(data) {
   const dVals = dKeys.map(k => byDay[k]);
 
   // ── KPIs ──
-  const totalVentas  = data.reduce((s,c) => s+(c.totalPrograma||0), 0);
-  const totalNeto    = data.reduce((s,c) => s+(c.transbank||0)+(c.efectivo||0)-(c.gastos||0), 0);
-  const totalGastos  = data.reduce((s,c) => s+(c.gastos||0), 0);
-  const totalTB      = data.reduce((s,c) => s+(c.transbank||0), 0);
-  const totalEf      = data.reduce((s,c) => s+(c.efectivo||0), 0);
+  const totalVentas  = data.reduce((s,c) => s+safeNum(c.totalPrograma), 0);
+  const totalNeto    = data.reduce((s,c) => s+safeNum(c.transbank)+safeNum(c.efectivo)-safeNum(c.gastos), 0);
+  const totalGastos  = data.reduce((s,c) => s+safeNum(c.gastos), 0);
+  const totalTB      = data.reduce((s,c) => s+safeNum(c.transbank), 0);
+  const totalEf      = data.reduce((s,c) => s+safeNum(c.efectivo), 0);
   const ticketProm   = mKeys.map(m => byMonth[m].count ? Math.round(byMonth[m].totalPrograma/byMonth[m].count) : 0);
   const pctTB        = totalTB+totalEf > 0 ? Math.round(totalTB/(totalTB+totalEf)*100) : 0;
 
@@ -4646,6 +5072,36 @@ async function addNewPage() {
   if (newPage) selectPage(newPage.id);
 }
 
+function handleEditorPaste(e) {
+  e.preventDefault();
+  // Try to get HTML first to preserve line breaks; fall back to plain text
+  const html  = e.clipboardData.getData('text/html');
+  const plain = e.clipboardData.getData('text/plain');
+  if (html) {
+    // Strip external styles/classes but keep basic tags and emojis
+    const tmp = document.createElement('div');
+    tmp.innerHTML = html;
+    // Remove all style, class, id, data-* attrs to avoid bloat
+    tmp.querySelectorAll('*').forEach(el => {
+      el.removeAttribute('style');
+      el.removeAttribute('class');
+      el.removeAttribute('id');
+      [...el.attributes].forEach(a => { if (a.name.startsWith('data-')) el.removeAttribute(a.name); });
+    });
+    // Remove script/head/meta tags
+    tmp.querySelectorAll('script,style,head,meta,link').forEach(el => el.remove());
+    const cleaned = tmp.innerHTML;
+    document.execCommand('insertHTML', false, cleaned);
+  } else {
+    // Plain text: preserve newlines as <br>
+    const escaped = plain
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/\n/g,'<br>');
+    document.execCommand('insertHTML', false, escaped);
+  }
+  schedulePageSave();
+}
+
 function schedulePageSave() {
   document.getElementById('reun-save-status').textContent = 'Guardando...';
   clearTimeout(reunSaveTimer);
@@ -4745,6 +5201,284 @@ async function deleteSection(sectionId, name) {
   reunSections = reunSections.filter(s => s.id !== sectionId);
   renderSectionsList();
   document.getElementById('reun-pages-list').innerHTML = '';
+}
+
+// ── GDD: Guías de Despacho ──────────────────────────────
+let gddData = null;
+
+function gddSwitchTab(tab) {
+  document.getElementById('gdd-tab-nueva').classList.toggle('active',     tab === 'nueva');
+  document.getElementById('gdd-tab-historial').classList.toggle('active', tab === 'historial');
+  document.getElementById('gdd-tab-nueva-content').style.display     = tab === 'nueva'     ? 'block' : 'none';
+  document.getElementById('gdd-tab-historial-content').style.display  = tab === 'historial' ? 'block' : 'none';
+  if (tab === 'historial') gddLoadHistory();
+}
+
+function gddReset() {
+  gddData = null;
+  document.getElementById('gdd-step-upload').style.display  = 'block';
+  document.getElementById('gdd-step-loading').style.display = 'none';
+  document.getElementById('gdd-step-result').style.display  = 'none';
+  document.getElementById('gdd-file-input').value   = '';
+  document.getElementById('gdd-camera-input').value = '';
+}
+
+async function gddHandleFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  document.getElementById('gdd-step-upload').style.display  = 'none';
+  document.getElementById('gdd-step-loading').style.display = 'block';
+  document.getElementById('gdd-step-result').style.display  = 'none';
+  try {
+    const fd = new FormData();
+    fd.append('file', file);
+    const res  = await apiFetch('/api/gdd/scan', { method: 'POST', body: fd, headers: {} });
+    const json = await res.json();
+    if (json.error) throw new Error(json.error);
+    gddData = json.data;
+    gddRenderResult();
+  } catch(e) {
+    document.getElementById('gdd-step-loading').style.display = 'none';
+    document.getElementById('gdd-step-upload').style.display  = 'block';
+    alert('Error al procesar: ' + e.message);
+  }
+}
+
+function gddRenderResult() {
+  document.getElementById('gdd-step-loading').style.display = 'none';
+  document.getElementById('gdd-step-result').style.display  = 'block';
+  document.getElementById('gdd-result-proveedor').textContent = gddData.proveedor || 'Proveedor desconocido';
+  document.getElementById('gdd-result-fecha').textContent     = gddData.fecha ? `Fecha: ${gddData.fecha}` : '';
+  const tbody = document.getElementById('gdd-result-tbody');
+  tbody.innerHTML = (gddData.items || []).map((item, i) => {
+    const isEmpty = item.cantidad === null || item.cantidad === undefined;
+    return `<tr style="border-bottom:1px solid #e9ecef;${isEmpty ? 'opacity:.55' : ''}">
+      <td style="padding:8px 10px;font-size:12px;color:#6c757d;font-weight:500">${item.categoria || ''}</td>
+      <td style="padding:8px 10px;color:#212529">${item.producto || ''}</td>
+      <td style="padding:8px 10px;text-align:center;color:#6c757d">${item.unidad || ''}</td>
+      <td style="padding:8px 10px;text-align:center">
+        <input type="number" min="0" step="0.01"
+          value="${isEmpty ? '' : item.cantidad}"
+          placeholder="—"
+          data-idx="${i}"
+          onchange="gddData.items[${i}].cantidad = this.value === '' ? null : Number(this.value)"
+          style="width:80px;padding:5px 8px;border:1px solid ${isEmpty ? '#f0d0d0' : '#dee2e6'};border-radius:6px;text-align:center;font-size:13px;background:${isEmpty ? '#fff8f8' : '#fff'}">
+      </td>
+      <td style="padding:8px 10px;color:#6c757d;font-size:12px">${item.comentarios || ''}</td>
+    </tr>`;
+  }).join('');
+}
+
+async function gddSave() {
+  if (!gddData) return;
+  const btn = document.getElementById('gdd-save-btn');
+  const msg = document.getElementById('gdd-save-msg');
+  btn.disabled = true; btn.textContent = 'Guardando...';
+  try {
+    const res  = await apiFetch('/api/gdd/records', {
+      method: 'POST',
+      body: JSON.stringify({
+        proveedor:    gddData.proveedor,
+        fecha:        gddData.fecha,
+        items:        gddData.items,
+        restaurantId: activeRestId || ''
+      })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    msg.style.color = '#16a34a';
+    msg.textContent = '✓ Guía guardada correctamente';
+    setTimeout(() => { gddReset(); gddSwitchTab('historial'); }, 1800);
+  } catch(e) {
+    msg.style.color = '#dc3545';
+    msg.textContent = 'Error: ' + e.message;
+  } finally {
+    btn.disabled = false; btn.textContent = 'Guardar en BD';
+  }
+}
+
+async function gddLoadHistory() {
+  const el = document.getElementById('gdd-history-list');
+  el.innerHTML = '<div style="color:#6c757d;font-size:13px">Cargando...</div>';
+  try {
+    const res  = await apiFetch('/api/gdd/records');
+    const data = await res.json();
+    const records = data.records || [];
+    if (!records.length) {
+      el.innerHTML = '<div style="color:#adb5bd;font-size:13px;padding:40px 0;text-align:center">Sin guías guardadas aún</div>';
+      return;
+    }
+    el.innerHTML = records.map(r => {
+      const itemsConCantidad = (r.items || []).filter(i => i.cantidad !== null && i.cantidad !== undefined);
+      return `
+      <div style="background:#fff;border:1px solid #dee2e6;border-radius:12px;margin-bottom:14px;overflow:hidden">
+        <div style="padding:16px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <div onclick="gddToggleRecord('${r.id}')" style="cursor:pointer;flex:1;min-width:0">
+            <div style="font-size:15px;font-weight:600;color:#212529">${r.proveedor || 'Sin proveedor'}</div>
+            <div style="font-size:12px;color:#6c757d;margin-top:4px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+              <div style="display:flex;align-items:center;gap:4px" onclick="event.stopPropagation()">
+                <span style="color:#6c757d">Fecha:</span>
+                <input type="date" value="${r.fecha||''}" id="gdd-fecha-${r.id}"
+                  style="border:1px solid #dee2e6;border-radius:6px;padding:2px 6px;font-size:12px;color:#212529;background:#fff;cursor:text"
+                  onchange="gddUpdateFecha('${r.id}',this.value)">
+              </div>
+              <span>· ${itemsConCantidad.length} producto${itemsConCantidad.length !== 1 ? 's' : ''} · ${r.createdByName || r.createdBy || ''}</span>
+            </div>
+          </div>
+          <span style="font-size:18px;color:#adb5bd;cursor:pointer" id="gdd-arrow-${r.id}" onclick="gddToggleRecord('${r.id}')">›</span>
+        </div>
+        <div id="gdd-detail-${r.id}" style="display:none;padding:0 20px 16px">
+          <table style="width:100%;border-collapse:collapse;font-size:13px">
+            <thead>
+              <tr style="border-bottom:1px solid #dee2e6">
+                <th style="text-align:left;padding:6px 8px;color:#6c757d;font-size:11px;text-transform:uppercase;font-weight:600">Categoría</th>
+                <th style="text-align:left;padding:6px 8px;color:#6c757d;font-size:11px;text-transform:uppercase;font-weight:600">Producto</th>
+                <th style="text-align:center;padding:6px 8px;color:#6c757d;font-size:11px;text-transform:uppercase;font-weight:600">Unidad</th>
+                <th style="text-align:center;padding:6px 8px;color:#6c757d;font-size:11px;text-transform:uppercase;font-weight:600">Cantidad</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${(r.items || []).map(item => `
+                <tr style="border-bottom:1px solid #f0f0f0;${item.cantidad === null || item.cantidad === undefined ? 'opacity:.45' : ''}">
+                  <td style="padding:6px 8px;color:#6c757d;font-size:12px">${item.categoria || ''}</td>
+                  <td style="padding:6px 8px;color:#212529">${item.producto || ''}</td>
+                  <td style="padding:6px 8px;text-align:center;color:#6c757d">${item.unidad || ''}</td>
+                  <td style="padding:6px 8px;text-align:center;font-weight:600;color:${item.cantidad ? '#212529' : '#adb5bd'}">${item.cantidad ?? '—'}</td>
+                </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    el.innerHTML = `<div style="color:#dc3545;font-size:13px">${e.message}</div>`;
+  }
+}
+
+async function gddExportExcel() {
+  const btn = document.getElementById('gdd-export-btn');
+  btn.textContent = 'Generando...'; btn.disabled = true;
+  try {
+    const res  = await apiFetch('/api/gdd/export-data');
+    const { records, products, priceHistory, restaurants } = await res.json();
+
+    // Normaliza string para comparación flexible
+    const norm = s => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+
+    // Índice nombre normalizado → productId
+    const prodByName = {};
+    products.forEach(p => { prodByName[norm(p.name)] = p.id; });
+
+    // Por productId: lista de {mes, precio} ordenada desc para buscar el más cercano
+    const prodPrices = {}; // productId → [{mes, precio}] sorted desc by mes
+    priceHistory.forEach(ph => {
+      if (!prodPrices[ph.productId]) prodPrices[ph.productId] = [];
+      prodPrices[ph.productId].push({ mes: ph.mes, precio: ph.precio });
+    });
+    Object.values(prodPrices).forEach(arr => arr.sort((a, b) => b.mes.localeCompare(a.mes)));
+
+    // Obtener precio: solo mes exacto, si no hay → 0
+    function getPrecio(productId, targetMes) {
+      const entries = prodPrices[productId];
+      if (!entries?.length) return 0;
+      const exact = entries.find(e => e.mes === targetMes);
+      return exact ? exact.precio : 0;
+    }
+
+    // Índice restaurantId → nombre
+    const restById = {};
+    restaurants.forEach(r => { restById[r.id] = r.name || r.id; });
+
+    const wb = XLSX.utils.book_new();
+    const rows = [];
+    rows.push(['Año', 'Mes', 'Fecha', 'Proveedor', 'Categoría', 'Producto', 'Unidad', 'Cantidad', 'Precio unit.', 'Total ($)']);
+
+    const sorted = [...records].sort((a, b) => (a.fecha || '').localeCompare(b.fecha || ''));
+
+    sorted.forEach(rec => {
+      const mes = (rec.fecha || '').substring(0, 7);
+      const anio = (rec.fecha || '').substring(0, 4);
+      const mesNum = (rec.fecha || '').substring(5, 7);
+      (rec.items || []).forEach(item => {
+        if (item.cantidad === null || item.cantidad === undefined) return;
+        const pid    = prodByName[norm(item.producto)];
+        const precio = pid ? getPrecio(pid, mes) : 0;
+        const total  = precio * (item.cantidad ?? 0);
+        rows.push([anio, mesNum, rec.fecha||'', rec.proveedor||'', item.categoria||'', item.producto||'', item.unidad||'', item.cantidad??'', precio, total]);
+      });
+    });
+
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    ws['!cols'] = [6, 6, 12, 20, 16, 28, 8, 10, 14, 14].map(w => ({ wch: w }));
+    XLSX.utils.book_append_sheet(wb, ws, 'GDD');
+
+    // ── Hoja Resumen: Proveedor > Año > Mes > Total ──────
+    // Construir estructura agrupada
+    const resumen = {}; // resumen[proveedor][anio][mes] = total
+    sorted.forEach(rec => {
+      const prov   = rec.proveedor || '(en blanco)';
+      const anio   = (rec.fecha || '').substring(0, 4) || '(en blanco)';
+      const mesNum = (rec.fecha || '').substring(5, 7) || '(en blanco)';
+      const mes2   = (rec.fecha || '').substring(0, 7);
+      if (!resumen[prov]) resumen[prov] = {};
+      if (!resumen[prov][anio]) resumen[prov][anio] = {};
+      if (!resumen[prov][anio][mesNum]) resumen[prov][anio][mesNum] = 0;
+      (rec.items || []).forEach(item => {
+        if (item.cantidad == null) return;
+        const pid    = prodByName[norm(item.producto)];
+        const precio = pid ? getPrecio(pid, mes2) : 0;
+        resumen[prov][anio][mesNum] += precio * (item.cantidad ?? 0);
+      });
+    });
+
+    const rRows = [['Proveedor', 'Año', 'Mes', 'Total ($)']];
+    let grandTotal = 0;
+
+    Object.keys(resumen).sort().forEach(prov => {
+      let provTotal = 0;
+      Object.keys(resumen[prov]).sort().forEach(anio => {
+        let anioTotal = 0;
+        Object.keys(resumen[prov][anio]).sort().forEach(mes => {
+          const t = resumen[prov][anio][mes];
+          anioTotal += t;
+          rRows.push([prov, anio, mes, t]);
+        });
+        provTotal += anioTotal;
+      });
+      grandTotal += provTotal;
+    });
+
+    rRows.push(['Total general', '', '', grandTotal]);
+
+    const wsR = XLSX.utils.aoa_to_sheet(rRows);
+    wsR['!cols'] = [24, 8, 8, 14].map(w => ({ wch: w }));
+    XLSX.utils.book_append_sheet(wb, wsR, 'Resumen');
+
+    const fecha = new Date().toISOString().substring(0, 10);
+    XLSX.writeFile(wb, `GDD_Export_${fecha}.xlsx`);
+  } catch(e) {
+    alert('Error al exportar: ' + e.message);
+  } finally {
+    btn.textContent = '↓ Exportar Excel'; btn.disabled = false;
+  }
+}
+
+async function gddUpdateFecha(id, fecha) {
+  try {
+    const res = await apiFetch(`/api/gdd/records/${id}`, {
+      method: 'PATCH', body: JSON.stringify({ fecha })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+  } catch(e) { alert('Error al guardar fecha: ' + e.message); }
+}
+
+function gddToggleRecord(id) {
+  const detail = document.getElementById(`gdd-detail-${id}`);
+  const arrow  = document.getElementById(`gdd-arrow-${id}`);
+  const open   = detail.style.display === 'none';
+  detail.style.display = open ? 'block' : 'none';
+  arrow.textContent    = open ? '⌄' : '›';
 }
 </script>
 
