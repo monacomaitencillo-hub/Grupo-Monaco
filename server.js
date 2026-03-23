@@ -8,7 +8,7 @@ const os             = require('os');
 const path           = require('path');
 const { randomUUID } = require('crypto');
 
-const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || '';
+const ANTHROPIC_API_KEY = (process.env.ANTHROPIC_API_KEY || '').trim();
 const upload = multer({
   storage: multer.diskStorage({
     destination: (req, file, cb) => cb(null, os.tmpdir()),
