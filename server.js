@@ -1711,8 +1711,21 @@ Devuelve SOLO el JSON, nada más.`;
     const json = raw.replace(/```json|```/g, '').trim();
     const data = JSON.parse(json);
 
+    // Subir imagen a Firebase Storage
+    let imageUrl = null;
+    try {
+      const ext        = req.file.originalname.split('.').pop() || 'jpg';
+      const destName   = `gdd/${Date.now()}_${randomUUID()}.${ext}`;
+      const fileRef    = bucket.file(destName);
+      await fileRef.save(buf, { contentType: mime, resumable: false });
+      await fileRef.makePublic();
+      imageUrl = `https://storage.googleapis.com/${bucket.name}/${destName}`;
+    } catch(storageErr) {
+      console.error('Storage upload error (no fatal):', storageErr.message);
+    }
+
     fs.unlinkSync(req.file.path);
-    res.json({ ok: true, data });
+    res.json({ ok: true, data, imageUrl });
   } catch(e) {
     try { fs.unlinkSync(req.file.path); } catch {}
     res.status(500).json({ error: e.message });
@@ -1720,7 +1733,7 @@ Devuelve SOLO el JSON, nada más.`;
 });
 
 app.post('/api/gdd/records', requireAuth, async (req, res) => {
-  const { proveedor, fecha, items, restaurantId } = req.body;
+  const { proveedor, fecha, items, restaurantId, imageUrl } = req.body;
   if (!items?.length) return res.status(400).json({ error: 'Items requeridos' });
   const userDoc  = await db.collection('users').doc(req.uid).get();
   const userData = userDoc.data();
@@ -1729,11 +1742,30 @@ app.post('/api/gdd/records', requireAuth, async (req, res) => {
     fecha:        fecha || '',
     items,
     restaurantId: restaurantId || '',
+    imageUrl:     imageUrl || null,
     createdAt:    new Date().toISOString(),
     createdBy:    req.email,
     createdByName: userData?.name || req.email
   });
   res.json({ ok: true, id: ref.id });
+});
+
+app.patch('/api/gdd/records/:id/items', requireAuth, async (req, res) => {
+  const { idx, cantidad } = req.body;
+  if (idx === undefined) return res.status(400).json({ error: 'idx requerido' });
+  const docRef = db.collection('gdd_records').doc(req.params.id);
+  const doc = await docRef.get();
+  if (!doc.exists) return res.status(404).json({ error: 'No encontrado' });
+  const items = doc.data().items || [];
+  if (idx < 0 || idx >= items.length) return res.status(400).json({ error: 'Índice inválido' });
+  items[idx] = { ...items[idx], cantidad: cantidad === null ? null : Number(cantidad) };
+  await docRef.update({ items });
+  res.json({ ok: true });
+});
+
+app.delete('/api/gdd/records/:id', requireAuth, async (req, res) => {
+  await db.collection('gdd_records').doc(req.params.id).delete();
+  res.json({ ok: true });
 });
 
 app.get('/api/gdd/records', requireAuth, async (req, res) => {

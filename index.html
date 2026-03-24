@@ -5083,31 +5083,20 @@ async function addNewPage() {
 
 function handleEditorPaste(e) {
   e.preventDefault();
-  // Try to get HTML first to preserve line breaks; fall back to plain text
+  // Always paste as plain text to avoid bloat from Word/Docs HTML
   const html  = e.clipboardData.getData('text/html');
   const plain = e.clipboardData.getData('text/plain');
-  if (html) {
-    // Strip external styles/classes but keep basic tags and emojis
+  let text = plain;
+  if (!text && html) {
+    // Extract plain text from HTML as fallback
     const tmp = document.createElement('div');
     tmp.innerHTML = html;
-    // Remove all style, class, id, data-* attrs to avoid bloat
-    tmp.querySelectorAll('*').forEach(el => {
-      el.removeAttribute('style');
-      el.removeAttribute('class');
-      el.removeAttribute('id');
-      [...el.attributes].forEach(a => { if (a.name.startsWith('data-')) el.removeAttribute(a.name); });
-    });
-    // Remove script/head/meta tags
-    tmp.querySelectorAll('script,style,head,meta,link').forEach(el => el.remove());
-    const cleaned = tmp.innerHTML;
-    document.execCommand('insertHTML', false, cleaned);
-  } else {
-    // Plain text: preserve newlines as <br>
-    const escaped = plain
-      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-      .replace(/\n/g,'<br>');
-    document.execCommand('insertHTML', false, escaped);
+    text = tmp.innerText || tmp.textContent || '';
   }
+  const escaped = text
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/\n/g,'<br>');
+  document.execCommand('insertHTML', false, escaped);
   schedulePageSave();
 }
 
@@ -5124,7 +5113,7 @@ async function saveCurrentPage() {
   const content = document.getElementById('reun-content-editor').innerHTML;
   // Update local state
   const idx = reunPages.findIndex(p => p.id === activePageId);
-  if (idx !== -1) reunPages[idx].name = name;
+  if (idx !== -1) { reunPages[idx].name = name; reunPages[idx].content = content; }
   renderPagesList();
   try {
     await apiFetch(`/api/reuniones/pages/${activePageId}`, {
@@ -5245,6 +5234,7 @@ async function gddHandleFile(input) {
     const json = await res.json();
     if (json.error) throw new Error(json.error);
     gddData = json.data;
+    gddData._imageUrl = json.imageUrl || null;
     gddRenderResult();
   } catch(e) {
     document.getElementById('gdd-step-loading').style.display = 'none';
@@ -5257,7 +5247,11 @@ function gddRenderResult() {
   document.getElementById('gdd-step-loading').style.display = 'none';
   document.getElementById('gdd-step-result').style.display  = 'block';
   document.getElementById('gdd-result-proveedor').textContent = gddData.proveedor || 'Proveedor desconocido';
-  document.getElementById('gdd-result-fecha').textContent     = gddData.fecha ? `Fecha: ${gddData.fecha}` : '';
+  const fechaEl = document.getElementById('gdd-result-fecha');
+  fechaEl.innerHTML = `<span style="font-size:13px;color:#6c757d">Fecha:</span>
+    <input type="date" value="${gddData.fecha || ''}"
+      style="border:1px solid #dee2e6;border-radius:6px;padding:3px 8px;font-size:13px;color:#212529;background:#fff;margin-left:6px"
+      onchange="gddData.fecha = this.value">`;
   const tbody = document.getElementById('gdd-result-tbody');
   tbody.innerHTML = (gddData.items || []).map((item, i) => {
     const isEmpty = item.cantidad === null || item.cantidad === undefined;
@@ -5290,7 +5284,8 @@ async function gddSave() {
         proveedor:    gddData.proveedor,
         fecha:        gddData.fecha,
         items:        gddData.items,
-        restaurantId: activeRestId || ''
+        restaurantId: activeRestId || '',
+        imageUrl:     gddData._imageUrl || null
       })
     });
     const data = await res.json();
@@ -5332,9 +5327,15 @@ async function gddLoadHistory() {
                   onchange="gddUpdateFecha('${r.id}',this.value)">
               </div>
               <span>· ${itemsConCantidad.length} producto${itemsConCantidad.length !== 1 ? 's' : ''} · ${r.createdByName || r.createdBy || ''}</span>
+              ${r.imageUrl ? `<a href="${r.imageUrl}" target="_blank" style="color:#ff5023;font-size:11px;text-decoration:none;font-weight:500">📎 Ver imagen</a>` : ''}
             </div>
           </div>
-          <span style="font-size:18px;color:#adb5bd;cursor:pointer" id="gdd-arrow-${r.id}" onclick="gddToggleRecord('${r.id}')">›</span>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:18px;color:#adb5bd;cursor:pointer" id="gdd-arrow-${r.id}" onclick="gddToggleRecord('${r.id}')">›</span>
+            <button onclick="gddDeleteRecord('${r.id}',this)" title="Eliminar GDD"
+              style="border:none;background:none;color:#adb5bd;font-size:16px;cursor:pointer;padding:4px;border-radius:6px;line-height:1"
+              onmouseover="this.style.color='#dc3545'" onmouseout="this.style.color='#adb5bd'">🗑</button>
+          </div>
         </div>
         <div id="gdd-detail-${r.id}" style="display:none;padding:0 20px 16px">
           <table style="width:100%;border-collapse:collapse;font-size:13px">
@@ -5347,12 +5348,18 @@ async function gddLoadHistory() {
               </tr>
             </thead>
             <tbody>
-              ${(r.items || []).map(item => `
-                <tr style="border-bottom:1px solid #f0f0f0;${item.cantidad === null || item.cantidad === undefined ? 'opacity:.45' : ''}">
+              ${(r.items || []).map((item, idx) => `
+                <tr style="border-bottom:1px solid #f0f0f0">
                   <td style="padding:6px 8px;color:#6c757d;font-size:12px">${item.categoria || ''}</td>
                   <td style="padding:6px 8px;color:#212529">${item.producto || ''}</td>
                   <td style="padding:6px 8px;text-align:center;color:#6c757d">${item.unidad || ''}</td>
-                  <td style="padding:6px 8px;text-align:center;font-weight:600;color:${item.cantidad ? '#212529' : '#adb5bd'}">${item.cantidad ?? '—'}</td>
+                  <td style="padding:6px 8px;text-align:center">
+                    <input type="number" min="0" step="0.01"
+                      value="${item.cantidad ?? ''}"
+                      placeholder="—"
+                      style="width:72px;padding:3px 6px;border:1px solid #dee2e6;border-radius:6px;text-align:center;font-size:13px;font-weight:600"
+                      onchange="gddUpdateItemCantidad('${r.id}', ${idx}, this.value, this)">
+                  </td>
                 </tr>`).join('')}
             </tbody>
           </table>
@@ -5469,6 +5476,36 @@ async function gddExportExcel() {
     alert('Error al exportar: ' + e.message);
   } finally {
     btn.textContent = '↓ Exportar Excel'; btn.disabled = false;
+  }
+}
+
+async function gddUpdateItemCantidad(recordId, idx, value, input) {
+  const cantidad = value === '' ? null : Number(value);
+  input.style.borderColor = '#dee2e6';
+  try {
+    // Fetch current items, update the one at idx, save back
+    const res  = await apiFetch(`/api/gdd/records/${recordId}/items`, {
+      method: 'PATCH',
+      body: JSON.stringify({ idx, cantidad })
+    });
+    if (!res.ok) throw new Error('Error al guardar');
+    input.style.borderColor = '#16a34a';
+    setTimeout(() => input.style.borderColor = '#dee2e6', 1200);
+  } catch(e) {
+    input.style.borderColor = '#dc3545';
+    alert('Error: ' + e.message);
+  }
+}
+
+async function gddDeleteRecord(id, btn) {
+  if (!confirm('¿Eliminar esta guía de despacho?')) return;
+  btn.disabled = true;
+  try {
+    await apiFetch(`/api/gdd/records/${id}`, { method: 'DELETE' });
+    btn.closest('div[style*="border-radius:12px"]').remove();
+  } catch(e) {
+    alert('Error al eliminar: ' + e.message);
+    btn.disabled = false;
   }
 }
 
