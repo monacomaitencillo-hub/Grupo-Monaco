@@ -1133,7 +1133,7 @@
     <div class="inv-tabs">
       <button class="inv-tab active" id="itab-clientes"    onclick="switchInvTab('clientes')">Clientes</button>
       <button class="inv-tab"        id="itab-catalogo"    onclick="switchInvTab('catalogo')">Catálogo</button>
-      <button class="inv-tab"        id="itab-productos"   onclick="switchInvTab('productos')">Productos</button>
+      <button class="inv-tab"        id="itab-productos"   onclick="switchInvTab('productos')">Ingredientes</button>
       <button class="inv-tab"        id="itab-proveedores" onclick="switchInvTab('proveedores')">Proveedores</button>
       <button class="inv-tab"        id="itab-alertas"     onclick="switchInvTab('alertas')" style="display:none">Alertas</button>
     </div>
@@ -1412,7 +1412,7 @@ async function doLogout() {
   document.getElementById('login-screen').style.display = 'flex';
 }
 
-const ALL_MODULES_EL = ['hub','dashboard','inventario','registro-inv-module','add-stock-module','cierres-module','pdf-upload-module','pdf-view-module','usuarios-module','pedidos-module','reuniones-module','gdd-module'];
+const ALL_MODULES_EL = ['hub','dashboard','inventario','registro-inv-module','add-stock-module','cierres-module','pdf-upload-module','pdf-view-module','usuarios-module','pedidos-module','reuniones-module','gdd-module','margenes-module'];
 function hideAll() { ALL_MODULES_EL.forEach(id => { const el = document.getElementById(id); if(el) el.style.display = 'none'; }); }
 // Note: hideAll() does NOT hide #admin-wrapper — goToHub() handles that separately
 
@@ -1428,7 +1428,7 @@ function goTo(module) {
     ventas: 'Ventas', stock: 'Añadir stock', inventario: 'Gestión de Clientes y Proveedor',
     'registro-inv': 'Registro de Inventarios', cierres: 'Cierres de caja', pedidos: 'Pedidos Helados',
     'pdf-upload': 'Añadir PDF', 'pdf-view': 'Ver Manual', usuarios: 'Usuarios', reuniones: 'Reuniones',
-    gdd: 'Guías de Despacho'
+    gdd: 'Guías de Despacho', margenes: 'Márgenes'
   };
   const titleEl = document.getElementById('admin-topbar-title');
   if (titleEl) titleEl.textContent = moduleNames[module] || module;
@@ -1483,6 +1483,9 @@ function goTo(module) {
       restaurants.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
     gddReset();
     gddSwitchTab('nueva');
+  } else if (module === 'margenes') {
+    document.getElementById('margenes-module').style.display = 'flex';
+    initMargenesModule();
   }
 }
 
@@ -2274,6 +2277,7 @@ async function renderAdminUsuarios() {
             <label><input type="checkbox" class="nu-module" value="pedidos"> Pedidos Helados</label>
             <label><input type="checkbox" class="nu-module" value="reuniones"> Reuniones</label>
             <label><input type="checkbox" class="nu-module" value="gdd"> Guías de Despacho</label>
+            <label><input type="checkbox" class="nu-module" value="margenes"> Márgenes</label>
             <label><input type="checkbox" class="nu-module" value="pdf-view"> Ver Manual</label>
           </div>
         </div>
@@ -2382,6 +2386,7 @@ async function editPermisos(uid, name) {
           <label><input type="checkbox" class="ep-module" value="pedidos"       ${currentMods.includes('pedidos')?'checked':''}> Pedidos</label>
           <label><input type="checkbox" class="ep-module" value="reuniones"     ${currentMods.includes('reuniones')?'checked':''}> Reuniones</label>
           <label><input type="checkbox" class="ep-module" value="gdd"           ${currentMods.includes('gdd')?'checked':''}> Guías de Despacho</label>
+          <label><input type="checkbox" class="ep-module" value="margenes"      ${currentMods.includes('margenes')?'checked':''}> Márgenes</label>
           <label><input type="checkbox" class="ep-module" value="pdf-view"      ${currentMods.includes('pdf-view')?'checked':''}> Ver Manual</label>
         </div>
         <div class="field-label" style="margin-top:12px">Categorías de inventario (vacío = todas)</div>
@@ -2533,6 +2538,7 @@ async function usuariosShowForm() {
             <label><input type="checkbox" class="nu-module" value="pedidos"> Pedidos Helados</label>
             <label><input type="checkbox" class="nu-module" value="reuniones"> Reuniones</label>
             <label><input type="checkbox" class="nu-module" value="gdd"> Guías de Despacho</label>
+            <label><input type="checkbox" class="nu-module" value="margenes"> Márgenes</label>
             <label><input type="checkbox" class="nu-module" value="pdf-view"> Ver Manual</label>
           </div>
         </div>
@@ -2613,6 +2619,7 @@ async function usuariosEditUser(uid, name) {
           <label><input type="checkbox" class="ep-module" value="pedidos"       ${currentMods.includes('pedidos')?'checked':''}> Pedidos</label>
           <label><input type="checkbox" class="ep-module" value="reuniones"     ${currentMods.includes('reuniones')?'checked':''}> Reuniones</label>
           <label><input type="checkbox" class="ep-module" value="gdd"           ${currentMods.includes('gdd')?'checked':''}> Guías de Despacho</label>
+          <label><input type="checkbox" class="ep-module" value="margenes"      ${currentMods.includes('margenes')?'checked':''}> Márgenes</label>
           <label><input type="checkbox" class="ep-module" value="pdf-view"      ${currentMods.includes('pdf-view')?'checked':''}> Ver Manual</label>
         </div>
         <div class="field-label" style="margin-top:12px">Categorías de inventario (vacío = todas)</div>
@@ -2792,6 +2799,7 @@ function renderAdminSidebar() {
     { id: 'pedidos',      icon: 'fas fa-shopping-cart',   name: 'Pedidos Helados',                     adminOnly: false },
     { id: 'reuniones',    icon: 'fas fa-users',           name: 'Reuniones',                   adminOnly: false },
     { id: 'gdd',          icon: 'fas fa-file-invoice',    name: 'Guías de Despacho',           adminOnly: false },
+    { id: 'margenes',     icon: 'fas fa-percentage',      name: 'Márgenes',                    adminOnly: false },
     { id: 'pdf-upload',   icon: 'fas fa-file-upload',     name: 'Añadir PDF',                  adminOnly: true  },
     { id: 'pdf-view',     icon: 'fas fa-book',            name: 'Ver Manual',                  adminOnly: false },
     { id: 'usuarios',     icon: 'fas fa-user-cog',        name: 'Usuarios',                    adminOnly: true  },
@@ -2862,6 +2870,7 @@ function renderSidebar() {
     { id: 'pdf-view',      icon: '📄', name: 'Ver Manual',                    bg: 'linear-gradient(135deg,#0e7490,#06b6d4)', adminOnly: false },
     { id: 'reuniones',     icon: '📋', name: 'Reuniones',                     bg: 'linear-gradient(135deg,#5b6af0,#7c8cf8)', adminOnly: false },
     { id: 'gdd',           icon: '📦', name: 'Guías de Despacho',             bg: 'linear-gradient(135deg,#0e7490,#06b6d4)', adminOnly: false },
+    { id: 'margenes',      icon: '📐', name: 'Márgenes',                      bg: 'linear-gradient(135deg,#7c3aed,#a855f7)', adminOnly: false },
     { id: 'usuarios',      icon: '👥', name: 'Usuarios',                      bg: 'linear-gradient(135deg,#c95e6b,#e07585)', adminOnly: true  },
   ];
   const visible = allModules.filter(m => {
@@ -2896,6 +2905,7 @@ function renderHub() {
     { id: 'pdf-view',      icon: '📄', name: 'Ver Manual',                    bg: 'linear-gradient(135deg,#0e7490,#06b6d4)', adminOnly: false },
     { id: 'reuniones',     icon: '📋', name: 'Reuniones',                     bg: 'linear-gradient(135deg,#5b6af0,#7c8cf8)', adminOnly: false },
     { id: 'gdd',           icon: '📦', name: 'Guías de Despacho',             bg: 'linear-gradient(135deg,#0e7490,#06b6d4)', adminOnly: false },
+    { id: 'margenes',      icon: '📐', name: 'Márgenes',                      bg: 'linear-gradient(135deg,#7c3aed,#a855f7)', adminOnly: false },
     { id: 'usuarios',      icon: '👥', name: 'Usuarios',                      bg: 'linear-gradient(135deg,#c95e6b,#e07585)', adminOnly: true  },
   ];
   const visible = allModules.filter(m => {
@@ -2967,14 +2977,14 @@ async function loadAddStockForm() {
     return;
   }
 
-  wrap.innerHTML = '<div style="color:#555;font-size:13px;padding:20px 0">Cargando productos...</div>';
+  wrap.innerHTML = '<div style="color:#555;font-size:13px;padding:20px 0">Cargando ingredientes...</div>';
 
   const sectionParam = addStockSection ? `?section=${encodeURIComponent(addStockSection)}` : '';
   const res  = await apiFetch(`/api/inv/stock/${addStockRestId}${sectionParam}`);
   addStockItems = (await res.json()).items || [];
 
   if (!addStockItems.length) {
-    wrap.innerHTML = '<div style="color:#444;font-size:13px;padding:20px 0">No hay productos asignados a este local. Ve a Inventario → Productos y asígnalos.</div>';
+    wrap.innerHTML = '<div style="color:#444;font-size:13px;padding:20px 0">No hay ingredientes asignados a este local. Ve a Inventario → Ingredientes y asígnalos.</div>';
     return;
   }
 
@@ -3020,7 +3030,7 @@ async function loadAddStockForm() {
             onfocus="this.style.borderColor='#ff5023'" onblur="this.style.borderColor='#222'">
         </div>
         <div style="text-align:right;line-height:1.6">
-          <div style="font-size:12px;color:#444">${addStockItems.length} productos</div>
+          <div style="font-size:12px;color:#444">${addStockItems.length} ingredientes</div>
           <div style="font-size:13px;color:#aaa;font-weight:500">${restaurants.find(r=>r.id===addStockRestId)?.name||''}${addStockSection ? ' · ' + addStockSection : ''}</div>
           ${addStockSection ? `<button type="button" onclick="addStockSection='';loadAddStockForm()"
             style="margin-top:4px;font-size:11px;color:#555;background:none;border:none;cursor:pointer;text-decoration:underline">cambiar sección</button>` : ''}
@@ -3095,7 +3105,7 @@ async function guardarInventario(e) {
     const data = await res.json();
     if (data.error) throw new Error(data.error);
     msg.className = 'inline-ok';
-    msg.textContent = `✓ Inventario del ${date} guardado — ${items.length} producto${items.length>1?'s':''} registrado${items.length>1?'s':''}`;
+    msg.textContent = `✓ Inventario del ${date} guardado — ${items.length} ingrediente${items.length>1?'s':''} registrado${items.length>1?'s':''}`;
     // Reset inputs
     document.querySelectorAll('[data-product]').forEach(i => i.value = '');
     setTimeout(() => loadAddStockForm(), 1800);
@@ -3207,11 +3217,11 @@ function renderProdTable() {
 
   el.innerHTML = `
     <div class="inv-toolbar">
-      <h2>Productos</h2>
-      ${(userRole === 'admin' || userRole === 'superadmin') ? '<button class="btn-new" onclick="openModalProducto()">+ Nuevo producto</button>' : ''}
+      <h2>Ingredientes</h2>
+      ${(userRole === 'admin' || userRole === 'superadmin') ? '<button class="btn-new" onclick="openModalProducto()">+ Nuevo ingrediente</button>' : ''}
     </div>
     <div class="prod-filters">
-      <input class="prod-filter-sel" type="search" placeholder="Buscar producto..." value="${prodFilterSearch}"
+      <input class="prod-filter-sel" type="search" placeholder="Buscar ingrediente..." value="${prodFilterSearch}"
         oninput="clearTimeout(this._t);this._t=setTimeout(()=>{prodFilterSearch=this.value;renderProdTable()},350)" style="min-width:180px">
       <select class="prod-filter-sel" onchange="prodFilterCat=this.value;renderProdTable()">
         <option value="">Todas las categorías</option>
@@ -3226,7 +3236,7 @@ function renderProdTable() {
         Solo GDD
       </label>
       ${(prodFilterCat||prodFilterSup||prodFilterSearch||prodFilterGDD) ? `<button class="prod-filter-clear" onclick="prodFilterCat='';prodFilterSup='';prodFilterSearch='';prodFilterGDD=false;renderProdTable()">✕ Limpiar</button>` : ''}
-      <span style="margin-left:auto;font-size:12px;color:#444">${filtered.length} productos</span>
+      <span style="margin-left:auto;font-size:12px;color:#444">${filtered.length} ingredientes</span>
     </div>
     <table class="inv-table">
       <thead><tr><th>Nombre</th><th>Categoría</th><th>Unidad</th><th>Proveedores</th>${(userRole==='admin'||userRole==='superadmin')?'<th></th>':''}</tr></thead>
@@ -3277,7 +3287,7 @@ function openModalProducto(id) {
         <button onclick="renderProdTable()" style="background:none;border:1px solid #dee2e6;border-radius:8px;padding:7px 14px;font-size:13px;color:#495057;cursor:pointer;display:flex;align-items:center;gap:6px">
           ← Volver
         </button>
-        <h2 style="font-size:18px;font-weight:700;color:#212529;margin:0">${p ? 'Editar producto' : 'Nuevo producto'}</h2>
+        <h2 style="font-size:18px;font-weight:700;color:#212529;margin:0">${p ? 'Editar ingrediente' : 'Nuevo ingrediente'}</h2>
       </div>
 
       <input type="hidden" id="mprod-id" value="${p?.id||''}">
@@ -3285,7 +3295,7 @@ function openModalProducto(id) {
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
         <div>
           <div class="field-label">Nombre</div>
-          <input id="mprod-name" class="inv-input" value="${p?.name||''}" placeholder="Nombre del producto">
+          <input id="mprod-name" class="inv-input" value="${p?.name||''}" placeholder="Nombre del ingrediente">
         </div>
         <div>
           <div class="field-label">Categoría</div>
@@ -3293,18 +3303,24 @@ function openModalProducto(id) {
         </div>
       </div>
 
-      <div style="margin-bottom:16px">
-        <div class="field-label">Unidad</div>
-        <select id="mprod-unit" class="inv-input" style="max-width:200px">
-          <option value="unidad" ${(p?.unit||'unidad')==='unidad'?'selected':''}>Unidad</option>
-          <option value="kg"     ${p?.unit==='kg'?'selected':''}>Kilogramo (kg)</option>
-          <option value="g"      ${p?.unit==='g'?'selected':''}>Gramo (g)</option>
-          <option value="L"      ${p?.unit==='L'?'selected':''}>Litro (L)</option>
-          <option value="ml"     ${p?.unit==='ml'?'selected':''}>Mililitro (ml)</option>
-          <option value="caja"   ${p?.unit==='caja'?'selected':''}>Caja</option>
-          <option value="bolsa"  ${p?.unit==='bolsa'?'selected':''}>Bolsa</option>
-          <option value="botella"${p?.unit==='botella'?'selected':''}>Botella</option>
-        </select>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+        <div>
+          <div class="field-label">Unidad</div>
+          <select id="mprod-unit" class="inv-input">
+            <option value="unidad" ${(p?.unit||'unidad')==='unidad'?'selected':''}>Unidad</option>
+            <option value="kg"     ${p?.unit==='kg'?'selected':''}>Kilogramo (kg)</option>
+            <option value="g"      ${p?.unit==='g'?'selected':''}>Gramo (g)</option>
+            <option value="L"      ${p?.unit==='L'?'selected':''}>Litro (L)</option>
+            <option value="ml"     ${p?.unit==='ml'?'selected':''}>Mililitro (ml)</option>
+            <option value="caja"   ${p?.unit==='caja'?'selected':''}>Caja</option>
+            <option value="bolsa"  ${p?.unit==='bolsa'?'selected':''}>Bolsa</option>
+            <option value="botella"${p?.unit==='botella'?'selected':''}>Botella</option>
+          </select>
+        </div>
+        <div>
+          <div class="field-label">Costo por unidad ($)</div>
+          <input id="mprod-cost" class="inv-input" type="number" min="0" value="${p?.costPerUnit||''}" placeholder="Ej: 1200">
+        </div>
       </div>
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
@@ -3431,9 +3447,10 @@ async function saveProducto() {
     if (secs.length) restaurantSections[restId] = secs;
   });
   const body = {
-    name:     document.getElementById('mprod-name').value.trim(),
-    category: document.getElementById('mprod-cat').value.trim(),
-    unit:     document.getElementById('mprod-unit').value,
+    name:         document.getElementById('mprod-name').value.trim(),
+    category:     document.getElementById('mprod-cat').value.trim(),
+    unit:         document.getElementById('mprod-unit').value,
+    costPerUnit:  Number(document.getElementById('mprod-cost').value) || 0,
     restaurantIds,
     supplierIds: [...document.querySelectorAll('#mprod-suppliers input:checked')].map(c => c.value),
     restaurantSections,
@@ -3454,7 +3471,7 @@ async function saveProducto() {
 }
 
 async function delProducto(id, name) {
-  if (!confirm(`¿Eliminar producto "${name}"?`)) return;
+  if (!confirm(`¿Eliminar ingrediente "${name}"?`)) return;
   await apiFetch(`/api/inv/products/${id}`, { method: 'DELETE' });
   invProducts = invProducts.filter(p => p.id !== id);
   renderProdTable();
@@ -5888,6 +5905,391 @@ function gddToggleRecord(id) {
   detail.style.display = open ? 'block' : 'none';
   arrow.textContent    = open ? '⌄' : '›';
 }
+
+// ── Márgenes ───────────────────────────────────────────────
+let margenTabActive  = 'recetas';
+let margenRecipes    = [];
+let margenIngredients = [];
+let margenFilterRest = '';
+
+async function initMargenesModule() {
+  margenTabActive = 'recetas';
+  ['recetas','costos'].forEach(t => {
+    document.getElementById(`mtab-${t}`).classList.toggle('active', t === 'recetas');
+    document.getElementById(`marg-${t}`).style.display = t === 'recetas' ? '' : 'none';
+  });
+  document.getElementById('marg-recetas').innerHTML = '<div style="color:#555;font-size:13px;padding:20px">Cargando...</div>';
+  await loadMargenData();
+  renderMargenRecetas();
+}
+
+async function loadMargenData() {
+  const [rr, pr] = await Promise.all([apiFetch('/api/recipes'), apiFetch('/api/inv/products')]);
+  margenRecipes     = (await rr.json()).recipes  || [];
+  margenIngredients = (await pr.json()).products || [];
+}
+
+function switchMargenTab(tab) {
+  margenTabActive = tab;
+  ['recetas','costos'].forEach(t => {
+    document.getElementById(`mtab-${t}`).classList.toggle('active', t === tab);
+    document.getElementById(`marg-${t}`).style.display = t === tab ? '' : 'none';
+  });
+  if (tab === 'recetas') renderMargenRecetas();
+  if (tab === 'costos')  renderMargenCostos();
+}
+
+function renderMargenRecetas() {
+  const el = document.getElementById('marg-recetas');
+  let filtered = margenRecipes;
+  if (margenFilterRest) filtered = filtered.filter(r => r.restaurantId === margenFilterRest);
+
+  el.innerHTML = `
+    <div class="inv-toolbar" style="flex-wrap:wrap;gap:10px">
+      <h2 style="margin:0">Recetas</h2>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-left:auto">
+        <select class="prod-filter-sel" onchange="margenFilterRest=this.value;renderMargenRecetas()">
+          <option value="">Todos los locales</option>
+          ${restaurants.map(r=>`<option value="${r.id}" ${margenFilterRest===r.id?'selected':''}>${r.name}</option>`).join('')}
+        </select>
+        <label style="cursor:pointer;display:inline-flex;align-items:center">
+          <input type="file" accept=".xlsx,.xls" style="display:none" onchange="margenImportExcel(this)">
+          <span class="btn-new" style="cursor:pointer;padding:7px 14px;font-size:13px" onclick="this.closest('label').querySelector('input').click()">⬆ Subir Excel</span>
+        </label>
+        <button class="btn-edit" onclick="margenDescargarPlantilla()" style="padding:7px 14px;font-size:13px">⬇ Plantilla</button>
+        <button class="btn-edit" onclick="margenExportarExcel()"      style="padding:7px 14px;font-size:13px">⬇ Exportar</button>
+      </div>
+    </div>
+    ${filtered.length === 0
+      ? `<div style="text-align:center;padding:60px 20px;color:#888">
+           <div style="font-size:40px;margin-bottom:12px">📐</div>
+           <div style="font-size:15px;font-weight:600;margin-bottom:6px">Sin recetas aún</div>
+           <div style="font-size:13px;color:#aaa">Subí un Excel con tus recetas para empezar, o descargá la plantilla.</div>
+         </div>`
+      : `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:16px;padding:4px 0 24px">
+           ${filtered.map(r => margenCardHTML(r)).join('')}
+         </div>`
+    }`;
+}
+
+function margenCardHTML(r) {
+  let totalCost = 0;
+  (r.ingredients || []).forEach(item => {
+    const prod = margenIngredients.find(p => p.id === item.productId || p.name === item.name);
+    totalCost += (prod?.costPerUnit || 0) * (item.quantity || 0);
+  });
+  const selling   = r.sellingPrice || 0;
+  const margin    = selling > 0 ? ((selling - totalCost) / selling * 100) : null;
+  const mColor    = margin === null ? '#888' : margin >= 60 ? '#16a34a' : margin >= 40 ? '#ca8a04' : '#dc2626';
+  const ingCount  = (r.ingredients || []).filter(i => i.quantity > 0).length;
+
+  return `
+    <div onclick="margenOpenRecipe('${r.id}')"
+      style="background:#fff;border:1px solid #e9ecef;border-radius:14px;padding:20px;cursor:pointer;transition:box-shadow .18s,transform .18s;position:relative"
+      onmouseover="this.style.boxShadow='0 6px 24px rgba(0,0,0,.09)';this.style.transform='translateY(-2px)'"
+      onmouseout="this.style.boxShadow='';this.style.transform=''">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px">
+        <div>
+          <div style="font-size:15px;font-weight:700;color:#212529;line-height:1.3">${r.name}</div>
+          <div style="font-size:12px;color:#6c757d;margin-top:3px">${r.restaurantName || '—'}</div>
+        </div>
+        ${margin !== null
+          ? `<div style="flex-shrink:0;background:${mColor}18;color:${mColor};border:1.5px solid ${mColor}44;border-radius:20px;padding:3px 11px;font-size:13px;font-weight:700;margin-left:10px">${margin.toFixed(1)}%</div>`
+          : `<div style="flex-shrink:0;background:#f1f3f4;color:#aaa;border-radius:20px;padding:3px 11px;font-size:12px">Sin precio</div>`}
+      </div>
+      <div style="display:flex;justify-content:space-between;border-top:1px solid #f1f3f4;padding-top:12px;gap:8px">
+        <div style="text-align:center;flex:1">
+          <div style="font-size:10px;color:#adb5bd;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">Costo</div>
+          <div style="font-size:14px;font-weight:700;color:#212529">${totalCost > 0 ? '$'+Math.round(totalCost).toLocaleString('es-CL') : '—'}</div>
+        </div>
+        <div style="width:1px;background:#f1f3f4"></div>
+        <div style="text-align:center;flex:1">
+          <div style="font-size:10px;color:#adb5bd;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">Venta</div>
+          <div style="font-size:14px;font-weight:700;color:#212529">${selling > 0 ? '$'+selling.toLocaleString('es-CL') : '—'}</div>
+        </div>
+        <div style="width:1px;background:#f1f3f4"></div>
+        <div style="text-align:center;flex:1">
+          <div style="font-size:10px;color:#adb5bd;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">Ingredientes</div>
+          <div style="font-size:14px;font-weight:700;color:#212529">${ingCount}</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function margenOpenRecipe(id) {
+  const r = margenRecipes.find(x => x.id === id);
+  if (!r) return;
+
+  const items = (r.ingredients || []).filter(i => i.quantity > 0);
+  let totalCost = 0;
+
+  const rowsHtml = items.map(item => {
+    const prod   = margenIngredients.find(p => p.id === item.productId || p.name === item.name);
+    const cpUnit = prod?.costPerUnit || 0;
+    const cost   = cpUnit * (item.quantity || 0);
+    totalCost   += cost;
+    return `<tr style="border-bottom:1px solid #f1f3f4">
+      <td style="padding:10px 16px;font-size:13px;color:#212529;font-weight:500">${item.name}</td>
+      <td style="padding:10px 16px;font-size:13px;color:#495057;white-space:nowrap">${item.quantity} ${prod?.unit||''}</td>
+      <td style="padding:10px 16px;font-size:13px;color:#6c757d;white-space:nowrap">${cpUnit > 0 ? '$'+cpUnit.toLocaleString('es-CL')+'/'+prod?.unit : '—'}</td>
+      <td style="padding:10px 16px;font-size:13px;font-weight:600;color:#212529;text-align:right;white-space:nowrap">${cost > 0 ? '$'+Math.round(cost).toLocaleString('es-CL') : '—'}</td>
+    </tr>`;
+  }).join('');
+
+  const selling    = r.sellingPrice || 0;
+  const marginAbs  = selling > 0 ? selling - totalCost : null;
+  const marginPct  = selling > 0 ? (marginAbs / selling * 100) : null;
+  const mColor     = marginPct === null ? '#888' : marginPct >= 60 ? '#16a34a' : marginPct >= 40 ? '#ca8a04' : '#dc2626';
+
+  document.getElementById('marg-modal-title').textContent = r.name;
+  document.getElementById('marg-modal-sub').textContent   = r.restaurantName || '';
+  document.getElementById('marg-modal-id').value          = id;
+  document.getElementById('marg-modal-body').innerHTML = `
+    <div style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse">
+        <thead>
+          <tr style="border-bottom:2px solid #e9ecef;background:#f8f9fa">
+            <th style="padding:10px 16px;text-align:left;font-size:11px;color:#6c757d;font-weight:600;text-transform:uppercase;white-space:nowrap">Ingrediente</th>
+            <th style="padding:10px 16px;text-align:left;font-size:11px;color:#6c757d;font-weight:600;text-transform:uppercase;white-space:nowrap">Cantidad</th>
+            <th style="padding:10px 16px;text-align:left;font-size:11px;color:#6c757d;font-weight:600;text-transform:uppercase;white-space:nowrap">Costo unit.</th>
+            <th style="padding:10px 16px;text-align:right;font-size:11px;color:#6c757d;font-weight:600;text-transform:uppercase;white-space:nowrap">Subtotal</th>
+          </tr>
+        </thead>
+        <tbody>${rowsHtml || '<tr><td colspan="4" style="padding:20px 16px;color:#aaa;font-size:13px">Sin ingredientes registrados</td></tr>'}</tbody>
+      </table>
+    </div>
+    <div style="padding:16px 20px;background:#f8f9fa;border-top:2px solid #e9ecef">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <span style="font-size:13px;color:#495057;font-weight:500">Costo total ingredientes</span>
+        <span style="font-size:15px;font-weight:700;color:#212529">${totalCost > 0 ? '$'+Math.round(totalCost).toLocaleString('es-CL') : '—'}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:${marginPct!==null?'10px':'0'}">
+        <span style="font-size:13px;color:#495057;font-weight:500">Precio de venta</span>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="display:flex;align-items:center;border:1.5px solid #dee2e6;border-radius:8px;overflow:hidden;background:#fff">
+            <span style="padding:0 10px;color:#888;font-size:13px;background:#f8f9fa;border-right:1px solid #dee2e6">$</span>
+            <input type="number" id="marg-selling-price" value="${r.sellingPrice||''}" min="0" placeholder="0"
+              style="border:none;outline:none;padding:7px 10px;font-size:14px;width:130px;color:#212529"
+              onkeydown="if(event.key==='Enter'){event.preventDefault();margenSavePrice('${id}')}">
+          </div>
+          <button onclick="margenSavePrice('${id}')"
+            style="background:#212529;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer">
+            Guardar
+          </button>
+        </div>
+      </div>
+      ${marginPct !== null ? `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding-top:10px;border-top:1.5px solid #e9ecef;margin-top:4px">
+        <span style="font-size:14px;font-weight:700;color:#212529">Margen</span>
+        <span style="font-size:16px;font-weight:800;color:${mColor}">
+          $${Math.round(marginAbs).toLocaleString('es-CL')} &nbsp;·&nbsp; ${marginPct.toFixed(1)}%
+        </span>
+      </div>` : ''}
+      <div id="marg-price-msg" style="font-size:12px;min-height:16px;margin-top:6px;text-align:right"></div>
+    </div>`;
+
+  document.getElementById('marg-modal').style.display = 'flex';
+}
+
+async function margenSavePrice(id) {
+  const price = Number(document.getElementById('marg-selling-price').value) || 0;
+  const msg   = document.getElementById('marg-price-msg');
+  try {
+    const res  = await apiFetch(`/api/recipes/${id}`, { method: 'PUT', body: JSON.stringify({ sellingPrice: price }) });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    const recipe = margenRecipes.find(r => r.id === id);
+    if (recipe) recipe.sellingPrice = price;
+    msg.style.color = '#16a34a'; msg.textContent = '✓ Precio guardado';
+    setTimeout(() => { msg.textContent = ''; }, 1800);
+    renderMargenRecetas();
+    // Reopen to refresh margin display
+    margenOpenRecipe(id);
+  } catch(e) {
+    msg.style.color = '#dc2626'; msg.textContent = e.message;
+  }
+}
+
+function margenCloseModal() {
+  document.getElementById('marg-modal').style.display = 'none';
+}
+
+async function margenImportExcel(input) {
+  const file = input.files[0];
+  if (!file) return;
+  input.value = '';
+
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    try {
+      const wb   = XLSX.read(e.target.result, { type: 'array' });
+      const ws   = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: 0 });
+      if (rows.length < 2) { alert('El Excel no tiene datos'); return; }
+
+      const header     = rows[0].map(h => String(h||'').trim());
+      const ingHeaders = header.slice(2); // col 0=Producto, col 1=Local, col 2+=ingredientes
+
+      const ingMap  = {};
+      ingHeaders.forEach(name => {
+        const prod = margenIngredients.find(p => p.name.toLowerCase() === name.toLowerCase());
+        if (prod) ingMap[name] = prod.id;
+      });
+
+      const restMap = {};
+      restaurants.forEach(r => { restMap[r.name.toLowerCase().trim()] = { id: r.id, name: r.name }; });
+
+      const recipes = [];
+      for (let i = 1; i < rows.length; i++) {
+        const row  = rows[i];
+        const productName = String(row[0]||'').trim();
+        const restName    = String(row[1]||'').trim();
+        if (!productName || !restName) continue;
+
+        const restMatch  = restMap[restName.toLowerCase()];
+        const ingredients = [];
+        ingHeaders.forEach((ingName, idx) => {
+          const qty = parseFloat(row[idx + 2]) || 0;
+          if (qty > 0) {
+            ingredients.push({ name: ingName, productId: ingMap[ingName] || null, quantity: qty });
+          }
+        });
+
+        recipes.push({
+          name: productName,
+          restaurantId:   restMatch?.id   || null,
+          restaurantName: restMatch?.name || restName,
+          ingredients
+        });
+      }
+
+      if (!recipes.length) { alert('No se encontraron recetas válidas en el archivo'); return; }
+
+      const btn = document.querySelector('#marg-recetas .btn-new');
+      if (btn) { btn.textContent = 'Importando...'; btn.style.pointerEvents = 'none'; }
+
+      const res  = await apiFetch('/api/recipes/import', { method: 'POST', body: JSON.stringify({ recipes }) });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+
+      await loadMargenData();
+      renderMargenRecetas();
+      alert(`✓ ${data.count} receta(s) importadas / actualizadas`);
+    } catch(err) {
+      alert('Error al importar: ' + err.message);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function margenDescargarPlantilla() {
+  const ingNames = margenIngredients.map(p => p.name);
+  const header   = ['Producto', 'Local', ...ingNames];
+  const example  = restaurants.map(r => ['Nombre del plato', r.name, ...ingNames.map(() => 0)]);
+
+  const ws = XLSX.utils.aoa_to_sheet([header, ...example]);
+  ws['!cols'] = [{ wch: 28 }, { wch: 22 }, ...ingNames.map(() => ({ wch: 14 }))];
+  // Bold header row
+  const range = XLSX.utils.decode_range(ws['!ref']);
+  for (let c = range.s.c; c <= range.e.c; c++) {
+    const cell = ws[XLSX.utils.encode_cell({ r: 0, c })];
+    if (cell) cell.s = { font: { bold: true } };
+  }
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Recetas');
+  XLSX.writeFile(wb, 'plantilla_recetas.xlsx');
+}
+
+function margenExportarExcel() {
+  if (!margenRecipes.length) { alert('No hay recetas para exportar'); return; }
+
+  const ingNames = [...new Set(margenRecipes.flatMap(r => (r.ingredients||[]).map(i => i.name)))].sort();
+  const header   = ['Producto', 'Local', 'Precio venta ($)', 'Costo total ($)', 'Margen (%)', ...ingNames];
+
+  const rows = margenRecipes.map(r => {
+    let totalCost = 0;
+    const qtyMap  = {};
+    (r.ingredients||[]).forEach(item => {
+      qtyMap[item.name] = item.quantity || 0;
+      const prod = margenIngredients.find(p => p.id === item.productId || p.name === item.name);
+      totalCost += (prod?.costPerUnit || 0) * (item.quantity || 0);
+    });
+    const selling    = r.sellingPrice || 0;
+    const marginPct  = selling > 0 ? ((selling - totalCost) / selling * 100).toFixed(1) : '';
+    return [r.name, r.restaurantName||'', selling||'', totalCost > 0 ? Math.round(totalCost) : '', marginPct,
+            ...ingNames.map(n => qtyMap[n] || 0)];
+  });
+
+  const ws = XLSX.utils.aoa_to_sheet([header, ...rows]);
+  ws['!cols'] = [{ wch: 28 }, { wch: 22 }, { wch: 14 }, { wch: 14 }, { wch: 10 }, ...ingNames.map(() => ({ wch: 14 }))];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Recetas');
+  XLSX.writeFile(wb, 'recetas_margenes.xlsx');
+}
+
+function renderMargenCostos() {
+  const el     = document.getElementById('marg-costos');
+  const sorted = [...margenIngredients].sort((a, b) => a.name.localeCompare(b.name, 'es'));
+
+  el.innerHTML = `
+    <div class="inv-toolbar">
+      <h2>Costos de ingredientes</h2>
+    </div>
+    <p style="font-size:13px;color:#6c757d;margin:-4px 0 20px">
+      Ingresá el costo por unidad de cada ingrediente. Los márgenes de todas las recetas se actualizan automáticamente.
+    </p>
+    <table class="inv-table" style="max-width:680px">
+      <thead>
+        <tr>
+          <th>Ingrediente</th>
+          <th>Unidad</th>
+          <th>Costo por unidad ($)</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        ${sorted.map(p => `
+          <tr>
+            <td style="color:#212529;font-weight:500">${p.name}</td>
+            <td><span class="tag">${p.unit||'—'}</span></td>
+            <td>
+              <div style="display:flex;align-items:center;border:1px solid #dee2e6;border-radius:7px;overflow:hidden;max-width:170px;background:#fff">
+                <span style="padding:0 10px;color:#888;font-size:13px;background:#f8f9fa;border-right:1px solid #dee2e6">$</span>
+                <input type="number" id="marg-cost-${p.id}" value="${p.costPerUnit||''}" min="0" placeholder="0"
+                  style="border:none;outline:none;padding:7px 8px;font-size:13px;width:110px;color:#212529"
+                  onkeydown="if(event.key==='Enter'){event.preventDefault();margenSaveCost('${p.id}')}">
+              </div>
+            </td>
+            <td style="white-space:nowrap">
+              <button onclick="margenSaveCost('${p.id}')"
+                style="background:#212529;color:#fff;border:none;border-radius:7px;padding:7px 16px;font-size:12px;font-weight:600;cursor:pointer">
+                Guardar
+              </button>
+              <span id="marg-cost-msg-${p.id}" style="font-size:11px;color:#16a34a;margin-left:6px"></span>
+            </td>
+          </tr>`).join('')}
+      </tbody>
+    </table>`;
+}
+
+async function margenSaveCost(productId) {
+  const input = document.getElementById(`marg-cost-${productId}`);
+  const msg   = document.getElementById(`marg-cost-msg-${productId}`);
+  const cost  = Number(input.value) || 0;
+  try {
+    const res  = await apiFetch(`/api/inv/products/${productId}/cost`, { method: 'PATCH', body: JSON.stringify({ costPerUnit: cost }) });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    const prod = margenIngredients.find(p => p.id === productId);
+    if (prod) prod.costPerUnit = cost;
+    msg.style.color = '#16a34a'; msg.textContent = '✓';
+    setTimeout(() => { msg.textContent = ''; }, 1500);
+  } catch(e) {
+    msg.style.color = '#dc2626'; msg.textContent = e.message;
+  }
+}
 </script>
 
 <!-- ── MÓDULO: AÑADIR PDF ── -->
@@ -5977,6 +6379,36 @@ function gddToggleRecord(id) {
         <span id="edit-manual-msg" style="font-size:12px"></span>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- ── Módulo: Márgenes ─────────────────────────────── -->
+<div id="margenes-module" style="display:none;flex-direction:column;min-height:100vh">
+  <div class="inv-topbar">
+    <div class="topbar-brand" style="margin-right:24px">Márgenes</div>
+    <div class="inv-tabs">
+      <button class="inv-tab active" id="mtab-recetas" onclick="switchMargenTab('recetas')">Recetas</button>
+      <button class="inv-tab"        id="mtab-costos"  onclick="switchMargenTab('costos')">Costos de ingredientes</button>
+    </div>
+  </div>
+  <div class="inv-main">
+    <div id="marg-recetas"></div>
+    <div id="marg-costos" style="display:none"></div>
+  </div>
+</div>
+
+<!-- modal detalle receta -->
+<div id="marg-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1050;align-items:center;justify-content:center;padding:20px" onclick="if(event.target===this)margenCloseModal()">
+  <div style="background:#fff;border-radius:16px;width:100%;max-width:600px;max-height:90vh;overflow-y:auto;display:flex;flex-direction:column">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:20px 24px;border-bottom:1px solid #e9ecef;flex-shrink:0">
+      <div>
+        <div id="marg-modal-title" style="font-size:18px;font-weight:700;color:#212529"></div>
+        <div id="marg-modal-sub"   style="font-size:13px;color:#6c757d;margin-top:2px"></div>
+      </div>
+      <button onclick="margenCloseModal()" style="background:none;border:none;color:#6c757d;font-size:20px;cursor:pointer;width:32px;height:32px;border-radius:6px">✕</button>
+    </div>
+    <input type="hidden" id="marg-modal-id">
+    <div id="marg-modal-body" style="flex:1"></div>
   </div>
 </div>
 

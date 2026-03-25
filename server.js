@@ -810,26 +810,35 @@ app.get('/api/inv/products', requireAuth, async (req, res) => {
 
 app.post('/api/inv/products', requireAuth, async (req, res) => {
   if (!await isEditor(req.uid)) return res.status(403).json({ error: 'Sin permisos' });
-  const { name, category, unit, supplierIds, restaurantIds, restaurantSections, esGDD } = req.body;
+  const { name, category, unit, supplierIds, restaurantIds, restaurantSections, esGDD, costPerUnit } = req.body;
   if (!name) return res.status(400).json({ error: 'Nombre requerido' });
   const ref = await db.collection('products').add({
     name, category: category||'', unit: unit||'unidad',
     supplierIds: supplierIds||[], restaurantIds: restaurantIds||[],
     restaurantSections: restaurantSections||{},
-    esGDD: esGDD === true
+    esGDD: esGDD === true,
+    costPerUnit: costPerUnit != null ? Number(costPerUnit) : 0
   });
   res.json({ id: ref.id });
 });
 
 app.put('/api/inv/products/:id', requireAuth, async (req, res) => {
   if (!await isEditor(req.uid)) return res.status(403).json({ error: 'Sin permisos' });
-  const { name, category, unit, supplierIds, restaurantIds, restaurantSections, esGDD } = req.body;
+  const { name, category, unit, supplierIds, restaurantIds, restaurantSections, esGDD, costPerUnit } = req.body;
   await db.collection('products').doc(req.params.id).update({
     name, category: category||'', unit: unit||'unidad',
     supplierIds: supplierIds||[], restaurantIds: restaurantIds||[],
     restaurantSections: restaurantSections||{},
-    esGDD: esGDD === true
+    esGDD: esGDD === true,
+    costPerUnit: costPerUnit != null ? Number(costPerUnit) : 0
   });
+  res.json({ ok: true });
+});
+
+app.patch('/api/inv/products/:id/cost', requireAuth, async (req, res) => {
+  if (!await isEditor(req.uid)) return res.status(403).json({ error: 'Sin permisos' });
+  const { costPerUnit } = req.body;
+  await db.collection('products').doc(req.params.id).update({ costPerUnit: Number(costPerUnit) || 0 });
   res.json({ ok: true });
 });
 
@@ -1886,6 +1895,70 @@ app.patch('/api/gdd/records/:id', requireAuth, async (req, res) => {
   allowed.forEach(k => { if (req.body[k] !== undefined) update[k] = req.body[k]; });
   if (!Object.keys(update).length) return res.status(400).json({ error: 'Sin campos' });
   await db.collection('gdd_records').doc(req.params.id).update(update);
+  res.json({ ok: true });
+});
+
+// ── Márgenes: Recetas ─────────────────────────────────────
+app.get('/api/recipes', requireAuth, async (req, res) => {
+  const snap = await db.collection('recipes').orderBy('name').get();
+  res.json({ recipes: snap.docs.map(d => ({ id: d.id, ...d.data() })) });
+});
+
+app.post('/api/recipes/import', requireAuth, async (req, res) => {
+  if (!await isEditor(req.uid)) return res.status(403).json({ error: 'Sin permisos' });
+  const { recipes } = req.body;
+  if (!Array.isArray(recipes) || !recipes.length) return res.status(400).json({ error: 'Sin recetas' });
+
+  // For each recipe, upsert by (name + restaurantId)
+  const existing = await db.collection('recipes').get();
+  const existMap = {};
+  existing.docs.forEach(d => {
+    const key = `${d.data().name}__${d.data().restaurantId}`;
+    existMap[key] = d.id;
+  });
+
+  const batch = db.batch();
+  let count = 0;
+  for (const r of recipes) {
+    if (!r.name) continue;
+    const key = `${r.name}__${r.restaurantId}`;
+    const docId = existMap[key];
+    const data = {
+      name: r.name,
+      restaurantId: r.restaurantId || null,
+      restaurantName: r.restaurantName || '',
+      ingredients: r.ingredients || [],
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    };
+    if (docId) {
+      batch.update(db.collection('recipes').doc(docId), data);
+    } else {
+      const ref = db.collection('recipes').doc();
+      data.createdAt = admin.firestore.FieldValue.serverTimestamp();
+      data.sellingPrice = 0;
+      batch.set(ref, data);
+    }
+    count++;
+  }
+  await batch.commit();
+  res.json({ ok: true, count });
+});
+
+app.put('/api/recipes/:id', requireAuth, async (req, res) => {
+  if (!await isEditor(req.uid)) return res.status(403).json({ error: 'Sin permisos' });
+  const update = {};
+  const { sellingPrice, ingredients, name } = req.body;
+  if (sellingPrice !== undefined) update.sellingPrice = Number(sellingPrice) || 0;
+  if (ingredients  !== undefined) update.ingredients  = ingredients;
+  if (name         !== undefined) update.name         = name;
+  update.updatedAt = admin.firestore.FieldValue.serverTimestamp();
+  await db.collection('recipes').doc(req.params.id).update(update);
+  res.json({ ok: true });
+});
+
+app.delete('/api/recipes/:id', requireAuth, async (req, res) => {
+  if (!await isEditor(req.uid)) return res.status(403).json({ error: 'Sin permisos' });
+  await db.collection('recipes').doc(req.params.id).delete();
   res.json({ ok: true });
 });
 
