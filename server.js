@@ -512,11 +512,11 @@ app.get('/api/restaurants', requireAuth, async (req, res) => {
     let restaurants;
     if (userData.role === 'admin') {
       const snap = await db.collection('restaurants').get();
-      restaurants = snap.docs.map(d => ({ id: d.id, name: d.data().name, sections: d.data().sections || [] }));
+      restaurants = snap.docs.map(d => ({ id: d.id, name: d.data().name, sections: d.data().sections || [], noFudo: !!d.data().noFudo }));
     } else {
       const ids  = userData.restaurantIds || [];
       const docs = await Promise.all(ids.map(id => db.collection('restaurants').doc(id).get()));
-      restaurants = docs.filter(d => d.exists).map(d => ({ id: d.id, name: d.data().name, sections: d.data().sections || [] }));
+      restaurants = docs.filter(d => d.exists).map(d => ({ id: d.id, name: d.data().name, sections: d.data().sections || [], noFudo: !!d.data().noFudo }));
     }
 
     res.json({
@@ -671,7 +671,7 @@ app.delete('/api/admin/sales-cache/:restaurantId', requireAuth, async (req, res)
 app.get('/api/admin/restaurants', requireAuth, async (req, res) => {
   if (!await isAdmin(req.uid)) return res.status(403).json({ error: 'Solo administradores' });
   const snap = await db.collection('restaurants').get();
-  res.json({ restaurants: snap.docs.map(d => ({ id: d.id, name: d.data().name, fudoUser: d.data().fudoUser, sections: d.data().sections || [] })) });
+  res.json({ restaurants: snap.docs.map(d => ({ id: d.id, name: d.data().name, fudoUser: d.data().fudoUser, sections: d.data().sections || [], noFudo: !!d.data().noFudo })) });
 });
 
 app.patch('/api/admin/restaurants/:id', requireAuth, async (req, res) => {
@@ -683,9 +683,12 @@ app.patch('/api/admin/restaurants/:id', requireAuth, async (req, res) => {
 
 app.post('/api/admin/restaurants', requireAuth, async (req, res) => {
   if (!await isAdmin(req.uid)) return res.status(403).json({ error: 'Solo administradores' });
-  const { name, fudoUser, fudoPassword } = req.body;
-  if (!name || !fudoUser || !fudoPassword) return res.status(400).json({ error: 'Faltan campos' });
-  const ref = await db.collection('restaurants').add({ name, fudoUser, fudoPassword });
+  const { name, fudoUser, fudoPassword, noFudo } = req.body;
+  if (!name) return res.status(400).json({ error: 'Faltan campos' });
+  if (!noFudo && (!fudoUser || !fudoPassword)) return res.status(400).json({ error: 'Faltan usuario y contraseña Fudo' });
+  const data = { name, noFudo: !!noFudo };
+  if (!noFudo) { data.fudoUser = fudoUser; data.fudoPassword = fudoPassword; }
+  const ref = await db.collection('restaurants').add(data);
   res.json({ id: ref.id });
 });
 
@@ -1640,9 +1643,10 @@ app.post('/api/portal/orders', requireBuyer, async (req, res) => {
 app.get('/api/portal/orders', requireBuyer, async (req, res) => {
   const snap = await db.collection('orders')
     .where('buyerUid', '==', req.uid)
-    .orderBy('createdAt', 'desc')
     .get();
-  res.json({ orders: snap.docs.map(d => ({ id: d.id, ...d.data() })) });
+  const orders = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+    .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+  res.json({ orders });
 });
 
 // ── Admin: ver todos los pedidos ──────────────────────────
@@ -1655,6 +1659,84 @@ app.put('/api/orders/:id/status', requireAuth, async (req, res) => {
   if (!await isEditor(req.uid)) return res.status(403).json({ error: 'Sin permisos' });
   const { status } = req.body;
   await db.collection('orders').doc(req.params.id).update({ status });
+  res.json({ ok: true });
+});
+
+// Actualizar items del pedido (sinStock por índice)
+app.patch('/api/orders/:id/items', requireAuth, async (req, res) => {
+  if (!await isEditor(req.uid)) return res.status(403).json({ error: 'Sin permisos' });
+  const { idx, sinStock } = req.body;
+  const doc  = db.collection('orders').doc(req.params.id);
+  const snap = await doc.get();
+  if (!snap.exists) return res.status(404).json({ error: 'No encontrado' });
+  const items = snap.data().items || [];
+  if (idx < 0 || idx >= items.length) return res.status(400).json({ error: 'Índice inválido' });
+  items[idx] = { ...items[idx], sinStock: !!sinStock };
+  // Recalcular total solo con items con stock
+  const total = items.filter(i => !i.sinStock).reduce((s, i) => s + (i.price * i.quantity), 0);
+  await doc.update({ items, total });
+  res.json({ ok: true, items, total });
+});
+
+// Subir comprobante de pago (múltiples permitidos)
+app.post('/api/orders/:id/comprobantes', requireAuth, upload.single('file'), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'No se recibió archivo' });
+  try {
+    const buf  = fs.readFileSync(req.file.path);
+    const ext  = req.file.originalname.split('.').pop() || 'jpg';
+    const mime = req.file.mimetype;
+    const dest = `orders/${req.params.id}/comprobantes/${Date.now()}_${randomUUID()}.${ext}`;
+    const ref  = bucket.file(dest);
+    await ref.save(buf, { contentType: mime, resumable: false });
+    await ref.makePublic();
+    const url = `https://storage.googleapis.com/${bucket.name}/${dest}`;
+    const doc = db.collection('orders').doc(req.params.id);
+    const snap = await doc.get();
+    const comprobantes = snap.data()?.comprobantes || [];
+    comprobantes.push(url);
+    await doc.update({ comprobantes });
+    try { fs.unlinkSync(req.file.path); } catch {}
+    res.json({ ok: true, url, comprobantes });
+  } catch(e) {
+    try { fs.unlinkSync(req.file.path); } catch {}
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Eliminar comprobante por índice
+app.delete('/api/orders/:id/comprobantes/:idx', requireAuth, async (req, res) => {
+  const doc  = db.collection('orders').doc(req.params.id);
+  const snap = await doc.get();
+  const arr  = snap.data()?.comprobantes || [];
+  arr.splice(Number(req.params.idx), 1);
+  await doc.update({ comprobantes: arr });
+  res.json({ ok: true, comprobantes: arr });
+});
+
+// Subir factura (una sola)
+app.post('/api/orders/:id/factura', requireAuth, upload.single('file'), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'No se recibió archivo' });
+  try {
+    const buf  = fs.readFileSync(req.file.path);
+    const ext  = req.file.originalname.split('.').pop() || 'pdf';
+    const mime = req.file.mimetype;
+    const dest = `orders/${req.params.id}/factura/${Date.now()}.${ext}`;
+    const ref  = bucket.file(dest);
+    await ref.save(buf, { contentType: mime, resumable: false });
+    await ref.makePublic();
+    const url = `https://storage.googleapis.com/${bucket.name}/${dest}`;
+    await db.collection('orders').doc(req.params.id).update({ facturaUrl: url });
+    try { fs.unlinkSync(req.file.path); } catch {}
+    res.json({ ok: true, url });
+  } catch(e) {
+    try { fs.unlinkSync(req.file.path); } catch {}
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Eliminar factura
+app.delete('/api/orders/:id/factura', requireAuth, async (req, res) => {
+  await db.collection('orders').doc(req.params.id).update({ facturaUrl: null });
   res.json({ ok: true });
 });
 
@@ -1673,21 +1755,31 @@ app.post('/api/gdd/scan', requireAuth, upload.single('file'), async (req, res) =
       ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: b64 } }
       : { type: 'image',    source: { type: 'base64', media_type: mime,               data: b64 } };
 
+    // Cargar lista de productos exacta para que Claude haga matching
+    const prodSnap = await db.collection('products').get();
+    const productNames = prodSnap.docs.map(d => d.data().name).filter(Boolean).sort();
+    const productList  = productNames.join('\n');
+
     const prompt = `Eres un asistente que extrae datos de guías de despacho chilenas.
 Analiza la imagen/documento y extrae la siguiente información en JSON puro (sin markdown):
 {
   "proveedor": "nombre del proveedor del encabezado",
   "fecha": "fecha en formato YYYY-MM-DD si se puede leer, sino null",
   "items": [
-    { "categoria": "CATEGORÍA", "producto": "nombre del producto", "unidad": "unidad extraída del nombre entre paréntesis o inferida", "cantidad": número o null si está vacío, "comentarios": "texto si hay" }
+    { "categoria": "CATEGORÍA", "producto": "nombre EXACTO del producto según la lista", "unidad": "unidad", "cantidad": número o null si está vacío, "comentarios": "texto si hay" }
   ]
 }
+
+LISTA DE PRODUCTOS (usa EXACTAMENTE estos nombres, incluyendo la unidad entre paréntesis si la tiene):
+${productList}
+
 IMPORTANTE:
-- Incluye TODOS los productos de la tabla, tengan o no cantidad
-- Si la cantidad está vacía/no marcada, ponla como null
-- Extrae la unidad desde el nombre del producto si aparece entre paréntesis (ej: "Galleta (un)" → unidad: "un", "Carne (kg)" → unidad: "kg")
-- Sé preciso con las cantidades manuscritas (números escritos a mano)
-- Si una categoría agrupa varias filas, repite la categoría en cada item
+- Para cada producto de la guía, busca el nombre más parecido en la LISTA DE PRODUCTOS y usa ese nombre EXACTO (con la unidad entre paréntesis si la tiene, tal como aparece en la lista).
+- Si no encuentras un match claro en la lista, usa el nombre tal como aparece en la guía.
+- Incluye TODOS los productos de la tabla, tengan o no cantidad.
+- Si la cantidad está vacía/no marcada, ponla como null.
+- Sé preciso con las cantidades manuscritas (números escritos a mano).
+- Si una categoría agrupa varias filas, repite la categoría en cada item.
 Devuelve SOLO el JSON, nada más.`;
 
     const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
@@ -1710,7 +1802,7 @@ Devuelve SOLO el JSON, nada más.`;
     const raw  = anthropicData.content?.[0]?.text || '';
     const json = raw.replace(/```json|```/g, '').trim();
     const data = JSON.parse(json);
-
+    // Limpieza: quitar unidad entre paréntesis del nombre si quedó igual
     // Subir imagen a Firebase Storage
     let imageUrl = null;
     try {

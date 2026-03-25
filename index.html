@@ -914,10 +914,16 @@
 
 <div id="pedidos-module" style="display:none;flex-direction:column;min-height:100vh">
   <div class="inv-topbar">
-    <div class="topbar-brand">Pedidos</div>
+    <div class="topbar-brand">Pedidos Helados</div>
   </div>
   <div style="padding:24px;max-width:1000px">
-    <div id="pedidos-filters" style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap"></div>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap">
+      <div id="pedidos-filters" style="display:flex;gap:8px;flex-wrap:wrap"></div>
+      <select id="pedidos-filter-cliente" onchange="pedidosFiltroCliente=this.value;renderPedidosList()"
+        style="padding:6px 12px;border:1px solid #dee2e6;border-radius:20px;font-size:12px;background:#fff;color:#495057;cursor:pointer">
+        <option value="">Todos los negocios</option>
+      </select>
+    </div>
     <div id="pedidos-list"></div>
   </div>
 </div>
@@ -985,7 +991,7 @@
           <div style="font-size:16px;font-weight:700;color:#212529" id="gdd-result-proveedor"></div>
           <div style="font-size:12px;color:#6c757d;margin-top:2px" id="gdd-result-fecha"></div>
         </div>
-        <div style="display:flex;gap:10px">
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
           <button onclick="gddReset()" style="padding:8px 16px;background:transparent;border:1px solid #dee2e6;border-radius:8px;font-size:13px;cursor:pointer;color:#6c757d">Nueva guía</button>
           <button onclick="gddSave()" id="gdd-save-btn" style="padding:8px 20px;background:#ff5023;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;color:#fff">Guardar en BD</button>
         </div>
@@ -1011,6 +1017,19 @@
 
   <!-- TAB: Historial -->
   <div id="gdd-tab-historial-content" style="display:none;flex:1;padding:32px 28px;max-width:900px;width:100%;margin:0 auto">
+    <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;align-items:center">
+      <select id="gdd-filter-mes" onchange="gddApplyFilter()" style="padding:7px 12px;border:1px solid #dee2e6;border-radius:8px;font-size:13px;background:#fff;color:#212529">
+        <option value="">Todos los meses</option>
+        <option value="01">Enero</option><option value="02">Febrero</option><option value="03">Marzo</option>
+        <option value="04">Abril</option><option value="05">Mayo</option><option value="06">Junio</option>
+        <option value="07">Julio</option><option value="08">Agosto</option><option value="09">Septiembre</option>
+        <option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
+      </select>
+      <select id="gdd-filter-anio" onchange="gddApplyFilter()" style="padding:7px 12px;border:1px solid #dee2e6;border-radius:8px;font-size:13px;background:#fff;color:#212529">
+        <option value="">Todos los años</option>
+      </select>
+      <span id="gdd-filter-count" style="font-size:12px;color:#6c757d"></span>
+    </div>
     <div id="gdd-history-list"><div style="color:#6c757d;font-size:13px">Cargando...</div></div>
   </div>
 </div>
@@ -1316,7 +1335,8 @@ firebase.initializeApp({
 const auth = firebase.auth();
 
 // ── State ─────────────────────────────────────────────────
-let restaurants    = [];  // [{ id, name }]
+let restaurants      = [];  // [{ id, name, noFudo? }] — todos los locales
+let fudoRestaurants  = [];  // solo locales con Fudo (para ventas)
 let activeRestId   = null;  // último seleccionado (compatibilidad)
 let activeRestIds  = [];    // seleccionados actualmente (multi)
 let userRole       = null;
@@ -1406,7 +1426,7 @@ function goTo(module) {
   // Actualizar topbar título
   const moduleNames = {
     ventas: 'Ventas', stock: 'Añadir stock', inventario: 'Gestión de Clientes y Proveedor',
-    'registro-inv': 'Registro de Inventarios', cierres: 'Cierres de caja', pedidos: 'Pedidos',
+    'registro-inv': 'Registro de Inventarios', cierres: 'Cierres de caja', pedidos: 'Pedidos Helados',
     'pdf-upload': 'Añadir PDF', 'pdf-view': 'Ver Manual', usuarios: 'Usuarios', reuniones: 'Reuniones',
     gdd: 'Guías de Despacho'
   };
@@ -1457,6 +1477,10 @@ function goTo(module) {
     loadReuniones();
   } else if (module === 'gdd') {
     document.getElementById('gdd-module').style.display = 'flex';
+    // Poblar selector de local
+    const sel = document.getElementById('gdd-local-select');
+    sel.innerHTML = '<option value="">— Seleccionar local —</option>' +
+      restaurants.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
     gddReset();
     gddSwitchTab('nueva');
   }
@@ -1481,11 +1505,12 @@ async function initDashboard() {
     const data = await res.json();
     if (data.error) throw new Error(data.error);
 
-    restaurants    = data.restaurants || [];
+    restaurants     = data.restaurants || [];
+    fudoRestaurants = restaurants.filter(r => !r.noFudo);
     userRole       = data.role;
     userModules    = data.modules    || ['ventas'];
     userCategories = data.categories || [];
-    activeRestId   = restaurants[0]?.id || null;
+    activeRestId   = fudoRestaurants[0]?.id || null;
     activeRestIds  = activeRestId ? [activeRestId] : [];
 
     document.getElementById('btn-admin').style.display = userRole === 'superadmin' ? 'flex' : 'none';
@@ -1519,7 +1544,7 @@ async function initDashboard() {
 
 // ── Tabs ───────────────────────────────────────────────────
 function renderTabs() {
-  document.getElementById('rest-tabs').innerHTML = restaurants.map(r => `
+  document.getElementById('rest-tabs').innerHTML = fudoRestaurants.map(r => `
     <div class="rest-tab ${activeRestIds.includes(r.id) ? 'active' : ''}" onclick="toggleRestaurant('${r.id}')">
       <div class="dot"></div>
       <span>${r.name}</span>
@@ -1737,7 +1762,7 @@ async function loadResumen() {
   // Render skeleton cards immediately
   document.getElementById('resumen-content').innerHTML = `
     <div class="resumen-grid">
-      ${restaurants.map(r => `
+      ${fudoRestaurants.map(r => `
         <div class="resumen-card" id="rcard-${r.id}">
           <div class="resumen-card-name">${r.name}</div>
           <div style="display:flex;align-items:center;gap:10px;padding:16px 0;color:#444">
@@ -1747,7 +1772,7 @@ async function loadResumen() {
     </div>`;
 
   // Load each restaurant sequentially
-  for (const r of restaurants) {
+  for (const r of fudoRestaurants) {
     const cardEl = document.getElementById(`rcard-${r.id}`);
     try {
       const res  = await apiFetch(`/api/summary/${r.id}${qsStr}`);
@@ -2005,8 +2030,14 @@ async function renderAdminLocales() {
       <h3>Agregar local</h3>
       <div class="admin-form" id="form-local">
         <input type="text"     id="fl-name"  placeholder="Nombre del local">
-        <input type="text"     id="fl-user"  placeholder="Usuario Fudo (email)">
-        <input type="password" id="fl-pass"  placeholder="Contraseña Fudo">
+        <label style="display:flex;align-items:center;gap:8px;color:#aaa;font-size:13px;cursor:pointer;margin:2px 0">
+          <input type="checkbox" id="fl-nofudo" onchange="toggleFudoFields(this.checked)" style="cursor:pointer">
+          Sin Fudo (local de producción)
+        </label>
+        <div id="fl-fudo-fields">
+          <input type="text"     id="fl-user"  placeholder="Usuario Fudo (email)">
+          <input type="password" id="fl-pass"  placeholder="Contraseña Fudo">
+        </div>
         <button class="btn-add" onclick="addLocal()">Agregar</button>
         <div id="fl-msg"></div>
       </div>
@@ -2024,12 +2055,12 @@ async function renderAdminLocales() {
             <div class="admin-item" style="flex-direction:column;align-items:flex-start;gap:10px">
               <div style="display:flex;width:100%;align-items:center">
                 <div class="admin-item-info" style="flex:1">
-                  <div class="admin-item-name">${r.name}</div>
-                  <div class="admin-item-sub">${r.fudoUser}</div>
+                  <div class="admin-item-name">${r.name}${r.noFudo ? ' <span style="font-size:10px;background:#1a2a1a;color:#4ade80;border:1px solid #2a4a2a;border-radius:10px;padding:1px 7px;vertical-align:middle">Sin Fudo</span>' : ''}</div>
+                  <div class="admin-item-sub">${r.noFudo ? 'Local de producción' : (r.fudoUser || '')}</div>
                 </div>
                 <div style="display:flex;gap:6px;flex-wrap:wrap">
-                  <button class="btn-edit" onclick="fudoDiag('${r.id}','${safeName}')">Diagnosticar</button>
-                  <button class="btn-edit" style="color:#fbbf24" onclick="clearCacheLocal('${r.id}','${safeName}')">Limpiar caché</button>
+                  ${!r.noFudo ? `<button class="btn-edit" onclick="fudoDiag('${r.id}','${safeName}')">Diagnosticar</button>
+                  <button class="btn-edit" style="color:#fbbf24" onclick="clearCacheLocal('${r.id}','${safeName}')">Limpiar caché</button>` : ''}
                   <button class="btn-del"  onclick="delLocal('${r.id}','${safeName}')">Eliminar</button>
                 </div>
               </div>
@@ -2070,12 +2101,12 @@ async function clearCacheLocal(id, name) {
 }
 
 async function clearCacheActivos() {
-  const nombres = restaurants.map(r => r.name).join(', ');
+  const nombres = fudoRestaurants.map(r => r.name).join(', ');
   if (!confirm(`¿Limpiar caché de ventas de todos los locales activos?\n\n${nombres}\n\nEsto forzará una recarga desde Fudo.`)) return;
   const btn = document.getElementById('btn-clear-cache');
   btn.textContent = 'Limpiando...'; btn.disabled = true;
   let total = 0;
-  for (const r of restaurants) {
+  for (const r of fudoRestaurants) {
     const res  = await apiFetch(`/api/admin/sales-cache/${r.id}`, { method: 'DELETE' });
     const data = await res.json();
     if (!data.error) total += data.deleted || 0;
@@ -2117,23 +2148,31 @@ async function fudoDiag(id, name) {
   }
 }
 
+function toggleFudoFields(noFudo) {
+  document.getElementById('fl-fudo-fields').style.display = noFudo ? 'none' : '';
+}
+
 async function addLocal() {
-  const name = document.getElementById('fl-name').value.trim();
-  const user = document.getElementById('fl-user').value.trim();
-  const pass = document.getElementById('fl-pass').value;
-  const msg  = document.getElementById('fl-msg');
-  if (!name || !user || !pass) { msg.className = 'inline-error'; msg.textContent = 'Completa todos los campos'; return; }
+  const name   = document.getElementById('fl-name').value.trim();
+  const noFudo = document.getElementById('fl-nofudo').checked;
+  const user   = noFudo ? '' : document.getElementById('fl-user').value.trim();
+  const pass   = noFudo ? '' : document.getElementById('fl-pass').value;
+  const msg    = document.getElementById('fl-msg');
+  if (!name) { msg.className = 'inline-error'; msg.textContent = 'Ingresa el nombre del local'; return; }
+  if (!noFudo && (!user || !pass)) { msg.className = 'inline-error'; msg.textContent = 'Completa usuario y contraseña Fudo'; return; }
 
   const btn = document.querySelector('#form-local .btn-add');
   btn.disabled = true; btn.textContent = 'Guardando...';
   try {
-    const res  = await apiFetch('/api/admin/restaurants', { method: 'POST', body: JSON.stringify({ name, fudoUser: user, fudoPassword: pass }) });
+    const body = noFudo ? { name, noFudo: true } : { name, fudoUser: user, fudoPassword: pass };
+    const res  = await apiFetch('/api/admin/restaurants', { method: 'POST', body: JSON.stringify(body) });
     const data = await res.json();
     if (data.error) throw new Error(data.error);
     msg.className = 'inline-ok'; msg.textContent = 'Local agregado';
     document.getElementById('fl-name').value = '';
-    document.getElementById('fl-user').value = '';
-    document.getElementById('fl-pass').value = '';
+    document.getElementById('fl-nofudo').checked = false;
+    toggleFudoFields(false);
+    if (!noFudo) { document.getElementById('fl-user').value = ''; document.getElementById('fl-pass').value = ''; }
     await initDashboard();
     setTimeout(() => renderAdminLocales(), 300);
   } catch(e) {
@@ -2232,7 +2271,7 @@ async function renderAdminUsuarios() {
             <label><input type="checkbox" class="nu-module" value="inventario"> Gestión de Clientes y Proveedor</label>
             <label><input type="checkbox" class="nu-module" value="registro-inv"> Registro de Inventarios</label>
             <label><input type="checkbox" class="nu-module" value="cierres"> Cierres de caja</label>
-            <label><input type="checkbox" class="nu-module" value="pedidos"> Pedidos</label>
+            <label><input type="checkbox" class="nu-module" value="pedidos"> Pedidos Helados</label>
             <label><input type="checkbox" class="nu-module" value="reuniones"> Reuniones</label>
             <label><input type="checkbox" class="nu-module" value="gdd"> Guías de Despacho</label>
             <label><input type="checkbox" class="nu-module" value="pdf-view"> Ver Manual</label>
@@ -2402,7 +2441,7 @@ function renderUsuariosPage() {
   const MODULE_NAMES = {
     ventas: 'Ventas', stock: 'Añadir stock', inventario: 'Gestión de Clientes y Proveedor',
     'registro-inv': 'Registro de Inventarios',
-    cierres: 'Cierres de caja', pedidos: 'Pedidos', 'pdf-view': 'Ver Manual', reuniones: 'Reuniones', usuarios: 'Usuarios'
+    cierres: 'Cierres de caja', pedidos: 'Pedidos Helados', 'pdf-view': 'Ver Manual', reuniones: 'Reuniones', usuarios: 'Usuarios'
   };
   const roleLabel = r => r === 'superadmin' ? 'Superadmin' : r === 'admin' ? 'Admin' : 'Usuario';
   const roleClass = r => r === 'superadmin' ? 'role-superadmin' : r === 'admin' ? 'role-admin' : 'role-user';
@@ -2491,7 +2530,7 @@ async function usuariosShowForm() {
             <label><input type="checkbox" class="nu-module" value="inventario"> Gestión de Clientes y Proveedor</label>
             <label><input type="checkbox" class="nu-module" value="registro-inv"> Registro de Inventarios</label>
             <label><input type="checkbox" class="nu-module" value="cierres"> Cierres de caja</label>
-            <label><input type="checkbox" class="nu-module" value="pedidos"> Pedidos</label>
+            <label><input type="checkbox" class="nu-module" value="pedidos"> Pedidos Helados</label>
             <label><input type="checkbox" class="nu-module" value="reuniones"> Reuniones</label>
             <label><input type="checkbox" class="nu-module" value="gdd"> Guías de Despacho</label>
             <label><input type="checkbox" class="nu-module" value="pdf-view"> Ver Manual</label>
@@ -2750,7 +2789,7 @@ function renderAdminSidebar() {
     { id: 'inventario',   icon: 'fas fa-address-book',    name: 'Clientes y Proveedores',      adminOnly: false },
     { id: 'registro-inv', icon: 'fas fa-clipboard-list',  name: 'Registro de Inventarios',     adminOnly: false },
     { id: 'cierres',      icon: 'fas fa-cash-register',   name: 'Cierres de caja',             adminOnly: false },
-    { id: 'pedidos',      icon: 'fas fa-shopping-cart',   name: 'Pedidos',                     adminOnly: false },
+    { id: 'pedidos',      icon: 'fas fa-shopping-cart',   name: 'Pedidos Helados',                     adminOnly: false },
     { id: 'reuniones',    icon: 'fas fa-users',           name: 'Reuniones',                   adminOnly: false },
     { id: 'gdd',          icon: 'fas fa-file-invoice',    name: 'Guías de Despacho',           adminOnly: false },
     { id: 'pdf-upload',   icon: 'fas fa-file-upload',     name: 'Añadir PDF',                  adminOnly: true  },
@@ -2818,7 +2857,7 @@ function renderSidebar() {
     { id: 'inventario',    icon: '🗂️', name: 'Gestión de Clientes y Proveedor', bg: 'linear-gradient(135deg,#3d9e72,#52c98a)', adminOnly: false },
     { id: 'registro-inv',  icon: '📋', name: 'Registro de Inventarios',       bg: 'linear-gradient(135deg,#5a7e3d,#7ab552)', adminOnly: false },
     { id: 'cierres',       icon: '💰', name: 'Cierres de caja',               bg: 'linear-gradient(135deg,#d97b45,#f0975a)', adminOnly: false },
-    { id: 'pedidos',       icon: '🛒', name: 'Pedidos',                       bg: 'linear-gradient(135deg,#b45309,#f59e0b)', adminOnly: false },
+    { id: 'pedidos',       icon: '🛒', name: 'Pedidos Helados',                       bg: 'linear-gradient(135deg,#b45309,#f59e0b)', adminOnly: false },
     { id: 'pdf-upload',    icon: '📤', name: 'Añadir PDF',                    bg: 'linear-gradient(135deg,#2563b0,#3b82f6)', adminOnly: true  },
     { id: 'pdf-view',      icon: '📄', name: 'Ver Manual',                    bg: 'linear-gradient(135deg,#0e7490,#06b6d4)', adminOnly: false },
     { id: 'reuniones',     icon: '📋', name: 'Reuniones',                     bg: 'linear-gradient(135deg,#5b6af0,#7c8cf8)', adminOnly: false },
@@ -2852,7 +2891,7 @@ function renderHub() {
     { id: 'inventario',    icon: '🗂️', name: 'Gestión de Clientes y Proveedor', bg: 'linear-gradient(135deg,#3d9e72,#52c98a)', adminOnly: false },
     { id: 'registro-inv',  icon: '📋', name: 'Registro de Inventarios',       bg: 'linear-gradient(135deg,#5a7e3d,#7ab552)', adminOnly: false },
     { id: 'cierres',       icon: '💰', name: 'Cierres de caja',               bg: 'linear-gradient(135deg,#d97b45,#f0975a)', adminOnly: false },
-    { id: 'pedidos',       icon: '🛒', name: 'Pedidos',                       bg: 'linear-gradient(135deg,#b45309,#f59e0b)', adminOnly: false },
+    { id: 'pedidos',       icon: '🛒', name: 'Pedidos Helados',                       bg: 'linear-gradient(135deg,#b45309,#f59e0b)', adminOnly: false },
     { id: 'pdf-upload',    icon: '📤', name: 'Añadir PDF',                    bg: 'linear-gradient(135deg,#2563b0,#3b82f6)', adminOnly: true  },
     { id: 'pdf-view',      icon: '📄', name: 'Ver Manual',                    bg: 'linear-gradient(135deg,#0e7490,#06b6d4)', adminOnly: false },
     { id: 'reuniones',     icon: '📋', name: 'Reuniones',                     bg: 'linear-gradient(135deg,#5b6af0,#7c8cf8)', adminOnly: false },
@@ -4829,6 +4868,7 @@ function closePdfViewer() {
 // ── Módulo: Pedidos ─────────────────────────────────────
 let pedidosAll = [];
 let pedidosFiltroStatus = '';
+let pedidosFiltroCliente = '';
 
 async function initPedidosModule() {
   const listEl = document.getElementById('pedidos-list');
@@ -4838,6 +4878,12 @@ async function initPedidosModule() {
     const data = await res.json();
     if (data.error) throw new Error(data.error);
     pedidosAll = data.orders || [];
+
+    // Poblar selector de negocios
+    const clientes = [...new Set(pedidosAll.map(p => p.clientName || p.buyerEmail).filter(Boolean))].sort();
+    const sel = document.getElementById('pedidos-filter-cliente');
+    sel.innerHTML = '<option value="">Todos los negocios</option>' +
+      clientes.map(c => `<option value="${c}">${c}</option>`).join('');
   } catch(e) {
     listEl.innerHTML = `<div style="color:#f87171;font-size:13px">${e.message}</div>`;
     return;
@@ -4856,52 +4902,224 @@ function renderPedidosFiltros() {
   ];
   el.innerHTML = filtros.map(f => `
     <button onclick="pedidosFiltroStatus='${f.value}';renderPedidosFiltros();renderPedidosList()"
-      style="padding:6px 14px;border-radius:20px;font-size:12px;cursor:pointer;border:1px solid ${pedidosFiltroStatus===f.value?'#fff':'#252525'};
-             background:${pedidosFiltroStatus===f.value?'#fff':'transparent'};color:${pedidosFiltroStatus===f.value?'#000':'#555'}">
+      style="padding:6px 14px;border-radius:20px;font-size:12px;cursor:pointer;
+             border:1px solid ${pedidosFiltroStatus===f.value?'#212529':'#dee2e6'};
+             background:${pedidosFiltroStatus===f.value?'#212529':'#fff'};
+             color:${pedidosFiltroStatus===f.value?'#fff':'#495057'}">
       ${f.label}
     </button>`).join('');
 }
 
 function renderPedidosList() {
   const el = document.getElementById('pedidos-list');
-  const filtered = pedidosFiltroStatus ? pedidosAll.filter(p => p.status === pedidosFiltroStatus) : pedidosAll;
+  const filtered = pedidosAll.filter(p => {
+    if (pedidosFiltroStatus && p.status !== pedidosFiltroStatus) return false;
+    if (pedidosFiltroCliente && (p.clientName || p.buyerEmail) !== pedidosFiltroCliente) return false;
+    return true;
+  });
 
   if (!filtered.length) {
-    el.innerHTML = `<div style="color:#444;font-size:13px;padding:20px 0">${pedidosFiltroStatus ? 'Sin pedidos con este estado.' : 'Sin pedidos aún.'}</div>`;
+    el.innerHTML = `<div style="color:#6c757d;font-size:13px;padding:20px 0">${pedidosFiltroStatus ? 'Sin pedidos con este estado.' : 'Sin pedidos aún.'}</div>`;
     return;
   }
 
   const statusBadge = s => {
-    if (s === 'pendiente')  return `<span style="background:#2d1f00;color:#fbbf24;border:1px solid #92400e;padding:2px 10px;border-radius:20px;font-size:11px">Pendiente</span>`;
-    if (s === 'confirmado') return `<span style="background:#0c1a2e;color:#60a5fa;border:1px solid #1e40af;padding:2px 10px;border-radius:20px;font-size:11px">Confirmado</span>`;
-    if (s === 'entregado')  return `<span style="background:#0d2b1a;color:#4ade80;border:1px solid #16532d;padding:2px 10px;border-radius:20px;font-size:11px">Entregado</span>`;
+    if (s === 'pendiente')  return `<span style="background:#fff3cd;color:#856404;border:1px solid #ffc107;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:600">Pendiente</span>`;
+    if (s === 'confirmado') return `<span style="background:#cfe2ff;color:#084298;border:1px solid #b6d4fe;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:600">Confirmado</span>`;
+    if (s === 'entregado')  return `<span style="background:#d1e7dd;color:#0a3622;border:1px solid #a3cfbb;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:600">Entregado</span>`;
+    if (s === 'cancelado')  return `<span style="background:#f8d7da;color:#842029;border:1px solid #f5c2c7;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:600">Cancelado</span>`;
     return s;
   };
 
-  el.innerHTML = filtered.map(p => `
-    <div style="background:#141414;border:1px solid #1f1f1f;border-radius:12px;padding:18px 20px;margin-bottom:12px">
+  el.innerHTML = filtered.map(p => {
+    const total    = Number(p.total) || 0;
+    const neto     = Math.round(total / 1.19);
+    const comprobantes = p.comprobantes || [];
+    const facturaUrl   = p.facturaUrl || null;
+    return `
+    <div style="background:#fff;border:1px solid #dee2e6;border-radius:12px;padding:18px 20px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,0.06)">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap">
-        <div>
-          <div style="font-size:15px;font-weight:600;color:#fff;margin-bottom:2px">${p.clientName || p.buyerEmail}</div>
-          <div style="font-size:12px;color:#444">${p.createdAt?.substring(0,16).replace('T',' ')} · #${p.id.substring(0,6)}</div>
+        <div style="cursor:pointer;flex:1" onclick="pedidoToggle('${p.id}')">
+          <div style="font-size:15px;font-weight:600;color:#212529;margin-bottom:2px">${p.clientName || p.buyerEmail}</div>
+          <div style="font-size:12px;color:#6c757d">${p.createdAt?.substring(0,16).replace('T',' ')} · #${p.id.substring(0,6)}</div>
         </div>
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
           ${statusBadge(p.status)}
-          <span style="font-size:15px;font-weight:700;color:#fff">$${Number(p.total).toLocaleString('es-CL')}</span>
+          <div style="font-size:15px;font-weight:700;color:#212529">$${total.toLocaleString('es-CL')}</div>
         </div>
       </div>
-      <div style="margin-top:12px;padding-top:12px;border-top:1px solid #1a1a1a">
-        <div style="font-size:12px;color:#555;margin-bottom:8px">
-          ${(p.items||[]).map(i => `${i.quantity}x ${i.name} — $${Number(i.price).toLocaleString('es-CL')}`).join(' · ')}
+
+      <!-- Detalle colapsable -->
+      <div id="pedido-detail-${p.id}" style="display:none">
+        <div style="margin-top:12px;padding-top:12px;border-top:1px solid #dee2e6">
+          <div style="display:flex;flex-direction:column;gap:2px;margin-bottom:8px">
+            ${(p.items||[]).map((i, idx) => `
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:5px 8px;border-radius:6px;background:${i.sinStock?'#fff5f5':'#f8f9fa'}">
+                <span style="font-size:13px;font-weight:500;color:${i.sinStock?'#adb5bd':'#212529'};${i.sinStock?'text-decoration:line-through;':''};flex:1">
+                  ${i.quantity}x ${i.name} — $${Number(i.price).toLocaleString('es-CL')}
+                </span>
+                <button onclick="pedidoToggleSinStock('${p.id}',${idx},${!i.sinStock})"
+                  title="${i.sinStock?'Restaurar':'Sin stock'}"
+                  style="border:none;background:none;cursor:pointer;font-size:11px;padding:2px 6px;border-radius:4px;
+                         color:${i.sinStock?'#dc3545':'#adb5bd'};border:1px solid ${i.sinStock?'#f5c6cb':'#dee2e6'}">
+                  ${i.sinStock ? '✕ Sin stock' : 'Sin stock'}
+                </button>
+              </div>`).join('')}
+          </div>
+          ${p.notes ? `<div style="font-size:12px;color:#6c757d;font-style:italic">📝 ${p.notes}</div>` : ''}
+          <!-- Resumen de precios -->
+          <div style="margin-top:12px;padding-top:10px;border-top:1px solid #dee2e6;display:flex;flex-direction:column;gap:4px;align-items:flex-end">
+            <div style="display:flex;justify-content:space-between;width:220px;font-size:13px;color:#6c757d">
+              <span>Subtotal neto</span><span>$${Math.round(total/1.19).toLocaleString('es-CL')}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;width:220px;font-size:13px;color:#6c757d">
+              <span>IVA 19%</span><span>$${(total - Math.round(total/1.19)).toLocaleString('es-CL')}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;width:220px;font-size:14px;font-weight:700;color:#212529;padding-top:4px;border-top:1px solid #dee2e6;margin-top:2px">
+              <span>Total</span><span>$${total.toLocaleString('es-CL')}</span>
+            </div>
+          </div>
         </div>
-        ${p.notes ? `<div style="font-size:12px;color:#444;font-style:italic">📝 ${p.notes}</div>` : ''}
+
+        <!-- Comprobantes y factura -->
+        <div style="margin-top:14px;padding-top:14px;border-top:1px solid #dee2e6;display:flex;flex-direction:column;gap:12px">
+
+          <!-- Comprobantes -->
+          <div>
+            <div style="font-size:12px;font-weight:600;color:#495057;margin-bottom:6px">Comprobantes de pago</div>
+            <div id="comp-list-${p.id}" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">
+              ${comprobantes.map((url,i) => `
+                <div style="display:flex;align-items:center;gap:4px;background:#f8f9fa;border:1px solid #dee2e6;border-radius:6px;padding:3px 8px">
+                  <a href="${url}" target="_blank" style="font-size:11px;color:#0d6efd;text-decoration:none">📎 Comp. ${i+1}</a>
+                  <button onclick="pedidoDeleteComp('${p.id}',${i})" style="border:none;background:none;color:#adb5bd;cursor:pointer;font-size:12px;padding:0 2px;line-height:1"
+                    onmouseover="this.style.color='#dc3545'" onmouseout="this.style.color='#adb5bd'">×</button>
+                </div>`).join('')}
+            </div>
+            <label style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border:1px solid #dee2e6;border-radius:8px;font-size:12px;color:#495057;background:#f8f9fa">
+              <input type="file" accept="image/*,.pdf" style="display:none" onchange="pedidoUploadComp('${p.id}',this)">
+              + Agregar comprobante
+            </label>
+            <span id="comp-msg-${p.id}" style="font-size:11px;color:#6c757d;margin-left:8px"></span>
+          </div>
+
+          <!-- Factura -->
+          <div>
+            <div style="font-size:12px;font-weight:600;color:#495057;margin-bottom:6px">Factura</div>
+            <div id="fact-wrap-${p.id}">
+              ${facturaUrl
+                ? `<div style="display:flex;align-items:center;gap:8px">
+                     <a href="${facturaUrl}" target="_blank" style="font-size:12px;color:#0d6efd;text-decoration:none">📄 Ver factura</a>
+                     <button onclick="pedidoDeleteFactura('${p.id}')" style="border:none;background:none;color:#adb5bd;cursor:pointer;font-size:12px"
+                       onmouseover="this.style.color='#dc3545'" onmouseout="this.style.color='#adb5bd'">× Eliminar</button>
+                   </div>`
+                : `<label style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border:1px solid #dee2e6;border-radius:8px;font-size:12px;color:#495057;background:#f8f9fa">
+                     <input type="file" accept="image/*,.pdf" style="display:none" onchange="pedidoUploadFactura('${p.id}',this)">
+                     + Subir factura
+                   </label>`}
+            </div>
+            <span id="fact-msg-${p.id}" style="font-size:11px;color:#6c757d;margin-left:4px"></span>
+          </div>
+        </div>
+
+        <!-- Acciones de estado -->
+        ${(userRole==='admin'||userRole==='superadmin') ? `
+        <div style="margin-top:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span style="font-size:12px;color:#6c757d;font-weight:600">Estado:</span>
+          <select onchange="cambiarStatusPedido('${p.id}',this.value)"
+            style="padding:5px 10px;border:1px solid #dee2e6;border-radius:8px;font-size:12px;background:#fff;color:#212529;cursor:pointer">
+            <option value="pendiente"  ${p.status==='pendiente' ?'selected':''}>Pendiente</option>
+            <option value="confirmado" ${p.status==='confirmado'?'selected':''}>Confirmado</option>
+            <option value="entregado"  ${p.status==='entregado' ?'selected':''}>Entregado</option>
+            <option value="cancelado"  ${p.status==='cancelado' ?'selected':''}>Cancelado</option>
+          </select>
+        </div>` : ''}
       </div>
-      ${(userRole==='admin'||userRole==='superadmin') ? `
-      <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
-        ${p.status !== 'confirmado' && p.status !== 'entregado' ? `<button onclick="cambiarStatusPedido('${p.id}','confirmado')" style="background:#1e3a5f;border:none;color:#60a5fa;padding:6px 14px;border-radius:8px;font-size:12px;cursor:pointer">Confirmar</button>` : ''}
-        ${p.status !== 'entregado' ? `<button onclick="cambiarStatusPedido('${p.id}','entregado')" style="background:#0d2b1a;border:none;color:#4ade80;padding:6px 14px;border-radius:8px;font-size:12px;cursor:pointer">Marcar entregado</button>` : ''}
-      </div>` : ''}
-    </div>`).join('');
+    </div>`;
+  }).join('');
+}
+
+function pedidoToggle(id) {
+  const el = document.getElementById(`pedido-detail-${id}`);
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+async function pedidoUploadComp(id, input) {
+  const msg  = document.getElementById(`comp-msg-${id}`);
+  const file = input.files[0];
+  if (!file) return;
+  msg.textContent = 'Subiendo...';
+  const fd = new FormData();
+  fd.append('file', file);
+  try {
+    const res  = await apiFetch(`/api/orders/${id}/comprobantes`, { method: 'POST', body: fd, _unused: true });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    const p = pedidosAll.find(x => x.id === id);
+    if (p) p.comprobantes = data.comprobantes;
+    const listEl = document.getElementById(`comp-list-${id}`);
+    listEl.innerHTML = data.comprobantes.map((url,i) => `
+      <div style="display:flex;align-items:center;gap:4px;background:#f8f9fa;border:1px solid #dee2e6;border-radius:6px;padding:3px 8px">
+        <a href="${url}" target="_blank" style="font-size:11px;color:#0d6efd;text-decoration:none">📎 Comp. ${i+1}</a>
+        <button onclick="pedidoDeleteComp('${id}',${i})" style="border:none;background:none;color:#adb5bd;cursor:pointer;font-size:12px;padding:0 2px;line-height:1"
+          onmouseover="this.style.color='#dc3545'" onmouseout="this.style.color='#adb5bd'">×</button>
+      </div>`).join('');
+    msg.textContent = '✓ Guardado';
+    setTimeout(() => { msg.textContent = ''; }, 2000);
+  } catch(e) { msg.textContent = 'Error: ' + e.message; }
+  input.value = '';
+}
+
+async function pedidoDeleteComp(id, idx) {
+  const msg = document.getElementById(`comp-msg-${id}`);
+  try {
+    const res  = await apiFetch(`/api/orders/${id}/comprobantes/${idx}`, { method: 'DELETE' });
+    const data = await res.json();
+    const p = pedidosAll.find(x => x.id === id);
+    if (p) p.comprobantes = data.comprobantes;
+    const listEl = document.getElementById(`comp-list-${id}`);
+    listEl.innerHTML = data.comprobantes.map((url,i) => `
+      <div style="display:flex;align-items:center;gap:4px;background:#f8f9fa;border:1px solid #dee2e6;border-radius:6px;padding:3px 8px">
+        <a href="${url}" target="_blank" style="font-size:11px;color:#0d6efd;text-decoration:none">📎 Comp. ${i+1}</a>
+        <button onclick="pedidoDeleteComp('${id}',${i})" style="border:none;background:none;color:#adb5bd;cursor:pointer;font-size:12px;padding:0 2px;line-height:1"
+          onmouseover="this.style.color='#dc3545'" onmouseout="this.style.color='#adb5bd'">×</button>
+      </div>`).join('');
+  } catch(e) { if (msg) msg.textContent = 'Error: ' + e.message; }
+}
+
+async function pedidoUploadFactura(id, input) {
+  const msg  = document.getElementById(`fact-msg-${id}`);
+  const file = input.files[0];
+  if (!file) return;
+  msg.textContent = 'Subiendo...';
+  const fd = new FormData();
+  fd.append('file', file);
+  try {
+    const res  = await apiFetch(`/api/orders/${id}/factura`, { method: 'POST', body: fd, _unused: true });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    const p = pedidosAll.find(x => x.id === id);
+    if (p) p.facturaUrl = data.url;
+    document.getElementById(`fact-wrap-${id}`).innerHTML =
+      `<div style="display:flex;align-items:center;gap:8px">
+         <a href="${data.url}" target="_blank" style="font-size:12px;color:#0d6efd;text-decoration:none">📄 Ver factura</a>
+         <button onclick="pedidoDeleteFactura('${id}')" style="border:none;background:none;color:#adb5bd;cursor:pointer;font-size:12px"
+           onmouseover="this.style.color='#dc3545'" onmouseout="this.style.color='#adb5bd'">× Eliminar</button>
+       </div>`;
+    msg.textContent = '✓ Guardado';
+    setTimeout(() => { msg.textContent = ''; }, 2000);
+  } catch(e) { msg.textContent = 'Error: ' + e.message; }
+  input.value = '';
+}
+
+async function pedidoDeleteFactura(id) {
+  await apiFetch(`/api/orders/${id}/factura`, { method: 'DELETE' });
+  const p = pedidosAll.find(x => x.id === id);
+  if (p) p.facturaUrl = null;
+  document.getElementById(`fact-wrap-${id}`).innerHTML =
+    `<label style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border:1px solid #dee2e6;border-radius:8px;font-size:12px;color:#495057;background:#f8f9fa">
+       <input type="file" accept="image/*,.pdf" style="display:none" onchange="pedidoUploadFactura('${id}',this)">
+       + Subir factura
+     </label>`;
 }
 
 async function cambiarStatusPedido(id, status) {
@@ -4909,6 +5127,22 @@ async function cambiarStatusPedido(id, status) {
   const p = pedidosAll.find(x => x.id === id);
   if (p) p.status = status;
   renderPedidosList();
+  const detail = document.getElementById(`pedido-detail-${id}`);
+  if (detail) detail.style.display = 'block';
+}
+
+async function pedidoToggleSinStock(id, idx, sinStock) {
+  try {
+    const res  = await apiFetch(`/api/orders/${id}/items`, { method: 'PATCH', body: JSON.stringify({ idx, sinStock }) });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    const p = pedidosAll.find(x => x.id === id);
+    if (p) { p.items = data.items; p.total = data.total; }
+    renderPedidosList();
+    // Re-abrir el detalle
+    const detail = document.getElementById(`pedido-detail-${id}`);
+    if (detail) detail.style.display = 'block';
+  } catch(e) { alert('Error: ' + e.message); }
 }
 
 // ── Admin: Configuración general ────────────────────────
@@ -5276,6 +5510,12 @@ async function gddSave() {
   if (!gddData) return;
   const btn = document.getElementById('gdd-save-btn');
   const msg = document.getElementById('gdd-save-msg');
+  const localId = document.getElementById('gdd-local-select').value;
+  if (!localId) {
+    msg.style.color = '#dc3545';
+    msg.textContent = 'Seleccioná el local antes de guardar.';
+    return;
+  }
   btn.disabled = true; btn.textContent = 'Guardando...';
   try {
     const res  = await apiFetch('/api/gdd/records', {
@@ -5284,7 +5524,7 @@ async function gddSave() {
         proveedor:    gddData.proveedor,
         fecha:        gddData.fecha,
         items:        gddData.items,
-        restaurantId: activeRestId || '',
+        restaurantId: localId,
         imageUrl:     gddData._imageUrl || null
       })
     });
@@ -5301,18 +5541,29 @@ async function gddSave() {
   }
 }
 
-async function gddLoadHistory() {
+let gddAllRecords = [];
+
+function gddApplyFilter() {
+  const mes  = document.getElementById('gdd-filter-mes').value;
+  const anio = document.getElementById('gdd-filter-anio').value;
+  const filtered = gddAllRecords.filter(r => {
+    const fecha = r.fecha || '';
+    if (mes  && fecha.substring(5, 7) !== mes)  return false;
+    if (anio && fecha.substring(0, 4) !== anio) return false;
+    return true;
+  });
+  document.getElementById('gdd-filter-count').textContent =
+    filtered.length < gddAllRecords.length ? `${filtered.length} de ${gddAllRecords.length} guías` : `${gddAllRecords.length} guías`;
+  gddRenderHistory(filtered);
+}
+
+function gddRenderHistory(records) {
   const el = document.getElementById('gdd-history-list');
-  el.innerHTML = '<div style="color:#6c757d;font-size:13px">Cargando...</div>';
-  try {
-    const res  = await apiFetch('/api/gdd/records');
-    const data = await res.json();
-    const records = data.records || [];
-    if (!records.length) {
-      el.innerHTML = '<div style="color:#adb5bd;font-size:13px;padding:40px 0;text-align:center">Sin guías guardadas aún</div>';
-      return;
-    }
-    el.innerHTML = records.map(r => {
+  if (!records.length) {
+    el.innerHTML = '<div style="color:#adb5bd;font-size:13px;padding:40px 0;text-align:center">Sin guías para el período seleccionado</div>';
+    return;
+  }
+  el.innerHTML = records.map(r => {
       const itemsConCantidad = (r.items || []).filter(i => i.cantidad !== null && i.cantidad !== undefined);
       return `
       <div style="background:#fff;border:1px solid #dee2e6;border-radius:12px;margin-bottom:14px;overflow:hidden">
@@ -5366,6 +5617,27 @@ async function gddLoadHistory() {
         </div>
       </div>`;
     }).join('');
+}
+
+async function gddLoadHistory() {
+  const el = document.getElementById('gdd-history-list');
+  el.innerHTML = '<div style="color:#6c757d;font-size:13px">Cargando...</div>';
+  try {
+    const res  = await apiFetch('/api/gdd/records');
+    const data = await res.json();
+    gddAllRecords = data.records || [];
+
+    // Poblar selector de años
+    const years = [...new Set(gddAllRecords.map(r => (r.fecha||'').substring(0,4)).filter(Boolean))].sort().reverse();
+    const anioSel = document.getElementById('gdd-filter-anio');
+    anioSel.innerHTML = '<option value="">Todos los años</option>' +
+      years.map(y => `<option value="${y}">${y}</option>`).join('');
+
+    if (!gddAllRecords.length) {
+      el.innerHTML = '<div style="color:#adb5bd;font-size:13px;padding:40px 0;text-align:center">Sin guías guardadas aún</div>';
+      return;
+    }
+    gddApplyFilter();
   } catch(e) {
     el.innerHTML = `<div style="color:#dc3545;font-size:13px">${e.message}</div>`;
   }
@@ -5469,6 +5741,96 @@ async function gddExportExcel() {
     const wsR = XLSX.utils.aoa_to_sheet(rRows);
     wsR['!cols'] = [24, 8, 8, 14].map(w => ({ wch: w }));
     XLSX.utils.book_append_sheet(wb, wsR, 'Resumen');
+
+    // ── Hoja Productos: Mes > Año > Producto con suma de cantidades ──
+    const prodSummary = {}; // [mesNum][anio][producto] = totalCantidad
+    sorted.forEach(rec => {
+      const anio   = (rec.fecha || '').substring(0, 4) || '(en blanco)';
+      const mesNum = (rec.fecha || '').substring(5, 7) || '(en blanco)';
+      if (!prodSummary[mesNum]) prodSummary[mesNum] = {};
+      if (!prodSummary[mesNum][anio]) prodSummary[mesNum][anio] = {};
+      (rec.items || []).forEach(item => {
+        if (item.cantidad == null) return;
+        const name = item.producto || '(sin nombre)';
+        prodSummary[mesNum][anio][name] = (prodSummary[mesNum][anio][name] || 0) + (item.cantidad ?? 0);
+      });
+    });
+
+    const pRows    = [];
+    const pRowMeta = []; // nivel de outline para cada fila
+
+    Object.keys(prodSummary).sort().forEach(mes => {
+      let mesTotal = 0;
+      Object.values(prodSummary[mes]).forEach(anioObj =>
+        Object.values(anioObj).forEach(qty => mesTotal += qty));
+      pRows.push([`${mes}`, mesTotal]);
+      pRowMeta.push({});
+
+      Object.keys(prodSummary[mes]).sort().forEach(anio => {
+        let anioTotal = 0;
+        Object.values(prodSummary[mes][anio]).forEach(qty => anioTotal += qty);
+        pRows.push([`  ${anio}`, anioTotal]);
+        pRowMeta.push({ level: 1 });
+
+        Object.keys(prodSummary[mes][anio]).sort().forEach(prod => {
+          pRows.push([`    ${prod}`, prodSummary[mes][anio][prod]]);
+          pRowMeta.push({ level: 2 });
+        });
+      });
+    });
+
+    const wsP = XLSX.utils.aoa_to_sheet(pRows);
+    wsP['!cols'] = [{ wch: 44 }, { wch: 12 }];
+    wsP['!rows'] = pRowMeta;
+    XLSX.utils.book_append_sheet(wb, wsP, 'Productos');
+
+    // ── Una hoja por GDD (proveedor): Mes > Año > Producto ──
+    const localSummary = {}; // [proveedor][mesNum][anio][producto] = totalCantidad
+    sorted.forEach(rec => {
+      const local  = rec.proveedor || '(sin local)';
+      const anio   = (rec.fecha || '').substring(0, 4) || '(en blanco)';
+      const mesNum = (rec.fecha || '').substring(5, 7) || '(en blanco)';
+      if (!localSummary[local]) localSummary[local] = {};
+      if (!localSummary[local][mesNum]) localSummary[local][mesNum] = {};
+      if (!localSummary[local][mesNum][anio]) localSummary[local][mesNum][anio] = {};
+      (rec.items || []).forEach(item => {
+        if (item.cantidad == null) return;
+        const name = item.producto || '(sin nombre)';
+        localSummary[local][mesNum][anio][name] = (localSummary[local][mesNum][anio][name] || 0) + (item.cantidad ?? 0);
+      });
+    });
+
+    Object.keys(localSummary).sort().forEach(local => {
+      const lRows    = [];
+      const lRowMeta = [];
+
+      Object.keys(localSummary[local]).sort().forEach(mes => {
+        let mesTotal = 0;
+        Object.values(localSummary[local][mes]).forEach(anioObj =>
+          Object.values(anioObj).forEach(qty => mesTotal += qty));
+        lRows.push([`${mes}`, mesTotal]);
+        lRowMeta.push({});
+
+        Object.keys(localSummary[local][mes]).sort().forEach(anio => {
+          let anioTotal = 0;
+          Object.values(localSummary[local][mes][anio]).forEach(qty => anioTotal += qty);
+          lRows.push([`  ${anio}`, anioTotal]);
+          lRowMeta.push({ level: 1 });
+
+          Object.keys(localSummary[local][mes][anio]).sort().forEach(prod => {
+            lRows.push([`    ${prod}`, localSummary[local][mes][anio][prod]]);
+            lRowMeta.push({ level: 2 });
+          });
+        });
+      });
+
+      // Nombre de hoja: máx 31 chars (límite Excel)
+      const sheetName = local.substring(0, 31);
+      const wsL = XLSX.utils.aoa_to_sheet(lRows);
+      wsL['!cols'] = [{ wch: 44 }, { wch: 12 }];
+      wsL['!rows'] = lRowMeta;
+      XLSX.utils.book_append_sheet(wb, wsL, sheetName);
+    });
 
     const fecha = new Date().toISOString().substring(0, 10);
     XLSX.writeFile(wb, `GDD_Export_${fecha}.xlsx`);

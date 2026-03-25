@@ -6,9 +6,17 @@
   <title>Portal de compras – Mónaco Maitencillo</title>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <!-- Bootstrap 5 -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+  <!-- AdminLTE 3 -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2.0/dist/css/adminlte.min.css">
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <!-- Nunito -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,800&display=swap">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f0f0f; color: #e5e5e5; min-height: 100vh; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f4f6f9; color: #212529; min-height: 100vh; }
 
     /* ── LOGIN ── */
     #login-screen {
@@ -17,25 +25,25 @@
     }
     .login-box {
       width: 100%; max-width: 380px;
-      background: #141414; border: 1px solid #1f1f1f; border-radius: 16px;
-      padding: 40px 36px;
+      background: #fff; border: 1px solid #dee2e6; border-radius: 16px;
+      padding: 40px 36px; box-shadow: 0 2px 16px rgba(0,0,0,.08);
     }
     .login-logo {
-      font-size: 22px; font-weight: 700; color: #fff; margin-bottom: 4px;
+      font-size: 22px; font-weight: 700; color: #212529; margin-bottom: 4px;
     }
     .login-logo span { color: #ff5023; }
     .login-sub {
-      font-size: 13px; color: #444; margin-bottom: 32px;
+      font-size: 13px; color: #6c757d; margin-bottom: 32px;
     }
     .field { margin-bottom: 16px; }
-    .field label { display: block; font-size: 11px; color: #555; margin-bottom: 7px; text-transform: uppercase; letter-spacing: .4px; }
+    .field label { display: block; font-size: 11px; color: #6c757d; margin-bottom: 7px; text-transform: uppercase; letter-spacing: .4px; }
     .field input {
-      width: 100%; padding: 11px 14px; background: #0f0f0f;
-      border: 1px solid #222; border-radius: 8px; color: #fff;
+      width: 100%; padding: 11px 14px; background: #fff;
+      border: 1px solid #dee2e6; border-radius: 8px; color: #212529;
       font-size: 14px; outline: none; transition: border-color .2s;
     }
     .field input:focus { border-color: #ff5023; }
-    .field input::placeholder { color: #333; }
+    .field input::placeholder { color: #adb5bd; }
     .btn-login {
       width: 100%; padding: 12px; background: #ff5023; color: #fff;
       border: none; border-radius: 8px; font-size: 14px; font-weight: 600;
@@ -44,54 +52,19 @@
     .btn-login:hover { opacity: .88; }
     .btn-login:disabled { opacity: .4; cursor: not-allowed; }
     .login-error {
-      background: #1a0a0a; border: 1px solid #3a1515; color: #f87171;
+      background: #fff5f5; border: 1px solid #fecaca; color: #dc3545;
       padding: 10px 14px; border-radius: 8px; font-size: 13px;
       margin-top: 14px; display: none;
     }
 
-    /* ── APP ── */
-    #app { display: none; flex-direction: column; min-height: 100vh; }
-
-    /* Top bar */
-    .topbar {
-      position: sticky; top: 0; z-index: 100;
-      display: flex; align-items: center; gap: 12px;
-      padding: 0 20px; height: 56px;
-      background: #0f0f0f; border-bottom: 1px solid #1a1a1a;
-      flex-shrink: 0;
-    }
-    .topbar-logo { font-size: 15px; font-weight: 700; color: #fff; flex: 1; }
-    .topbar-logo span { color: #ff5023; }
-    .topbar-user { font-size: 12px; color: #555; display: none; }
-    @media (min-width: 480px) { .topbar-user { display: block; } }
+    /* ── PORTAL CART BUTTON ── */
     .btn-cart {
       background: #ff5023; border: none; color: #fff;
-      padding: 8px 14px; border-radius: 8px; font-size: 13px;
+      padding: 6px 14px; border-radius: 8px; font-size: 13px;
       font-weight: 600; cursor: pointer; white-space: nowrap;
-      transition: opacity .15s;
+      transition: opacity .15s; margin-right: 4px;
     }
     .btn-cart:hover { opacity: .88; }
-    .btn-logout {
-      background: transparent; border: 1px solid #222; color: #555;
-      padding: 7px 12px; border-radius: 8px; font-size: 12px;
-      cursor: pointer; transition: all .15s; white-space: nowrap;
-    }
-    .btn-logout:hover { border-color: #444; color: #aaa; }
-
-    /* Nav tabs */
-    .nav-tabs {
-      display: flex; gap: 0; border-bottom: 1px solid #1a1a1a;
-      background: #0f0f0f; flex-shrink: 0; padding: 0 20px;
-    }
-    .nav-tab {
-      padding: 12px 18px; font-size: 13px; color: #555;
-      background: transparent; border: none; border-bottom: 2px solid transparent;
-      cursor: pointer; transition: all .15s;
-    }
-    .nav-tab.active { color: #fff; border-bottom-color: #ff5023; }
-
-    /* Main content */
-    .main-content { flex: 1; padding: 24px 20px 120px; max-width: 1100px; width: 100%; margin: 0 auto; }
 
     /* Catalog grid */
     .catalog-grid {
@@ -104,61 +77,61 @@
     }
 
     .product-card {
-      background: #141414; border: 1px solid #1f1f1f;
+      background: #fff; border: 1px solid #dee2e6;
       border-radius: 12px; padding: 16px; display: flex;
       flex-direction: column; gap: 8px;
-      transition: border-color .15s;
+      transition: box-shadow .15s; box-shadow: 0 1px 3px rgba(0,0,0,.06);
     }
-    .product-card:hover { border-color: #2a2a2a; }
+    .product-card:hover { box-shadow: 0 3px 10px rgba(0,0,0,.1); }
     .product-category {
       font-size: 10px; text-transform: uppercase; letter-spacing: .5px;
-      color: #444;
+      color: #adb5bd;
     }
     .product-name {
-      font-size: 14px; font-weight: 600; color: #fff; line-height: 1.3;
+      font-size: 14px; font-weight: 600; color: #212529; line-height: 1.3;
       flex: 1;
     }
     .product-price {
       font-size: 16px; font-weight: 700; color: #ff5023;
     }
     .product-unit {
-      font-size: 11px; color: #444; margin-top: -4px;
+      font-size: 11px; color: #adb5bd; margin-top: -4px;
     }
     .qty-row {
       display: flex; align-items: center; gap: 8px; margin-top: 4px;
     }
     .qty-btn {
       width: 28px; height: 28px; border-radius: 6px;
-      background: #1f1f1f; border: 1px solid #2a2a2a;
-      color: #fff; font-size: 16px; cursor: pointer;
+      background: #f8f9fa; border: 1px solid #dee2e6;
+      color: #495057; font-size: 16px; cursor: pointer;
       display: flex; align-items: center; justify-content: center;
       transition: background .15s; flex-shrink: 0;
     }
-    .qty-btn:hover { background: #2a2a2a; }
+    .qty-btn:hover { background: #e9ecef; }
     .qty-num {
       min-width: 24px; text-align: center; font-size: 14px;
-      font-weight: 600; color: #fff;
+      font-weight: 600; color: #212529;
     }
     .btn-add-cart {
-      width: 100%; padding: 9px; background: #1f1f1f;
-      border: 1px solid #2a2a2a; border-radius: 8px;
-      color: #aaa; font-size: 12px; font-weight: 600;
+      width: 100%; padding: 9px; background: #f8f9fa;
+      border: 1px solid #dee2e6; border-radius: 8px;
+      color: #495057; font-size: 12px; font-weight: 600;
       cursor: pointer; transition: all .15s; margin-top: 4px;
     }
-    .btn-add-cart:hover { background: #252525; color: #fff; border-color: #333; }
-    .btn-add-cart.in-cart { background: #1a2a1a; border-color: #2d4d2d; color: #4ade80; }
+    .btn-add-cart:hover { background: #e9ecef; color: #212529; border-color: #adb5bd; }
+    .btn-add-cart.in-cart { background: #d1fae5; border-color: #6ee7b7; color: #065f46; }
 
     /* Floating cart bar */
     #cart-bar {
       position: fixed; bottom: 0; left: 0; right: 0;
-      background: #141414; border-top: 1px solid #1f1f1f;
+      background: #fff; border-top: 1px solid #dee2e6;
       padding: 14px 20px; display: none;
       align-items: center; justify-content: space-between; gap: 12px;
-      z-index: 200; flex-wrap: wrap;
+      z-index: 200; flex-wrap: wrap; box-shadow: 0 -2px 12px rgba(0,0,0,.08);
     }
     #cart-bar.visible { display: flex; }
-    .cart-bar-summary { font-size: 13px; color: #aaa; }
-    .cart-bar-total { font-size: 16px; font-weight: 700; color: #fff; margin-top: 2px; }
+    .cart-bar-summary { font-size: 13px; color: #6c757d; }
+    .cart-bar-total { font-size: 16px; font-weight: 700; color: #212529; margin-top: 2px; }
     .btn-checkout {
       background: #ff5023; border: none; color: #fff;
       padding: 12px 24px; border-radius: 10px; font-size: 14px;
@@ -169,93 +142,95 @@
 
     /* Orders list */
     .order-card {
-      background: #141414; border: 1px solid #1f1f1f;
+      background: #fff; border: 1px solid #dee2e6;
       border-radius: 12px; padding: 18px 20px; margin-bottom: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,.06);
     }
     .order-header {
       display: flex; align-items: flex-start;
       justify-content: space-between; gap: 12px; flex-wrap: wrap;
       margin-bottom: 12px;
     }
-    .order-date { font-size: 12px; color: #444; }
-    .order-id { font-size: 11px; color: #333; }
-    .order-total { font-size: 16px; font-weight: 700; color: #fff; }
-    .order-items { font-size: 12px; color: #555; margin-top: 8px; padding-top: 10px; border-top: 1px solid #1a1a1a; }
+    .order-date { font-size: 12px; color: #6c757d; }
+    .order-id { font-size: 11px; color: #adb5bd; }
+    .order-total { font-size: 16px; font-weight: 700; color: #212529; }
+    .order-items { font-size: 12px; color: #6c757d; margin-top: 8px; padding-top: 10px; border-top: 1px solid #e9ecef; }
     .badge {
       padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 500;
     }
-    .badge-pendiente  { background: #2d1f00; color: #fbbf24; border: 1px solid #92400e; }
-    .badge-confirmado { background: #0c1a2e; color: #60a5fa; border: 1px solid #1e40af; }
-    .badge-entregado  { background: #0d2b1a; color: #4ade80; border: 1px solid #16532d; }
+    .badge-pendiente  { background: #fff8e1; color: #d97706; border: 1px solid #fcd34d; }
+    .badge-confirmado { background: #eff6ff; color: #2563eb; border: 1px solid #93c5fd; }
+    .badge-entregado  { background: #f0fdf4; color: #16a34a; border: 1px solid #86efac; }
 
     /* Modal */
     .modal-overlay {
       display: none; position: fixed; inset: 0;
-      background: rgba(0,0,0,.75); z-index: 500;
+      background: rgba(0,0,0,.4); z-index: 500;
       align-items: center; justify-content: center; padding: 20px;
     }
     .modal-overlay.open { display: flex; }
     .modal-panel {
-      background: #141414; border: 1px solid #1f1f1f;
+      background: #fff; border: 1px solid #dee2e6;
       border-radius: 16px; width: 100%; max-width: 520px;
       max-height: 90vh; overflow-y: auto;
       display: flex; flex-direction: column;
+      box-shadow: 0 8px 32px rgba(0,0,0,.12);
     }
     .modal-head {
       display: flex; align-items: center; justify-content: space-between;
-      padding: 20px 24px 16px; border-bottom: 1px solid #1f1f1f; flex-shrink: 0;
+      padding: 20px 24px 16px; border-bottom: 1px solid #dee2e6; flex-shrink: 0;
     }
-    .modal-head h2 { font-size: 16px; font-weight: 700; color: #fff; }
+    .modal-head h2 { font-size: 16px; font-weight: 700; color: #212529; }
     .modal-close-btn {
-      background: transparent; border: none; color: #555;
+      background: transparent; border: none; color: #adb5bd;
       font-size: 22px; cursor: pointer; line-height: 1;
       transition: color .15s;
     }
-    .modal-close-btn:hover { color: #aaa; }
+    .modal-close-btn:hover { color: #495057; }
     .modal-body { padding: 20px 24px; flex: 1; }
     .modal-footer {
-      padding: 16px 24px; border-top: 1px solid #1f1f1f;
+      padding: 16px 24px; border-top: 1px solid #dee2e6;
       display: flex; gap: 10px; flex-shrink: 0; flex-wrap: wrap;
     }
 
     .order-item-row {
       display: flex; align-items: center; justify-content: space-between;
-      padding: 10px 0; border-bottom: 1px solid #1a1a1a;
+      padding: 10px 0; border-bottom: 1px solid #e9ecef;
       font-size: 13px; gap: 10px;
     }
-    .order-item-name { color: #ccc; flex: 1; }
-    .order-item-price { color: #fff; font-weight: 600; white-space: nowrap; min-width: 70px; text-align: right; }
+    .order-item-name { color: #495057; flex: 1; }
+    .order-item-price { color: #212529; font-weight: 600; white-space: nowrap; min-width: 70px; text-align: right; }
     .cart-qty-row { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
     .cart-qty-btn {
       width: 26px; height: 26px; border-radius: 6px;
-      background: #1f1f1f; border: 1px solid #2a2a2a;
-      color: #fff; font-size: 15px; cursor: pointer;
+      background: #f8f9fa; border: 1px solid #dee2e6;
+      color: #495057; font-size: 15px; cursor: pointer;
       display: flex; align-items: center; justify-content: center;
       transition: background .15s;
     }
-    .cart-qty-btn:hover { background: #2a2a2a; }
-    .cart-qty-num { min-width: 20px; text-align: center; font-size: 13px; font-weight: 600; color: #fff; }
+    .cart-qty-btn:hover { background: #e9ecef; }
+    .cart-qty-num { min-width: 20px; text-align: center; font-size: 13px; font-weight: 600; color: #212529; }
     .cart-remove-btn {
-      background: none; border: none; color: #444; font-size: 18px;
+      background: none; border: none; color: #adb5bd; font-size: 18px;
       cursor: pointer; line-height: 1; padding: 0 2px;
       transition: color .15s; flex-shrink: 0;
     }
-    .cart-remove-btn:hover { color: #f87171; }
+    .cart-remove-btn:hover { color: #dc3545; }
 
     .order-total-row {
       display: flex; justify-content: space-between;
-      padding: 8px 0 0; font-size: 13px; color: #aaa;
+      padding: 8px 0 0; font-size: 13px; color: #6c757d;
     }
     .order-total-row.grand {
       padding-top: 10px; margin-top: 4px;
-      border-top: 1px solid #2a2a2a;
-      font-size: 15px; font-weight: 700; color: #fff;
+      border-top: 1px solid #dee2e6;
+      font-size: 15px; font-weight: 700; color: #212529;
     }
 
-    .notes-label { font-size: 12px; color: #555; text-transform: uppercase; letter-spacing: .4px; margin-bottom: 8px; margin-top: 16px; }
+    .notes-label { font-size: 12px; color: #6c757d; text-transform: uppercase; letter-spacing: .4px; margin-bottom: 8px; margin-top: 16px; }
     textarea.notes-input {
-      width: 100%; background: #0f0f0f; border: 1px solid #222;
-      border-radius: 8px; color: #eee; padding: 10px 14px;
+      width: 100%; background: #fff; border: 1px solid #dee2e6;
+      border-radius: 8px; color: #212529; padding: 10px 14px;
       font-size: 13px; resize: vertical; min-height: 72px;
       outline: none; font-family: inherit; transition: border-color .2s;
     }
@@ -272,47 +247,45 @@
     .btn-wa:disabled { opacity: .4; cursor: not-allowed; }
     .btn-cancel-modal {
       padding: 13px 20px; background: transparent;
-      border: 1px solid #222; color: #555; border-radius: 10px;
+      border: 1px solid #dee2e6; color: #6c757d; border-radius: 10px;
       font-size: 14px; cursor: pointer; transition: all .15s;
     }
-    .btn-cancel-modal:hover { border-color: #333; color: #aaa; }
+    .btn-cancel-modal:hover { border-color: #adb5bd; color: #495057; }
 
     .success-banner {
-      background: #0d2b1a; border: 1px solid #16532d;
-      color: #4ade80; padding: 14px 18px; border-radius: 10px;
+      background: #f0fdf4; border: 1px solid #86efac;
+      color: #16a34a; padding: 14px 18px; border-radius: 10px;
       font-size: 13px; text-align: center; margin-bottom: 20px;
       display: none;
     }
-    .empty-state { color: #444; font-size: 13px; padding: 40px 0; text-align: center; }
+    .empty-state { color: #adb5bd; font-size: 13px; padding: 40px 0; text-align: center; }
 
-    /* Loading spinner */
-    .loading-text { color: #444; font-size: 13px; padding: 40px 0; text-align: center; }
+    /* Loading */
+    .loading-text { color: #adb5bd; font-size: 13px; padding: 40px 0; text-align: center; }
 
-    .catalog-search {
-      margin-bottom: 14px;
-    }
+    .catalog-search { margin-bottom: 14px; }
     .catalog-search input {
       width: 100%; max-width: 340px; padding: 10px 14px;
-      background: #141414; border: 1px solid #1f1f1f;
-      border-radius: 8px; color: #fff; font-size: 13px; outline: none;
+      background: #fff; border: 1px solid #dee2e6;
+      border-radius: 8px; color: #212529; font-size: 13px; outline: none;
       transition: border-color .2s;
     }
     .catalog-search input:focus { border-color: #ff5023; }
-    .catalog-search input::placeholder { color: #333; }
+    .catalog-search input::placeholder { color: #adb5bd; }
 
     .catalog-filters {
       display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px;
     }
     .filter-chip {
       padding: 5px 13px; border-radius: 20px; font-size: 12px;
-      background: #1a1a1a; border: 1px solid #2a2a2a; color: #777;
+      background: #fff; border: 1px solid #dee2e6; color: #6c757d;
       cursor: pointer; transition: all .15s; white-space: nowrap;
     }
-    .filter-chip:hover { border-color: #444; color: #ccc; }
+    .filter-chip:hover { border-color: #adb5bd; color: #495057; }
     .filter-chip.active { background: #ff5023; border-color: #ff5023; color: #fff; }
   </style>
 </head>
-<body>
+<body class="sidebar-mini layout-fixed" style="font-family:'Nunito',sans-serif;">
 
 <!-- ── LOGIN ── -->
 <div id="login-screen">
@@ -333,55 +306,99 @@
   </div>
 </div>
 
-<!-- ── APP ── -->
-<div id="app">
-  <!-- Top bar -->
-  <div class="topbar">
-    <div class="topbar-logo">Portal <span>de compras</span></div>
-    <div class="topbar-user" id="topbar-user"></div>
-    <button class="btn-cart" id="btn-cart-top" onclick="openCheckout()" style="display:none">
-      Carrito (<span id="cart-count">0</span>)
-    </button>
-    <button class="btn-logout" onclick="doLogout()">Salir</button>
-  </div>
+<!-- ── PORTAL WRAPPER (AdminLTE) ── -->
+<div id="portal-wrapper" class="wrapper" style="display:none;">
 
-  <!-- Nav tabs -->
-  <div class="nav-tabs">
-    <button class="nav-tab active" id="ntab-catalogo" onclick="switchTab('catalogo')">Catálogo</button>
-    <button class="nav-tab" id="ntab-pedidos" onclick="switchTab('pedidos')">Mis Pedidos</button>
-  </div>
+  <!-- Navbar -->
+  <nav class="main-header navbar navbar-expand navbar-light" style="background:#fff;border-bottom:1px solid #dee2e6;">
+    <ul class="navbar-nav">
+      <li class="nav-item">
+        <a class="nav-link" href="#" data-widget="pushmenu" role="button">
+          <i class="fas fa-bars"></i>
+        </a>
+      </li>
+      <li class="nav-item d-none d-sm-inline-block">
+        <span class="nav-link" style="color:#aaa;font-size:13px;">Portal de compras</span>
+      </li>
+    </ul>
+    <ul class="navbar-nav ms-auto">
+      <li class="nav-item d-flex align-items-center">
+        <button class="btn-cart" id="btn-cart-top" onclick="openCheckout()" style="display:none;">
+          Carrito (<span id="cart-count">0</span>)
+        </button>
+      </li>
+      <li class="nav-item">
+        <span class="nav-link" id="portal-username" style="color:#aaa;font-size:13px;"></span>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" href="#" onclick="doLogout();return false;" title="Salir">
+          <i class="fas fa-sign-out-alt"></i>
+        </a>
+      </li>
+    </ul>
+  </nav>
 
-  <!-- Main -->
-  <div class="main-content">
-    <div id="success-banner" class="success-banner"></div>
+  <!-- Sidebar -->
+  <aside class="main-sidebar sidebar-dark-primary elevation-4" style="background:#343a40;">
+    <a href="#" class="brand-link" style="background:#2c3136;border-bottom:1px solid #4b545c;">
+      <span style="font-size:15px;font-weight:700;color:#fff;padding-left:8px;">
+        Mónaco <span style="color:#ff5023;">Maitencillo</span>
+      </span>
+    </a>
+    <div class="sidebar">
+      <nav class="mt-2">
+        <ul class="nav nav-pills nav-sidebar flex-column" id="portal-sidebar-nav" role="menu">
+          <li class="nav-item">
+            <a href="#" class="nav-link active" id="stab-catalogo" onclick="switchTab('catalogo');return false;">
+              <i class="nav-icon fas fa-store"></i>
+              <p>Catálogo</p>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="#" class="nav-link" id="stab-pedidos" onclick="switchTab('pedidos');return false;">
+              <i class="nav-icon fas fa-clipboard-list"></i>
+              <p>Mis Pedidos</p>
+            </a>
+          </li>
+        </ul>
+      </nav>
+    </div>
+  </aside>
 
-    <!-- Catalog view -->
-    <div id="view-catalogo">
-      <div class="catalog-search">
-        <input type="text" id="catalog-search-input" placeholder="Buscar producto..." oninput="filterCatalog()">
+  <!-- Content Wrapper -->
+  <div class="content-wrapper" style="background:#f4f6f9;min-height:100vh;">
+    <div style="padding:24px 20px 120px;max-width:1100px;width:100%;margin:0 auto;">
+      <div id="success-banner" class="success-banner"></div>
+
+      <!-- Catalog view -->
+      <div id="view-catalogo">
+        <div class="catalog-search">
+          <input type="text" id="catalog-search-input" placeholder="Buscar producto..." oninput="filterCatalog()">
+        </div>
+        <div class="catalog-filters" id="catalog-filters"></div>
+        <div id="catalog-grid" class="catalog-grid">
+          <div class="loading-text">Cargando catálogo...</div>
+        </div>
       </div>
-      <div class="catalog-filters" id="catalog-filters"></div>
-      <div id="catalog-grid" class="catalog-grid">
-        <div class="loading-text">Cargando catálogo...</div>
+
+      <!-- Orders view -->
+      <div id="view-pedidos" style="display:none">
+        <div id="orders-list">
+          <div class="loading-text">Cargando pedidos...</div>
+        </div>
       </div>
     </div>
 
-    <!-- Orders view -->
-    <div id="view-pedidos" style="display:none">
-      <div id="orders-list">
-        <div class="loading-text">Cargando pedidos...</div>
+    <!-- Floating cart bar -->
+    <div id="cart-bar">
+      <div>
+        <div class="cart-bar-summary" id="cart-bar-summary"></div>
+        <div class="cart-bar-total" id="cart-bar-total"></div>
       </div>
+      <button class="btn-checkout" onclick="openCheckout()">Realizar pedido →</button>
     </div>
   </div>
 
-  <!-- Floating cart bar -->
-  <div id="cart-bar">
-    <div>
-      <div class="cart-bar-summary" id="cart-bar-summary"></div>
-      <div class="cart-bar-total" id="cart-bar-total"></div>
-    </div>
-    <button class="btn-checkout" onclick="openCheckout()">Realizar pedido →</button>
-  </div>
 </div>
 
 <!-- ── CHECKOUT MODAL ── -->
@@ -427,7 +444,7 @@ let activeCategory = '';
 
 // ── Helpers ───────────────────────────────────────────────
 async function portalFetch(path, opts = {}) {
-  const token = await firebase.auth().currentUser?.getIdToken();
+  const token = await firebase.auth().currentUser?.getIdToken(true);
   const res = await fetch(path, {
     ...opts,
     headers: {
@@ -470,7 +487,7 @@ auth.onAuthStateChanged(async user => {
 
 function showLogin() {
   document.getElementById('login-screen').style.display = 'flex';
-  document.getElementById('app').style.display = 'none';
+  document.getElementById('portal-wrapper').style.display = 'none';
 }
 
 function showLoginError(msg) {
@@ -509,18 +526,18 @@ async function doLogout() {
 
 function showApp(user) {
   document.getElementById('login-screen').style.display = 'none';
-  document.getElementById('app').style.display = 'flex';
+  document.getElementById('portal-wrapper').style.display = '';
   const name = user.displayName || user.email.split('@')[0];
-  document.getElementById('topbar-user').textContent = name;
-  document.getElementById('btn-cart-top').style.display = 'flex';
+  document.getElementById('portal-username').textContent = name;
+  document.getElementById('btn-cart-top').style.display = 'inline-block';
   loadCatalog();
 }
 
 // ── Tabs ──────────────────────────────────────────────────
 function switchTab(tab) {
   currentView = tab;
-  document.getElementById('ntab-catalogo').classList.toggle('active', tab === 'catalogo');
-  document.getElementById('ntab-pedidos').classList.toggle('active',  tab === 'pedidos');
+  document.getElementById('stab-catalogo').classList.toggle('active', tab === 'catalogo');
+  document.getElementById('stab-pedidos').classList.toggle('active',  tab === 'pedidos');
   document.getElementById('view-catalogo').style.display = tab === 'catalogo' ? 'block' : 'none';
   document.getElementById('view-pedidos').style.display  = tab === 'pedidos'  ? 'block' : 'none';
   if (tab === 'pedidos') loadOrders();
@@ -796,27 +813,64 @@ function renderOrders(orders) {
     listEl.innerHTML = '<div class="empty-state">Sin pedidos aún.<br><br><button onclick="switchTab(\'catalogo\')" style="background:#ff5023;border:none;color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600">Ver catálogo</button></div>';
     return;
   }
-  const badgeClass = s => s === 'pendiente' ? 'badge-pendiente' : s === 'confirmado' ? 'badge-confirmado' : 'badge-entregado';
-  const badgeLabel = s => s === 'pendiente' ? 'Pendiente' : s === 'confirmado' ? 'Confirmado' : s === 'entregado' ? 'Entregado' : s;
+  const badgeStyle = s => {
+    if (s === 'pendiente')  return 'background:#fff3cd;color:#856404;border:1px solid #ffc107';
+    if (s === 'confirmado') return 'background:#cfe2ff;color:#084298;border:1px solid #b6d4fe';
+    if (s === 'entregado')  return 'background:#d1e7dd;color:#0a3622;border:1px solid #a3cfbb';
+    if (s === 'cancelado')  return 'background:#f8d7da;color:#842029;border:1px solid #f5c2c7';
+    return 'background:#e9ecef;color:#495057;border:1px solid #dee2e6';
+  };
+  const badgeLabel = s => ({ pendiente:'Pendiente', confirmado:'Confirmado', entregado:'Entregado', cancelado:'Cancelado' }[s] || s);
 
-  listEl.innerHTML = orders.map(o => `
-    <div class="order-card">
-      <div class="order-header">
+  listEl.innerHTML = orders.map(o => {
+    const total = Number(o.total) || 0;
+    const neto  = Math.round(total / 1.19);
+    return `
+    <div style="background:#fff;border:1px solid #dee2e6;border-radius:12px;padding:18px 20px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,0.06)">
+      <!-- Cabecera -->
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap">
         <div>
-          <div class="order-date">${(o.createdAt || '').substring(0, 16).replace('T', ' ')}</div>
-          <div class="order-id">Pedido #${o.id.substring(0, 6)}</div>
+          <div style="font-size:15px;font-weight:600;color:#212529;margin-bottom:2px">${(o.createdAt||'').substring(0,16).replace('T',' ')}</div>
+          <div style="font-size:12px;color:#6c757d">Pedido #${o.id.substring(0,6)}</div>
         </div>
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-          <span class="badge ${badgeClass(o.status)}">${badgeLabel(o.status)}</span>
-          <span class="order-total">${fmtPrice(o.total)}</span>
+          <span style="${badgeStyle(o.status)};padding:3px 12px;border-radius:20px;font-size:11px;font-weight:600">${badgeLabel(o.status)}</span>
+          <div style="font-size:16px;font-weight:700;color:#212529">${fmtPrice(total)}</div>
         </div>
       </div>
-      <div class="order-items">
-        ${(o.items || []).map(i => `${i.quantity}× ${i.name}`).join(' · ')}
-        ${o.notes ? `<div style="margin-top:6px;font-style:italic;color:#444">📝 ${o.notes}</div>` : ''}
+      <!-- Items -->
+      <div style="margin-top:12px;padding-top:12px;border-top:1px solid #dee2e6;display:flex;flex-direction:column;gap:4px">
+        ${(o.items||[]).map(i => `
+          <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;${i.sinStock?'color:#adb5bd;text-decoration:line-through;':'color:#212529;'}">
+            <span>${i.quantity}× ${i.name}</span>
+            <span style="font-weight:500;white-space:nowrap;margin-left:12px">${i.sinStock ? '<span style="font-size:11px;color:#dc3545;font-weight:600;text-decoration:none">Sin stock</span>' : fmtPrice(i.price * i.quantity)}</span>
+          </div>`).join('')}
+        ${o.notes ? `<div style="margin-top:6px;font-size:12px;color:#6c757d;font-style:italic">📝 ${o.notes}</div>` : ''}
+        <!-- Resumen de precios -->
+        <div style="margin-top:12px;padding-top:10px;border-top:1px solid #dee2e6;display:flex;flex-direction:column;gap:4px;align-items:flex-end">
+          <div style="display:flex;justify-content:space-between;width:220px;font-size:13px;color:#6c757d">
+            <span>Subtotal neto</span><span>${fmtPrice(neto)}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;width:220px;font-size:13px;color:#6c757d">
+            <span>IVA 19%</span><span>${fmtPrice(total - neto)}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;width:220px;font-size:14px;font-weight:700;color:#212529;padding-top:4px;border-top:1px solid #dee2e6;margin-top:2px">
+            <span>Total</span><span>${fmtPrice(total)}</span>
+          </div>
+        </div>
       </div>
-    </div>`).join('');
+      ${o.facturaUrl ? `
+      <div style="margin-top:10px;padding-top:10px;border-top:1px solid #dee2e6">
+        <a href="${o.facturaUrl}" target="_blank"
+          style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#0d6efd;text-decoration:none;padding:5px 12px;border:1px solid #b6d4fe;border-radius:8px;background:#f0f6ff">
+          📄 Ver factura
+        </a>
+      </div>` : ''}
+    </div>`;
+  }).join('');
 }
 </script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/admin-lte@3.2.0/dist/js/adminlte.min.js"></script>
 </body>
 </html>
