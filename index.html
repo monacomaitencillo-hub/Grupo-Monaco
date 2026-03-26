@@ -5900,14 +5900,15 @@ function gddToggleRecord(id) {
 }
 
 // ── Márgenes ───────────────────────────────────────────────
-let margenTabActive  = 'recetas';
-let margenRecipes    = [];
-let margenIngredients = [];
-let margenFilterRest = '';
+let margenTabActive    = 'recetas';
+let margenRecipes      = [];
+let margenPreparations = [];
+let margenIngredients  = [];
+let margenFilterRest   = '';
 
 async function initMargenesModule() {
   margenTabActive = 'recetas';
-  ['recetas','costos'].forEach(t => {
+  ['recetas','preparaciones','costos'].forEach(t => {
     document.getElementById(`mtab-${t}`).classList.toggle('active', t === 'recetas');
     document.getElementById(`marg-${t}`).style.display = t === 'recetas' ? '' : 'none';
   });
@@ -5917,19 +5918,45 @@ async function initMargenesModule() {
 }
 
 async function loadMargenData() {
-  const [rr, pr] = await Promise.all([apiFetch('/api/recipes'), apiFetch('/api/inv/products')]);
-  margenRecipes     = (await rr.json()).recipes  || [];
-  margenIngredients = (await pr.json()).products || [];
+  const [rr, pp, pr] = await Promise.all([
+    apiFetch('/api/recipes'),
+    apiFetch('/api/preparations'),
+    apiFetch('/api/inv/products')
+  ]);
+  margenRecipes      = (await rr.json()).recipes      || [];
+  margenPreparations = (await pp.json()).preparations || [];
+  margenIngredients  = (await pr.json()).products     || [];
 }
 
 function switchMargenTab(tab) {
   margenTabActive = tab;
-  ['recetas','costos'].forEach(t => {
+  ['recetas','preparaciones','costos'].forEach(t => {
     document.getElementById(`mtab-${t}`).classList.toggle('active', t === tab);
     document.getElementById(`marg-${t}`).style.display = t === tab ? '' : 'none';
   });
-  if (tab === 'recetas') renderMargenRecetas();
-  if (tab === 'costos')  renderMargenCostos();
+  if (tab === 'recetas')       renderMargenRecetas();
+  if (tab === 'preparaciones') renderMargenPreparaciones();
+  if (tab === 'costos')        renderMargenCostos();
+}
+
+// Calcula el costo total de una preparación (solo ingredientes)
+function calcPrepCost(prep) {
+  let cost = 0;
+  (prep?.ingredients || []).forEach(item => {
+    const prod = margenIngredients.find(p => p.id === item.productId || p.name === item.name);
+    cost += (prod?.costPerUnit || 0) * (item.quantity || 0);
+  });
+  return cost;
+}
+
+// Calcula el costo de un item de receta (puede ser ingrediente o preparación)
+function calcItemCost(item) {
+  if (item.type === 'preparation') {
+    const prep = margenPreparations.find(p => p.id === item.preparationId || p.name === item.name);
+    return calcPrepCost(prep) * (item.quantity || 0);
+  }
+  const prod = margenIngredients.find(p => p.id === item.productId || p.name === item.name);
+  return (prod?.costPerUnit || 0) * (item.quantity || 0);
 }
 
 function renderMargenRecetas() {
@@ -5968,10 +5995,7 @@ function renderMargenRecetas() {
 
 function margenCardHTML(r) {
   let totalCost = 0;
-  (r.ingredients || []).forEach(item => {
-    const prod = margenIngredients.find(p => p.id === item.productId || p.name === item.name);
-    totalCost += (prod?.costPerUnit || 0) * (item.quantity || 0);
-  });
+  (r.ingredients || []).forEach(item => { totalCost += calcItemCost(item); });
   const selling   = r.sellingPrice || 0;
   const margin    = selling > 0 ? ((selling - totalCost) / selling * 100) : null;
   const mColor    = margin === null ? '#888' : margin >= 60 ? '#16a34a' : margin >= 40 ? '#ca8a04' : '#dc2626';
@@ -6025,14 +6049,27 @@ function margenOpenRecipe(id) {
   let totalCost = 0;
 
   const rowsHtml = items.map(item => {
-    const prod   = margenIngredients.find(p => p.id === item.productId || p.name === item.name);
-    const cpUnit = prod?.costPerUnit || 0;
-    const cost   = cpUnit * (item.quantity || 0);
+    const isPrep = item.type === 'preparation';
+    const cost   = calcItemCost(item);
     totalCost   += cost;
+    let unitLabel = '', costUnitLabel = '';
+    if (isPrep) {
+      const prep   = margenPreparations.find(p => p.id === item.preparationId || p.name === item.name);
+      const pCost  = calcPrepCost(prep);
+      costUnitLabel = pCost > 0 ? '$'+Math.round(pCost).toLocaleString('es-CL')+'/u' : '—';
+      unitLabel = 'u';
+    } else {
+      const prod   = margenIngredients.find(p => p.id === item.productId || p.name === item.name);
+      costUnitLabel = prod?.costPerUnit > 0 ? '$'+prod.costPerUnit.toLocaleString('es-CL')+'/'+prod.unit : '—';
+      unitLabel = prod?.unit || '';
+    }
+    const typeBadge = isPrep
+      ? `<span style="font-size:10px;background:#ede9fe;color:#7c3aed;border-radius:4px;padding:1px 6px;margin-left:6px;vertical-align:middle;font-weight:600">PREP</span>`
+      : '';
     return `<tr style="border-bottom:1px solid #f1f3f4">
-      <td style="padding:10px 16px;font-size:13px;color:#212529;font-weight:500">${item.name}</td>
-      <td style="padding:10px 16px;font-size:13px;color:#495057;white-space:nowrap">${item.quantity} ${prod?.unit||''}</td>
-      <td style="padding:10px 16px;font-size:13px;color:#6c757d;white-space:nowrap">${cpUnit > 0 ? '$'+cpUnit.toLocaleString('es-CL')+'/'+prod?.unit : '—'}</td>
+      <td style="padding:10px 16px;font-size:13px;color:#212529;font-weight:500">${item.name}${typeBadge}</td>
+      <td style="padding:10px 16px;font-size:13px;color:#495057;white-space:nowrap">${item.quantity} ${unitLabel}</td>
+      <td style="padding:10px 16px;font-size:13px;color:#6c757d;white-space:nowrap">${costUnitLabel}</td>
       <td style="padding:10px 16px;font-size:13px;font-weight:600;color:#212529;text-align:right;white-space:nowrap">${cost > 0 ? '$'+Math.round(cost).toLocaleString('es-CL') : '—'}</td>
     </tr>`;
   }).join('');
@@ -6050,7 +6087,7 @@ function margenOpenRecipe(id) {
       <table style="width:100%;border-collapse:collapse">
         <thead>
           <tr style="border-bottom:2px solid #e9ecef;background:#f8f9fa">
-            <th style="padding:10px 16px;text-align:left;font-size:11px;color:#6c757d;font-weight:600;text-transform:uppercase;white-space:nowrap">Ingrediente</th>
+            <th style="padding:10px 16px;text-align:left;font-size:11px;color:#6c757d;font-weight:600;text-transform:uppercase;white-space:nowrap">Ingrediente / Preparación</th>
             <th style="padding:10px 16px;text-align:left;font-size:11px;color:#6c757d;font-weight:600;text-transform:uppercase;white-space:nowrap">Cantidad</th>
             <th style="padding:10px 16px;text-align:left;font-size:11px;color:#6c757d;font-weight:600;text-transform:uppercase;white-space:nowrap">Costo unit.</th>
             <th style="padding:10px 16px;text-align:right;font-size:11px;color:#6c757d;font-weight:600;text-transform:uppercase;white-space:nowrap">Subtotal</th>
@@ -6230,6 +6267,153 @@ function margenExportarExcel() {
   XLSX.writeFile(wb, 'recetas_margenes.xlsx');
 }
 
+// ── Márgenes: Preparaciones ───────────────────────────────
+function renderMargenPreparaciones() {
+  const el = document.getElementById('marg-preparaciones');
+
+  el.innerHTML = `
+    <div class="inv-toolbar" style="flex-wrap:wrap;gap:10px">
+      <h2 style="margin:0">Preparaciones</h2>
+      <div style="display:flex;gap:8px;align-items:center;margin-left:auto">
+        <button class="btn-new" onclick="margenOpenPrepModal(null)" style="padding:7px 14px;font-size:13px">+ Nueva preparación</button>
+      </div>
+    </div>
+    <p style="font-size:13px;color:#6c757d;margin:-4px 0 20px">
+      Las preparaciones son sub-recetas hechas de ingredientes. Podés usarlas dentro de las recetas.
+    </p>
+    ${margenPreparations.length === 0
+      ? `<div style="text-align:center;padding:60px 20px;color:#888">
+           <div style="font-size:40px;margin-bottom:12px">🥣</div>
+           <div style="font-size:15px;font-weight:600;margin-bottom:6px">Sin preparaciones aún</div>
+           <div style="font-size:13px;color:#aaa">Creá una preparación para usarla como componente en tus recetas.</div>
+         </div>`
+      : `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:16px;padding:4px 0 24px">
+           ${margenPreparations.map(p => margenPrepCardHTML(p)).join('')}
+         </div>`
+    }`;
+}
+
+function margenPrepCardHTML(p) {
+  const cost     = calcPrepCost(p);
+  const ingCount = (p.ingredients || []).filter(i => i.quantity > 0).length;
+
+  return `
+    <div style="background:#fff;border:1px solid #e9ecef;border-radius:14px;padding:20px;transition:box-shadow .18s,transform .18s"
+      onmouseover="this.style.boxShadow='0 6px 24px rgba(0,0,0,.09)';this.style.transform='translateY(-2px)'"
+      onmouseout="this.style.boxShadow='';this.style.transform=''">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px">
+        <div style="flex:1;cursor:pointer" onclick="margenOpenPrepDetail('${p.id}')">
+          <div style="font-size:15px;font-weight:700;color:#212529;line-height:1.3">${p.name}</div>
+          <div style="font-size:11px;color:#7c3aed;background:#ede9fe;border-radius:4px;padding:1px 7px;margin-top:4px;display:inline-block;font-weight:600">PREPARACIÓN</div>
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0;margin-left:10px">
+          <button onclick="event.stopPropagation();margenOpenPrepModal('${p.id}')"
+            style="background:#f1f3f4;border:none;border-radius:8px;width:30px;height:30px;cursor:pointer;color:#495057;font-size:14px;display:flex;align-items:center;justify-content:center"
+            title="Editar">✎</button>
+          <button onclick="event.stopPropagation();margenDeletePrep('${p.id}','${p.name.replace(/'/g,"\\'")}')"
+            style="background:#fff0f0;border:1px solid #fca5a5;border-radius:8px;width:30px;height:30px;cursor:pointer;color:#ef4444;font-size:14px;display:flex;align-items:center;justify-content:center"
+            title="Eliminar">✕</button>
+        </div>
+      </div>
+      <div onclick="margenOpenPrepDetail('${p.id}')" style="cursor:pointer;display:flex;justify-content:space-between;border-top:1px solid #f1f3f4;padding-top:12px;gap:8px">
+        <div style="text-align:center;flex:1">
+          <div style="font-size:10px;color:#adb5bd;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">Costo</div>
+          <div style="font-size:14px;font-weight:700;color:#212529">${cost > 0 ? '$'+Math.round(cost).toLocaleString('es-CL') : '—'}</div>
+        </div>
+        <div style="width:1px;background:#f1f3f4"></div>
+        <div style="text-align:center;flex:1">
+          <div style="font-size:10px;color:#adb5bd;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">Ingredientes</div>
+          <div style="font-size:14px;font-weight:700;color:#212529">${ingCount}</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function margenOpenPrepDetail(id) {
+  const p = margenPreparations.find(x => x.id === id);
+  if (!p) return;
+
+  const items = (p.ingredients || []).filter(i => i.quantity > 0);
+  let totalCost = 0;
+
+  const rowsHtml = items.map(item => {
+    const prod  = margenIngredients.find(x => x.id === item.productId || x.name === item.name);
+    const cost  = (prod?.costPerUnit || 0) * (item.quantity || 0);
+    totalCost  += cost;
+    return `<tr style="border-bottom:1px solid #f1f3f4">
+      <td style="padding:10px 16px;font-size:13px;color:#212529;font-weight:500">${item.name}</td>
+      <td style="padding:10px 16px;font-size:13px;color:#495057;white-space:nowrap">${item.quantity} ${prod?.unit||''}</td>
+      <td style="padding:10px 16px;font-size:13px;color:#6c757d;white-space:nowrap">${prod?.costPerUnit > 0 ? '$'+prod.costPerUnit.toLocaleString('es-CL')+'/'+prod.unit : '—'}</td>
+      <td style="padding:10px 16px;font-size:13px;font-weight:600;color:#212529;text-align:right;white-space:nowrap">${cost > 0 ? '$'+Math.round(cost).toLocaleString('es-CL') : '—'}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('marg-modal-title').textContent = p.name;
+  document.getElementById('marg-modal-sub').textContent   = 'Preparación';
+  document.getElementById('marg-modal-id').value          = id;
+  document.getElementById('marg-modal-body').innerHTML = `
+    <div style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse">
+        <thead>
+          <tr style="border-bottom:2px solid #e9ecef;background:#f8f9fa">
+            <th style="padding:10px 16px;text-align:left;font-size:11px;color:#6c757d;font-weight:600;text-transform:uppercase">Ingrediente</th>
+            <th style="padding:10px 16px;text-align:left;font-size:11px;color:#6c757d;font-weight:600;text-transform:uppercase">Cantidad</th>
+            <th style="padding:10px 16px;text-align:left;font-size:11px;color:#6c757d;font-weight:600;text-transform:uppercase">Costo unit.</th>
+            <th style="padding:10px 16px;text-align:right;font-size:11px;color:#6c757d;font-weight:600;text-transform:uppercase">Subtotal</th>
+          </tr>
+        </thead>
+        <tbody>${rowsHtml || '<tr><td colspan="4" style="padding:20px 16px;color:#aaa;font-size:13px">Sin ingredientes</td></tr>'}</tbody>
+      </table>
+    </div>
+    <div style="padding:16px 20px;background:#f8f9fa;border-top:2px solid #e9ecef;display:flex;justify-content:space-between;align-items:center">
+      <span style="font-size:14px;font-weight:600;color:#495057">Costo total</span>
+      <span style="font-size:16px;font-weight:800;color:#212529">${totalCost > 0 ? '$'+Math.round(totalCost).toLocaleString('es-CL') : '—'}</span>
+    </div>`;
+
+  document.getElementById('marg-modal').style.display = 'flex';
+}
+
+// Modal preparación (crear/editar) — reutiliza el modal de formulario de receta
+function margenOpenPrepModal(id) {
+  const prep = id ? margenPreparations.find(p => p.id === id) : null;
+
+  document.getElementById('marg-form-id').value            = id ? ('prep:' + id) : 'prep:';
+  document.getElementById('marg-form-title').textContent   = prep ? 'Editar preparación' : 'Nueva preparación';
+  document.getElementById('marg-form-name').value          = prep?.name || '';
+  document.getElementById('marg-form-price').value         = '';
+  document.getElementById('marg-form-msg').textContent     = '';
+
+  // Ocultar campos que no aplican a preparaciones
+  document.getElementById('marg-form-rest').closest('div').style.display   = 'none';
+  document.getElementById('marg-form-price').closest('div').style.display  = 'none';
+
+  // Poblar filas de ingredientes (solo ingredientes, no preparaciones)
+  const container = document.getElementById('marg-form-ing-rows');
+  container.innerHTML = '';
+  margenFormIngCounter = 0;
+
+  const existingIngs = (prep?.ingredients || []).filter(i => i.quantity > 0);
+  if (existingIngs.length > 0) {
+    existingIngs.forEach(item => margenAddIngRow(item, true));
+  } else {
+    margenAddIngRow(null, true);
+  }
+
+  document.getElementById('marg-form-modal').style.display = 'flex';
+  document.getElementById('marg-form-name').focus();
+}
+
+async function margenDeletePrep(id, name) {
+  if (!confirm(`¿Eliminar la preparación "${name}"?`)) return;
+  try {
+    const res  = await apiFetch(`/api/preparations/${id}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    margenPreparations = margenPreparations.filter(p => p.id !== id);
+    renderMargenPreparaciones();
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
 function renderMargenCostos() {
   const el     = document.getElementById('marg-costos');
   const sorted = [...margenIngredients].sort((a, b) => a.name.localeCompare(b.name, 'es'));
@@ -6312,27 +6496,31 @@ let margenFormIngCounter = 0;
 function margenOpenFormModal(id) {
   const recipe = id ? margenRecipes.find(r => r.id === id) : null;
 
-  document.getElementById('marg-form-id').value    = id || '';
-  document.getElementById('marg-form-title').textContent = recipe ? 'Editar receta' : 'Nueva receta';
-  document.getElementById('marg-form-name').value  = recipe?.name  || '';
-  document.getElementById('marg-form-price').value = recipe?.sellingPrice || '';
-  document.getElementById('marg-form-msg').textContent = '';
+  document.getElementById('marg-form-id').value              = id || '';
+  document.getElementById('marg-form-title').textContent     = recipe ? 'Editar receta' : 'Nueva receta';
+  document.getElementById('marg-form-name').value            = recipe?.name  || '';
+  document.getElementById('marg-form-price').value           = recipe?.sellingPrice || '';
+  document.getElementById('marg-form-msg').textContent       = '';
+
+  // Mostrar campos de receta
+  document.getElementById('marg-form-rest').closest('div').style.display  = '';
+  document.getElementById('marg-form-price').closest('div').style.display = '';
 
   // Poblar selector de locales
   const sel = document.getElementById('marg-form-rest');
   sel.innerHTML = '<option value="">— Seleccionar local —</option>' +
     restaurants.map(r => `<option value="${r.id}" data-name="${r.name}" ${recipe?.restaurantId===r.id?'selected':''}>${r.name}</option>`).join('');
 
-  // Poblar filas de ingredientes
+  // Poblar filas (ingredientes + preparaciones)
   const container = document.getElementById('marg-form-ing-rows');
   container.innerHTML = '';
   margenFormIngCounter = 0;
 
   const existingIngs = (recipe?.ingredients || []).filter(i => i.quantity > 0);
   if (existingIngs.length > 0) {
-    existingIngs.forEach(item => margenAddIngRow(item));
+    existingIngs.forEach(item => margenAddIngRow(item, false));
   } else {
-    margenAddIngRow();
+    margenAddIngRow(null, false);
   }
 
   document.getElementById('marg-form-modal').style.display = 'flex';
@@ -6341,72 +6529,141 @@ function margenOpenFormModal(id) {
 
 function margenCloseFormModal() {
   document.getElementById('marg-form-modal').style.display = 'none';
+  // Restaurar campos visibles para próxima apertura
+  document.getElementById('marg-form-rest').closest('div').style.display  = '';
+  document.getElementById('marg-form-price').closest('div').style.display = '';
 }
 
-function margenAddIngRow(existing) {
+// prepOnly=true: solo ingredientes (para preparaciones). prepOnly=false: ingredientes + preparaciones (para recetas)
+function margenAddIngRow(existing, prepOnly) {
   const idx       = margenFormIngCounter++;
   const container = document.getElementById('marg-form-ing-rows');
   const div       = document.createElement('div');
   div.id          = `marg-ing-row-${idx}`;
-  div.style.cssText = 'display:flex;align-items:center;gap:8px';
+  div.style.cssText = 'display:flex;align-items:center;gap:8px;flex-wrap:wrap';
 
-  const ingOptions = margenIngredients
-    .sort((a, b) => a.name.localeCompare(b.name, 'es'))
-    .map(p => `<option value="${p.id}" data-name="${p.name}" data-unit="${p.unit||''}" ${existing?.productId===p.id||existing?.name===p.name?'selected':''}>${p.name}</option>`)
-    .join('');
+  const isPrep      = existing?.type === 'preparation';
+  const typeValue   = isPrep ? 'preparation' : 'ingredient';
 
-  const selUnit = existing
-    ? (margenIngredients.find(p => p.id === existing.productId || p.name === existing.name)?.unit || '')
-    : '';
+  // Type selector (solo en recetas)
+  const typeSelector = prepOnly ? '' : `
+    <select id="marg-ing-type-${idx}" onchange="margenChangeRowType(${idx})"
+      style="flex-shrink:0;padding:7px 8px;border:1px solid #dee2e6;border-radius:8px;font-size:12px;color:#495057;background:#fff;cursor:pointer">
+      <option value="ingredient"   ${!isPrep?'selected':''}>Ingrediente</option>
+      <option value="preparation"  ${isPrep?'selected':''}>Preparación</option>
+    </select>`;
 
-  div.innerHTML = `
+  div.innerHTML = typeSelector + `
     <select id="marg-ing-sel-${idx}" onchange="margenUpdateUnit(${idx})"
-      style="flex:1;padding:8px 10px;border:1px solid #dee2e6;border-radius:8px;font-size:13px;color:#212529;background:#fff;min-width:0">
-      <option value="">— Ingrediente —</option>
-      ${ingOptions}
+      style="flex:1;padding:8px 10px;border:1px solid #dee2e6;border-radius:8px;font-size:13px;color:#212529;background:#fff;min-width:120px">
+      <option value="">— Seleccionar —</option>
     </select>
     <div style="display:flex;align-items:center;border:1px solid #dee2e6;border-radius:8px;overflow:hidden;flex-shrink:0;background:#fff">
       <input type="number" id="marg-ing-qty-${idx}" value="${existing?.quantity||''}" min="0" step="any" placeholder="0"
         style="border:none;outline:none;padding:8px 8px;font-size:13px;width:80px;color:#212529">
-      <span id="marg-ing-unit-${idx}" style="padding:0 10px;font-size:12px;color:#888;background:#f8f9fa;border-left:1px solid #dee2e6;white-space:nowrap;min-width:32px">${selUnit}</span>
+      <span id="marg-ing-unit-${idx}" style="padding:0 10px;font-size:12px;color:#888;background:#f8f9fa;border-left:1px solid #dee2e6;white-space:nowrap;min-width:32px"></span>
     </div>
     <button onclick="document.getElementById('marg-ing-row-${idx}').remove()"
       style="flex-shrink:0;background:none;border:1px solid #fca5a5;border-radius:8px;width:32px;height:36px;color:#ef4444;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center">✕</button>`;
 
   container.appendChild(div);
+
+  // Poblar el dropdown según tipo
+  margenPopulateRowOptions(idx, typeValue, existing);
+}
+
+function margenPopulateRowOptions(idx, type, existing) {
+  const sel = document.getElementById(`marg-ing-sel-${idx}`);
+  const unitEl = document.getElementById(`marg-ing-unit-${idx}`);
+  if (!sel) return;
+
+  if (type === 'preparation') {
+    const opts = margenPreparations.sort((a,b)=>a.name.localeCompare(b.name,'es'))
+      .map(p => `<option value="${p.id}" data-name="${p.name}" data-unit="u" data-type="preparation" ${existing?.preparationId===p.id||existing?.name===p.name?'selected':''}>${p.name}</option>`).join('');
+    sel.innerHTML = '<option value="">— Preparación —</option>' + opts;
+    if (unitEl) unitEl.textContent = existing?.preparationId || existing?.name ? 'u' : '';
+  } else {
+    const opts = margenIngredients.sort((a,b)=>a.name.localeCompare(b.name,'es'))
+      .map(p => {
+        const sel2 = existing?.productId===p.id || (existing?.type!=='preparation' && existing?.name===p.name);
+        return `<option value="${p.id}" data-name="${p.name}" data-unit="${p.unit||''}" data-type="ingredient" ${sel2?'selected':''}>${p.name}</option>`;
+      }).join('');
+    sel.innerHTML = '<option value="">— Ingrediente —</option>' + opts;
+    const match = existing && margenIngredients.find(p=>p.id===existing.productId||(existing.type!=='preparation'&&p.name===existing.name));
+    if (unitEl) unitEl.textContent = match?.unit || '';
+  }
+}
+
+function margenChangeRowType(idx) {
+  const typeSel = document.getElementById(`marg-ing-type-${idx}`);
+  if (!typeSel) return;
+  margenPopulateRowOptions(idx, typeSel.value, null);
 }
 
 function margenUpdateUnit(idx) {
-  const sel  = document.getElementById(`marg-ing-sel-${idx}`);
-  const unit = document.getElementById(`marg-ing-unit-${idx}`);
-  const opt  = sel.options[sel.selectedIndex];
-  unit.textContent = opt?.dataset.unit || '';
+  const sel    = document.getElementById(`marg-ing-sel-${idx}`);
+  const unitEl = document.getElementById(`marg-ing-unit-${idx}`);
+  const opt    = sel?.options[sel.selectedIndex];
+  if (unitEl) unitEl.textContent = opt?.dataset.unit || '';
 }
 
 async function margenSaveForm() {
-  const id       = document.getElementById('marg-form-id').value;
+  const rawId    = document.getElementById('marg-form-id').value;
+  const isPrep   = rawId.startsWith('prep:');
+  const id       = isPrep ? rawId.replace('prep:', '') : rawId;
   const name     = document.getElementById('marg-form-name').value.trim();
+  const msg      = document.getElementById('marg-form-msg');
+
+  if (!name) { msg.style.color='#dc2626'; msg.textContent='Ingresa el nombre.'; return; }
+
+  // Collect rows
+  const ingredients = [];
+  document.querySelectorAll('[id^="marg-ing-row-"]').forEach(row => {
+    const idx     = row.id.replace('marg-ing-row-', '');
+    const sel     = document.getElementById(`marg-ing-sel-${idx}`);
+    const typeSel = document.getElementById(`marg-ing-type-${idx}`);
+    const qty     = parseFloat(document.getElementById(`marg-ing-qty-${idx}`)?.value) || 0;
+    if (!sel?.value || qty <= 0) return;
+    const opt  = sel.options[sel.selectedIndex];
+    const type = typeSel?.value || 'ingredient';
+    if (type === 'preparation') {
+      ingredients.push({ type: 'preparation', preparationId: sel.value, name: opt?.dataset.name || opt.text, quantity: qty });
+    } else {
+      ingredients.push({ type: 'ingredient', productId: sel.value, name: opt?.dataset.name || opt.text, quantity: qty });
+    }
+  });
+
+  msg.style.color = '#888'; msg.textContent = 'Guardando...';
+
+  // ── Guardar preparación ──
+  if (isPrep) {
+    try {
+      let res, data;
+      if (id) {
+        res  = await apiFetch(`/api/preparations/${id}`, { method: 'PUT', body: JSON.stringify({ name, ingredients }) });
+        data = await res.json();
+        if (data.error) throw new Error(data.error);
+        const idx2 = margenPreparations.findIndex(p => p.id === id);
+        if (idx2 >= 0) margenPreparations[idx2] = { ...margenPreparations[idx2], name, ingredients };
+      } else {
+        res  = await apiFetch('/api/preparations', { method: 'POST', body: JSON.stringify({ name, ingredients }) });
+        data = await res.json();
+        if (data.error) throw new Error(data.error);
+        margenPreparations.push({ id: data.id, name, ingredients });
+      }
+      margenCloseFormModal();
+      renderMargenPreparaciones();
+    } catch(e) { msg.style.color='#dc2626'; msg.textContent=e.message; }
+    return;
+  }
+
+  // ── Guardar receta ──
   const restSel  = document.getElementById('marg-form-rest');
   const restId   = restSel.value;
   const restName = restSel.options[restSel.selectedIndex]?.text || '';
   const price    = Number(document.getElementById('marg-form-price').value) || 0;
-  const msg      = document.getElementById('marg-form-msg');
 
-  if (!name)   { msg.style.color='#dc2626'; msg.textContent='Ingresa el nombre del producto.'; return; }
   if (!restId) { msg.style.color='#dc2626'; msg.textContent='Selecciona el local.'; return; }
-
-  // Collect ingredient rows
-  const ingredients = [];
-  document.querySelectorAll('[id^="marg-ing-row-"]').forEach(row => {
-    const idx = row.id.replace('marg-ing-row-', '');
-    const sel = document.getElementById(`marg-ing-sel-${idx}`);
-    const qty = parseFloat(document.getElementById(`marg-ing-qty-${idx}`)?.value) || 0;
-    if (!sel || !sel.value || qty <= 0) return;
-    const opt = sel.options[sel.selectedIndex];
-    ingredients.push({ productId: sel.value, name: opt?.dataset.name || opt?.text || '', quantity: qty });
-  });
-
-  msg.style.color = '#888'; msg.textContent = 'Guardando...';
 
   try {
     if (id) {
@@ -6418,7 +6675,7 @@ async function margenSaveForm() {
       // Create new via import endpoint (handles upsert by name+rest)
       const res  = await apiFetch('/api/recipes/import', {
         method: 'POST',
-        body: JSON.stringify({ recipes: [{ name, restaurantId: restId, restaurantName: restName, ingredients }] })
+        body: JSON.stringify({ recipes: [{ name, restaurantId: restId, restaurantName: restName, sellingPrice: price, ingredients }] })
       });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
@@ -6541,13 +6798,15 @@ async function margenDeleteRecipe(id, name) {
   <div class="inv-topbar">
     <div class="topbar-brand" style="margin-right:24px">Márgenes</div>
     <div class="inv-tabs">
-      <button class="inv-tab active" id="mtab-recetas" onclick="switchMargenTab('recetas')">Recetas</button>
-      <button class="inv-tab"        id="mtab-costos"  onclick="switchMargenTab('costos')">Costos de ingredientes</button>
+      <button class="inv-tab active" id="mtab-recetas"       onclick="switchMargenTab('recetas')">Recetas</button>
+      <button class="inv-tab"        id="mtab-preparaciones" onclick="switchMargenTab('preparaciones')">Preparaciones</button>
+      <button class="inv-tab"        id="mtab-costos"        onclick="switchMargenTab('costos')">Costos de ingredientes</button>
     </div>
   </div>
   <div class="inv-main">
     <div id="marg-recetas"></div>
-    <div id="marg-costos" style="display:none"></div>
+    <div id="marg-preparaciones" style="display:none"></div>
+    <div id="marg-costos"        style="display:none"></div>
   </div>
 </div>
 

@@ -1976,6 +1976,39 @@ app.delete('/api/recipes/:id', requireAuth, async (req, res) => {
   res.json({ ok: true });
 });
 
+// ── Márgenes: Preparaciones ───────────────────────────────
+app.get('/api/preparations', requireAuth, async (req, res) => {
+  const snap = await db.collection('preparations').orderBy('name').get();
+  res.json({ preparations: snap.docs.map(d => ({ id: d.id, ...d.data() })) });
+});
+
+app.post('/api/preparations', requireAuth, async (req, res) => {
+  if (!await isEditor(req.uid)) return res.status(403).json({ error: 'Sin permisos' });
+  const { name, ingredients } = req.body;
+  if (!name) return res.status(400).json({ error: 'Nombre requerido' });
+  const ref = await db.collection('preparations').add({
+    name, ingredients: ingredients || [],
+    createdAt: admin.firestore.FieldValue.serverTimestamp()
+  });
+  res.json({ id: ref.id });
+});
+
+app.put('/api/preparations/:id', requireAuth, async (req, res) => {
+  if (!await isEditor(req.uid)) return res.status(403).json({ error: 'Sin permisos' });
+  const { name, ingredients } = req.body;
+  const update = { updatedAt: admin.firestore.FieldValue.serverTimestamp() };
+  if (name        !== undefined) update.name        = name;
+  if (ingredients !== undefined) update.ingredients = ingredients;
+  await db.collection('preparations').doc(req.params.id).update(update);
+  res.json({ ok: true });
+});
+
+app.delete('/api/preparations/:id', requireAuth, async (req, res) => {
+  if (!await isEditor(req.uid)) return res.status(403).json({ error: 'Sin permisos' });
+  await db.collection('preparations').doc(req.params.id).delete();
+  res.json({ ok: true });
+});
+
 module.exports = app;
 
 if (require.main === module) {
