@@ -6386,6 +6386,7 @@ function margenOpenPrepModal(id) {
   // Ocultar campos que no aplican a preparaciones
   document.getElementById('marg-form-rest').closest('div').style.display   = 'none';
   document.getElementById('marg-form-price').closest('div').style.display  = 'none';
+  document.getElementById('marg-form-add-prep-btn').style.display          = 'none';
 
   // Poblar filas de ingredientes (solo ingredientes, no preparaciones)
   const container = document.getElementById('marg-form-ing-rows');
@@ -6401,6 +6402,7 @@ function margenOpenPrepModal(id) {
 
   document.getElementById('marg-form-modal').style.display = 'flex';
   document.getElementById('marg-form-name').focus();
+  setTimeout(margenUpdateFormTotal, 30);
 }
 
 async function margenDeletePrep(id, name) {
@@ -6503,8 +6505,9 @@ function margenOpenFormModal(id) {
   document.getElementById('marg-form-msg').textContent       = '';
 
   // Mostrar campos de receta
-  document.getElementById('marg-form-rest').closest('div').style.display  = '';
-  document.getElementById('marg-form-price').closest('div').style.display = '';
+  document.getElementById('marg-form-rest').closest('div').style.display   = '';
+  document.getElementById('marg-form-price').closest('div').style.display  = '';
+  document.getElementById('marg-form-add-prep-btn').style.display          = '';
 
   // Poblar selector de locales
   const sel = document.getElementById('marg-form-rest');
@@ -6525,6 +6528,7 @@ function margenOpenFormModal(id) {
 
   document.getElementById('marg-form-modal').style.display = 'flex';
   document.getElementById('marg-form-name').focus();
+  setTimeout(margenUpdateFormTotal, 30);
 }
 
 function margenCloseFormModal() {
@@ -6532,48 +6536,52 @@ function margenCloseFormModal() {
   // Restaurar campos visibles para próxima apertura
   document.getElementById('marg-form-rest').closest('div').style.display  = '';
   document.getElementById('marg-form-price').closest('div').style.display = '';
+  document.getElementById('marg-form-add-prep-btn').style.display         = '';
 }
 
-// prepOnly=true: solo ingredientes (para preparaciones). prepOnly=false: ingredientes + preparaciones (para recetas)
+// prepOnly=true: solo ingredientes (para preparaciones). prepOnly=false: tipo libre para recetas
 function margenAddIngRow(existing, prepOnly) {
   const idx       = margenFormIngCounter++;
   const container = document.getElementById('marg-form-ing-rows');
   const div       = document.createElement('div');
   div.id          = `marg-ing-row-${idx}`;
-  div.style.cssText = 'display:flex;align-items:center;gap:8px;flex-wrap:wrap';
+  div.style.cssText = 'display:flex;flex-direction:column;gap:4px';
 
-  const isPrep      = existing?.type === 'preparation';
-  const typeValue   = isPrep ? 'preparation' : 'ingredient';
+  const isPrep  = existing?.type === 'preparation';
+  const typeVal = isPrep ? 'preparation' : 'ingredient';
+  // hidden type field (para preparaciones siempre ingredient, para recetas viene del botón)
+  const hiddenType = `<input type="hidden" id="marg-ing-type-${idx}" value="${prepOnly ? 'ingredient' : typeVal}">`;
+  // badge de tipo (solo recetas)
+  const typeBadge = prepOnly ? '' :
+    `<span id="marg-ing-badge-${idx}" style="flex-shrink:0;font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;background:${isPrep?'#ede9fe':'#e0f2fe'};color:${isPrep?'#7c3aed':'#0369a1'}">${isPrep?'Preparación':'Ingrediente'}</span>`;
 
-  // Type selector (solo en recetas)
-  const typeSelector = prepOnly ? '' : `
-    <select id="marg-ing-type-${idx}" onchange="margenChangeRowType(${idx})"
-      style="flex-shrink:0;padding:7px 8px;border:1px solid #dee2e6;border-radius:8px;font-size:12px;color:#495057;background:#fff;cursor:pointer">
-      <option value="ingredient"   ${!isPrep?'selected':''}>Ingrediente</option>
-      <option value="preparation"  ${isPrep?'selected':''}>Preparación</option>
-    </select>`;
-
-  div.innerHTML = typeSelector + `
-    <select id="marg-ing-sel-${idx}" onchange="margenUpdateUnit(${idx})"
-      style="flex:1;padding:8px 10px;border:1px solid #dee2e6;border-radius:8px;font-size:13px;color:#212529;background:#fff;min-width:120px">
-      <option value="">— Seleccionar —</option>
-    </select>
-    <div style="display:flex;align-items:center;border:1px solid #dee2e6;border-radius:8px;overflow:hidden;flex-shrink:0;background:#fff">
-      <input type="number" id="marg-ing-qty-${idx}" value="${existing?.quantity||''}" min="0" step="any" placeholder="0"
-        style="border:none;outline:none;padding:8px 8px;font-size:13px;width:80px;color:#212529">
-      <span id="marg-ing-unit-${idx}" style="padding:0 10px;font-size:12px;color:#888;background:#f8f9fa;border-left:1px solid #dee2e6;white-space:nowrap;min-width:32px"></span>
+  div.innerHTML = `
+    <div style="display:flex;align-items:center;gap:8px">
+      ${hiddenType}
+      ${typeBadge}
+      <select id="marg-ing-sel-${idx}" onchange="margenUpdateRowCost(${idx})"
+        style="flex:1;padding:8px 10px;border:1px solid #dee2e6;border-radius:8px;font-size:13px;color:#212529;background:#fff;min-width:120px">
+        <option value="">— Seleccionar —</option>
+      </select>
+      <div style="display:flex;align-items:center;border:1px solid #dee2e6;border-radius:8px;overflow:hidden;flex-shrink:0;background:#fff">
+        <input type="number" id="marg-ing-qty-${idx}" value="${existing?.quantity||''}" min="0" step="any" placeholder="0"
+          oninput="margenUpdateRowCost(${idx})"
+          style="border:none;outline:none;padding:8px 8px;font-size:13px;width:70px;color:#212529">
+        <span id="marg-ing-unit-${idx}" style="padding:0 8px;font-size:12px;color:#888;background:#f8f9fa;border-left:1px solid #dee2e6;white-space:nowrap;min-width:28px"></span>
+      </div>
+      <button onclick="document.getElementById('marg-ing-row-${idx}').remove();margenUpdateFormTotal()"
+        style="flex-shrink:0;background:none;border:1px solid #fca5a5;border-radius:8px;width:32px;height:36px;color:#ef4444;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center">✕</button>
     </div>
-    <button onclick="document.getElementById('marg-ing-row-${idx}').remove()"
-      style="flex-shrink:0;background:none;border:1px solid #fca5a5;border-radius:8px;width:32px;height:36px;color:#ef4444;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center">✕</button>`;
+    <div id="marg-ing-cost-${idx}" style="font-size:11px;color:#6c757d;padding-left:${prepOnly?'0':'70px'};min-height:14px"></div>`;
 
   container.appendChild(div);
-
-  // Poblar el dropdown según tipo
-  margenPopulateRowOptions(idx, typeValue, existing);
+  margenPopulateRowOptions(idx, typeVal, existing);
+  // compute cost after DOM is ready
+  setTimeout(() => margenUpdateRowCost(idx), 0);
 }
 
 function margenPopulateRowOptions(idx, type, existing) {
-  const sel = document.getElementById(`marg-ing-sel-${idx}`);
+  const sel    = document.getElementById(`marg-ing-sel-${idx}`);
   const unitEl = document.getElementById(`marg-ing-unit-${idx}`);
   if (!sel) return;
 
@@ -6581,7 +6589,7 @@ function margenPopulateRowOptions(idx, type, existing) {
     const opts = margenPreparations.sort((a,b)=>a.name.localeCompare(b.name,'es'))
       .map(p => `<option value="${p.id}" data-name="${p.name}" data-unit="u" data-type="preparation" ${existing?.preparationId===p.id||existing?.name===p.name?'selected':''}>${p.name}</option>`).join('');
     sel.innerHTML = '<option value="">— Preparación —</option>' + opts;
-    if (unitEl) unitEl.textContent = existing?.preparationId || existing?.name ? 'u' : '';
+    if (unitEl) unitEl.textContent = (existing?.preparationId || existing?.name) ? 'u' : '';
   } else {
     const opts = margenIngredients.sort((a,b)=>a.name.localeCompare(b.name,'es'))
       .map(p => {
@@ -6594,10 +6602,70 @@ function margenPopulateRowOptions(idx, type, existing) {
   }
 }
 
+// Llamado cuando cambia tipo de fila (badge "Ingrediente"/"Preparación")
 function margenChangeRowType(idx) {
   const typeSel = document.getElementById(`marg-ing-type-${idx}`);
   if (!typeSel) return;
   margenPopulateRowOptions(idx, typeSel.value, null);
+  margenUpdateRowCost(idx);
+}
+
+// Recalcula el costo de una fila y actualiza el total
+function margenUpdateRowCost(idx) {
+  const sel    = document.getElementById(`marg-ing-sel-${idx}`);
+  const unitEl = document.getElementById(`marg-ing-unit-${idx}`);
+  const opt    = sel?.options[sel.selectedIndex];
+  if (unitEl) unitEl.textContent = opt?.dataset.unit || '';
+
+  const costEl = document.getElementById(`marg-ing-cost-${idx}`);
+  if (!costEl) return;
+
+  const typeHid = document.getElementById(`marg-ing-type-${idx}`);
+  const type    = typeHid?.value || 'ingredient';
+  const qty     = parseFloat(document.getElementById(`marg-ing-qty-${idx}`)?.value) || 0;
+
+  if (!sel?.value || qty <= 0) { costEl.textContent = ''; margenUpdateFormTotal(); return; }
+
+  let unitCost = 0;
+  if (type === 'preparation') {
+    const prep = margenPreparations.find(p => p.id === sel.value);
+    unitCost = calcPrepCost(prep);
+  } else {
+    const prod = margenIngredients.find(p => p.id === sel.value);
+    unitCost = prod?.costPerUnit || 0;
+  }
+
+  const subtotal = unitCost * qty;
+  if (unitCost > 0) {
+    costEl.innerHTML = `<span style="color:#888">$${unitCost.toLocaleString('es-CL')}</span>` +
+      `<span style="color:#bbb"> × ${qty}</span>` +
+      `<span style="font-weight:600;color:#212529"> = $${subtotal.toLocaleString('es-CL')}</span>`;
+  } else {
+    costEl.innerHTML = '<span style="color:#bbb;font-style:italic">Sin precio registrado</span>';
+  }
+  margenUpdateFormTotal();
+}
+
+// Suma todos los subtotales y muestra costo total
+function margenUpdateFormTotal() {
+  let total = 0;
+  document.querySelectorAll('[id^="marg-ing-row-"]').forEach(row => {
+    const idx     = row.id.replace('marg-ing-row-', '');
+    const typeHid = document.getElementById(`marg-ing-type-${idx}`);
+    const type    = typeHid?.value || 'ingredient';
+    const sel     = document.getElementById(`marg-ing-sel-${idx}`);
+    const qty     = parseFloat(document.getElementById(`marg-ing-qty-${idx}`)?.value) || 0;
+    if (!sel?.value || qty <= 0) return;
+    if (type === 'preparation') {
+      const prep = margenPreparations.find(p => p.id === sel.value);
+      total += calcPrepCost(prep) * qty;
+    } else {
+      const prod = margenIngredients.find(p => p.id === sel.value);
+      total += (prod?.costPerUnit || 0) * qty;
+    }
+  });
+  const el = document.getElementById('marg-form-total');
+  if (el) el.innerHTML = `Costo total: <strong>$${total.toLocaleString('es-CL')}</strong>`;
 }
 
 function margenUpdateUnit(idx) {
@@ -6842,11 +6910,19 @@ async function margenDeleteRecipe(id, name) {
       <div style="margin-bottom:12px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
           <div class="field-label" style="margin:0">Ingredientes</div>
-          <button onclick="margenAddIngRow()" style="background:#f8f9fa;border:1px solid #dee2e6;border-radius:7px;padding:5px 14px;font-size:12px;font-weight:600;color:#495057;cursor:pointer">+ Agregar ingrediente</button>
+          <div style="display:flex;gap:6px">
+            <button onclick="margenAddIngRow(null, document.getElementById('marg-form-id').value.startsWith('prep:'))"
+              style="background:#e0f2fe;border:1px solid #bae6fd;border-radius:7px;padding:5px 14px;font-size:12px;font-weight:600;color:#0369a1;cursor:pointer">+ Ingrediente</button>
+            <button id="marg-form-add-prep-btn" onclick="margenAddIngRow({type:'preparation'}, false)"
+              style="background:#ede9fe;border:1px solid #ddd6fe;border-radius:7px;padding:5px 14px;font-size:12px;font-weight:600;color:#7c3aed;cursor:pointer">+ Preparación</button>
+          </div>
         </div>
-        <div id="marg-form-ing-rows" style="display:flex;flex-direction:column;gap:8px"></div>
+        <div id="marg-form-ing-rows" style="display:flex;flex-direction:column;gap:10px"></div>
+        <div id="marg-form-total" style="margin-top:10px;padding:10px 14px;background:#f8f9fa;border-radius:8px;font-size:13px;color:#495057;border:1px solid #e9ecef">
+          Costo total: <strong>$0</strong>
+        </div>
       </div>
-      <div id="marg-form-msg" style="font-size:13px;min-height:18px;margin-bottom:12px"></div>
+      <div id="marg-form-msg" style="font-size:13px;min-height:18px;margin-bottom:4px"></div>
       <div style="display:flex;gap:10px">
         <button onclick="margenSaveForm()" style="background:#212529;color:#fff;border:none;border-radius:8px;padding:11px 28px;font-size:14px;font-weight:600;cursor:pointer">Guardar</button>
         <button onclick="margenCloseFormModal()" style="background:transparent;border:1px solid #dee2e6;border-radius:8px;padding:11px 20px;font-size:14px;color:#6c757d;cursor:pointer">Cancelar</button>
