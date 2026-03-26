@@ -3303,24 +3303,18 @@ function openModalProducto(id) {
         </div>
       </div>
 
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
-        <div>
-          <div class="field-label">Unidad</div>
-          <select id="mprod-unit" class="inv-input">
-            <option value="unidad" ${(p?.unit||'unidad')==='unidad'?'selected':''}>Unidad</option>
-            <option value="kg"     ${p?.unit==='kg'?'selected':''}>Kilogramo (kg)</option>
-            <option value="g"      ${p?.unit==='g'?'selected':''}>Gramo (g)</option>
-            <option value="L"      ${p?.unit==='L'?'selected':''}>Litro (L)</option>
-            <option value="ml"     ${p?.unit==='ml'?'selected':''}>Mililitro (ml)</option>
-            <option value="caja"   ${p?.unit==='caja'?'selected':''}>Caja</option>
-            <option value="bolsa"  ${p?.unit==='bolsa'?'selected':''}>Bolsa</option>
-            <option value="botella"${p?.unit==='botella'?'selected':''}>Botella</option>
-          </select>
-        </div>
-        <div>
-          <div class="field-label">Costo por unidad ($)</div>
-          <input id="mprod-cost" class="inv-input" type="number" min="0" value="${p?.costPerUnit||''}" placeholder="Ej: 1200">
-        </div>
+      <div style="margin-bottom:16px">
+        <div class="field-label">Unidad</div>
+        <select id="mprod-unit" class="inv-input" style="max-width:220px">
+          <option value="unidad" ${(p?.unit||'unidad')==='unidad'?'selected':''}>Unidad</option>
+          <option value="kg"     ${p?.unit==='kg'?'selected':''}>Kilogramo (kg)</option>
+          <option value="g"      ${p?.unit==='g'?'selected':''}>Gramo (g)</option>
+          <option value="L"      ${p?.unit==='L'?'selected':''}>Litro (L)</option>
+          <option value="ml"     ${p?.unit==='ml'?'selected':''}>Mililitro (ml)</option>
+          <option value="caja"   ${p?.unit==='caja'?'selected':''}>Caja</option>
+          <option value="bolsa"  ${p?.unit==='bolsa'?'selected':''}>Bolsa</option>
+          <option value="botella"${p?.unit==='botella'?'selected':''}>Botella</option>
+        </select>
       </div>
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
@@ -3447,10 +3441,9 @@ async function saveProducto() {
     if (secs.length) restaurantSections[restId] = secs;
   });
   const body = {
-    name:         document.getElementById('mprod-name').value.trim(),
-    category:     document.getElementById('mprod-cat').value.trim(),
-    unit:         document.getElementById('mprod-unit').value,
-    costPerUnit:  Number(document.getElementById('mprod-cost').value) || 0,
+    name:     document.getElementById('mprod-name').value.trim(),
+    category: document.getElementById('mprod-cat').value.trim(),
+    unit:     document.getElementById('mprod-unit').value,
     restaurantIds,
     supplierIds: [...document.querySelectorAll('#mprod-suppliers input:checked')].map(c => c.value),
     restaurantSections,
@@ -6240,20 +6233,22 @@ function margenExportarExcel() {
 function renderMargenCostos() {
   const el     = document.getElementById('marg-costos');
   const sorted = [...margenIngredients].sort((a, b) => a.name.localeCompare(b.name, 'es'));
+  const nowMes = new Date().toISOString().substring(0, 7); // YYYY-MM
 
   el.innerHTML = `
     <div class="inv-toolbar">
       <h2>Costos de ingredientes</h2>
     </div>
     <p style="font-size:13px;color:#6c757d;margin:-4px 0 20px">
-      Ingresá el costo por unidad de cada ingrediente. Los márgenes de todas las recetas se actualizan automáticamente.
+      El costo es el último precio registrado en el historial. Al guardar acá se agrega una entrada al historial del mes actual.
     </p>
-    <table class="inv-table" style="max-width:680px">
+    <table class="inv-table" style="max-width:720px">
       <thead>
         <tr>
           <th>Ingrediente</th>
           <th>Unidad</th>
-          <th>Costo por unidad ($)</th>
+          <th>Último precio</th>
+          <th>Nuevo precio ($)</th>
           <th></th>
         </tr>
       </thead>
@@ -6262,16 +6257,22 @@ function renderMargenCostos() {
           <tr>
             <td style="color:#212529;font-weight:500">${p.name}</td>
             <td><span class="tag">${p.unit||'—'}</span></td>
+            <td style="color:#6c757d;font-size:13px">
+              ${p.costPerUnit > 0
+                ? `<span style="font-weight:600;color:#212529">$${p.costPerUnit.toLocaleString('es-CL')}</span>
+                   ${p.latestPriceMes ? `<span style="font-size:11px;color:#adb5bd;margin-left:4px">${p.latestPriceMes}</span>` : ''}`
+                : '<span style="color:#ccc">—</span>'}
+            </td>
             <td>
-              <div style="display:flex;align-items:center;border:1px solid #dee2e6;border-radius:7px;overflow:hidden;max-width:170px;background:#fff">
+              <div style="display:flex;align-items:center;border:1px solid #dee2e6;border-radius:7px;overflow:hidden;max-width:160px;background:#fff">
                 <span style="padding:0 10px;color:#888;font-size:13px;background:#f8f9fa;border-right:1px solid #dee2e6">$</span>
-                <input type="number" id="marg-cost-${p.id}" value="${p.costPerUnit||''}" min="0" placeholder="0"
-                  style="border:none;outline:none;padding:7px 8px;font-size:13px;width:110px;color:#212529"
-                  onkeydown="if(event.key==='Enter'){event.preventDefault();margenSaveCost('${p.id}')}">
+                <input type="number" id="marg-cost-${p.id}" min="0" placeholder="${p.costPerUnit||'0'}"
+                  style="border:none;outline:none;padding:7px 8px;font-size:13px;width:100px;color:#212529"
+                  onkeydown="if(event.key==='Enter'){event.preventDefault();margenSaveCost('${p.id}','${nowMes}')}">
               </div>
             </td>
             <td style="white-space:nowrap">
-              <button onclick="margenSaveCost('${p.id}')"
+              <button onclick="margenSaveCost('${p.id}','${nowMes}')"
                 style="background:#212529;color:#fff;border:none;border-radius:7px;padding:7px 16px;font-size:12px;font-weight:600;cursor:pointer">
                 Guardar
               </button>
@@ -6282,18 +6283,24 @@ function renderMargenCostos() {
     </table>`;
 }
 
-async function margenSaveCost(productId) {
+async function margenSaveCost(productId, mes) {
   const input = document.getElementById(`marg-cost-${productId}`);
   const msg   = document.getElementById(`marg-cost-msg-${productId}`);
-  const cost  = Number(input.value) || 0;
+  const cost  = Number(input.value);
+  if (!cost || cost <= 0) { msg.style.color='#dc2626'; msg.textContent='Ingresa un precio.'; return; }
   try {
-    const res  = await apiFetch(`/api/inv/products/${productId}/cost`, { method: 'PATCH', body: JSON.stringify({ costPerUnit: cost }) });
+    // Saves to product_price_history (same as in Ingredientes)
+    const res  = await apiFetch(`/api/inv/products/${productId}/prices`, {
+      method: 'POST', body: JSON.stringify({ mes, precio: cost })
+    });
     const data = await res.json();
     if (data.error) throw new Error(data.error);
+    // Update local cache
     const prod = margenIngredients.find(p => p.id === productId);
-    if (prod) prod.costPerUnit = cost;
-    msg.style.color = '#16a34a'; msg.textContent = '✓';
-    setTimeout(() => { msg.textContent = ''; }, 1500);
+    if (prod) { prod.costPerUnit = cost; prod.latestPriceMes = mes; }
+    input.value = '';
+    msg.style.color = '#16a34a'; msg.textContent = '✓ Guardado';
+    setTimeout(() => { msg.textContent = ''; renderMargenCostos(); }, 1200);
   } catch(e) {
     msg.style.color = '#dc2626'; msg.textContent = e.message;
   }

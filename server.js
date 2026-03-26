@@ -788,21 +788,35 @@ app.delete('/api/inv/suppliers/:id', requireAuth, async (req, res) => {
 
 // ── Inventario: Productos ─────────────────────────────────
 app.get('/api/inv/products', requireAuth, async (req, res) => {
-  const [prodSnap, supSnap, restSnap] = await Promise.all([
+  const [prodSnap, supSnap, restSnap, priceSnap] = await Promise.all([
     db.collection('products').orderBy('name').get(),
     db.collection('suppliers').get(),
-    db.collection('restaurants').get()
+    db.collection('restaurants').get(),
+    db.collection('product_price_history').get()
   ]);
-  const suppliers   = {};
-  const restNames   = {};
-  supSnap.docs.forEach(d  => { suppliers[d.id]  = d.data().name; });
-  restSnap.docs.forEach(d => { restNames[d.id]  = d.data().name; });
+  const suppliers = {};
+  const restNames = {};
+  supSnap.docs.forEach(d  => { suppliers[d.id] = d.data().name; });
+  restSnap.docs.forEach(d => { restNames[d.id] = d.data().name; });
+
+  // Build latestPrice map: productId → precio del mes más reciente
+  const latestPriceMap = {};
+  priceSnap.docs.forEach(d => {
+    const { productId, mes, precio } = d.data();
+    if (!productId) return;
+    if (!latestPriceMap[productId] || mes > latestPriceMap[productId].mes) {
+      latestPriceMap[productId] = { mes, precio };
+    }
+  });
+
   const products = prodSnap.docs.map(d => {
     const data = d.data();
     return {
       id: d.id, ...data,
-      supplierNames:   (data.supplierIds   || []).map(id => suppliers[id]  || id),
-      restaurantNames: (data.restaurantIds || []).map(id => restNames[id]  || id)
+      supplierNames:   (data.supplierIds  || []).map(id => suppliers[id] || id),
+      restaurantNames: (data.restaurantIds|| []).map(id => restNames[id] || id),
+      costPerUnit: latestPriceMap[d.id]?.precio ?? data.costPerUnit ?? 0,
+      latestPriceMes: latestPriceMap[d.id]?.mes ?? null
     };
   });
   res.json({ products });
