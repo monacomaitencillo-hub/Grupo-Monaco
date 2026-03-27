@@ -2670,8 +2670,8 @@ function qtyColor(qty, category) {
   if (!t) return null;
   const n = parseFloat(qty);
   if (isNaN(n)) return null;
-  if (n <= t.low)  return '#dc3545'; // red
-  if (n <= t.high) return '#ca8a04'; // yellow
+  if (n <= t.low)  return '#f97316'; // orange
+  if (n <= t.high) return '#fff52d'; // yellow
   return '#16a34a';                  // green
 }
 
