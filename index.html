@@ -391,21 +391,23 @@
     .hist-detail-title  { font-size: 14px; font-weight: 600; color: #212529; }
 
     /* Grid de recetas responsivo */
-    .marg-grid { display:grid; gap:16px; padding:4px 0 24px; }
-    .marg-grid-3 { grid-template-columns: repeat(3, 1fr); }
-    .marg-grid-4 { grid-template-columns: repeat(4, 1fr); }
-    .marg-grid-6 { grid-template-columns: repeat(6, 1fr); }
-    @media (max-width: 1200px) {
-      .marg-grid-6 { grid-template-columns: repeat(4, 1fr); }
+    .marg-grid { display:grid; gap:12px; padding:4px 0 24px; width:100%; box-sizing:border-box; }
+    .marg-grid > div { min-width:0; }
+    .marg-grid-3 { grid-template-columns: repeat(3, minmax(0,1fr)); }
+    .marg-grid-4 { grid-template-columns: repeat(4, minmax(0,1fr)); }
+    .marg-grid-6 { grid-template-columns: repeat(6, minmax(0,1fr)); }
+    @media (max-width: 1100px) {
+      .marg-grid-6 { grid-template-columns: repeat(4, minmax(0,1fr)); }
     }
     @media (max-width: 900px) {
-      .marg-grid-4, .marg-grid-6 { grid-template-columns: repeat(3, 1fr); }
+      .marg-grid-4 { grid-template-columns: repeat(3, minmax(0,1fr)); }
+      .marg-grid-6 { grid-template-columns: repeat(3, minmax(0,1fr)); }
     }
     @media (max-width: 680px) {
-      .marg-grid-3, .marg-grid-4, .marg-grid-6 { grid-template-columns: repeat(2, 1fr); }
+      .marg-grid-3, .marg-grid-4, .marg-grid-6 { grid-template-columns: repeat(2, minmax(0,1fr)); }
     }
     @media (max-width: 480px) {
-      .marg-grid-3, .marg-grid-4, .marg-grid-6 { grid-template-columns: 1fr; }
+      .marg-grid-3, .marg-grid-4, .marg-grid-6 { grid-template-columns: minmax(0,1fr); }
     }
 
     /* Formulario añadir stock */
@@ -6012,54 +6014,67 @@ function renderMargenRecetas() {
            <div style="font-size:13px;color:#aaa">Subí un Excel con tus recetas para empezar, o descargá la plantilla.</div>
          </div>`
       : `<div class="marg-grid marg-grid-${margenCols}">
-           ${filtered.map(r => margenCardHTML(r)).join('')}
+           ${filtered.map(r => margenCardHTML(r, margenCols)).join('')}
          </div>`
     }`;
 }
 
-function margenCardHTML(r) {
+function margenCardHTML(r, cols) {
   let totalCost = 0;
   (r.ingredients || []).forEach(item => { totalCost += calcItemCost(item); });
-  const selling   = r.sellingPrice || 0;
-  const margin    = selling > 0 ? ((selling - totalCost) / selling * 100) : null;
-  const mColor    = margin === null ? '#888' : margin >= 60 ? '#16a34a' : margin >= 40 ? '#ca8a04' : '#dc2626';
-  const ingCount  = (r.ingredients || []).filter(i => i.quantity > 0).length;
+  const selling  = r.sellingPrice || 0;
+  const margin   = selling > 0 ? ((selling - totalCost) / selling * 100) : null;
+  const mColor   = margin === null ? '#888' : margin >= 60 ? '#16a34a' : margin >= 40 ? '#ca8a04' : '#dc2626';
+  const ingCount = (r.ingredients || []).filter(i => i.quantity > 0).length;
+
+  // Escala de tamaños según columnas
+  const compact  = cols >= 6;
+  const pad      = compact ? '14px' : '20px';
+  const titleSz  = compact ? '12px' : '15px';
+  const subSz    = compact ? '11px' : '12px';
+  const labelSz  = compact ? '9px'  : '10px';
+  const valSz    = compact ? '12px' : '14px';
+  const badgeSz  = compact ? '11px' : '13px';
+  const badgePad = compact ? '2px 7px' : '3px 11px';
+  const btnSz    = compact ? '24px' : '30px';
+  const gap      = compact ? '4px'  : '6px';
+  const mb       = compact ? '10px' : '14px';
 
   return `
-    <div style="background:#fff;border:1px solid #e9ecef;border-radius:14px;padding:20px;transition:box-shadow .18s,transform .18s;position:relative"
-      onmouseover="this.style.boxShadow='0 6px 24px rgba(0,0,0,.09)';this.style.transform='translateY(-2px)'"
+    <div style="background:#fff;border:1px solid #e9ecef;border-radius:12px;padding:${pad};transition:box-shadow .18s,transform .18s;min-width:0;overflow:hidden"
+      onmouseover="this.style.boxShadow='0 4px 18px rgba(0,0,0,.08)';this.style.transform='translateY(-2px)'"
       onmouseout="this.style.boxShadow='';this.style.transform=''">
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px">
-        <div style="flex:1;cursor:pointer" onclick="margenOpenRecipe('${r.id}')">
-          <div style="font-size:15px;font-weight:700;color:#212529;line-height:1.3">${r.name}</div>
-          <div style="font-size:12px;color:#6c757d;margin-top:3px">${r.restaurantName || '—'}</div>
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:${mb};gap:6px">
+        <div style="flex:1;min-width:0;cursor:pointer" onclick="margenOpenRecipe('${r.id}')">
+          <div style="font-size:${titleSz};font-weight:700;color:#212529;line-height:1.3;word-break:break-word">${r.name}</div>
+          <div style="font-size:${subSz};color:#6c757d;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.restaurantName || '—'}</div>
         </div>
-        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;margin-left:10px">
+        <div style="display:flex;align-items:center;gap:${gap};flex-shrink:0">
           ${margin !== null
-            ? `<div style="background:${mColor}18;color:${mColor};border:1.5px solid ${mColor}44;border-radius:20px;padding:3px 11px;font-size:13px;font-weight:700">${margin.toFixed(1)}%</div>`
-            : `<div style="background:#f1f3f4;color:#aaa;border-radius:20px;padding:3px 11px;font-size:12px">Sin precio</div>`}
+            ? `<div style="background:${mColor}18;color:${mColor};border:1.5px solid ${mColor}44;border-radius:20px;padding:${badgePad};font-size:${badgeSz};font-weight:700;white-space:nowrap">${margin.toFixed(1)}%</div>`
+            : `<div style="background:#f1f3f4;color:#aaa;border-radius:20px;padding:${badgePad};font-size:${badgeSz};white-space:nowrap">—</div>`}
           <button onclick="event.stopPropagation();margenOpenFormModal('${r.id}')"
-            style="background:#f1f3f4;border:none;border-radius:8px;width:30px;height:30px;cursor:pointer;color:#495057;font-size:14px;display:flex;align-items:center;justify-content:center"
+            style="background:#f1f3f4;border:none;border-radius:7px;width:${btnSz};height:${btnSz};cursor:pointer;color:#495057;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0"
             title="Editar receta">✎</button>
           <button onclick="event.stopPropagation();margenDeleteRecipe('${r.id}','${r.name.replace(/'/g,"\\'")}')"
-            style="background:#fff0f0;border:1px solid #fca5a5;border-radius:8px;width:30px;height:30px;cursor:pointer;color:#ef4444;font-size:14px;display:flex;align-items:center;justify-content:center"
+            style="background:#fff0f0;border:1px solid #fca5a5;border-radius:7px;width:${btnSz};height:${btnSz};cursor:pointer;color:#ef4444;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0"
             title="Eliminar receta">✕</button>
         </div>
       </div>
-      <div onclick="margenOpenRecipe('${r.id}')" style="cursor:pointer;display:flex;justify-content:space-between;border-top:1px solid #f1f3f4;padding-top:12px;gap:8px">
-        <div style="text-align:center;flex:1">
-          <div style="font-size:10px;color:#adb5bd;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">Costo</div>
-          <div style="font-size:14px;font-weight:700;color:#212529">${totalCost > 0 ? '$'+Math.round(totalCost).toLocaleString('es-CL') : '—'}</div>
+      <div onclick="margenOpenRecipe('${r.id}')" style="cursor:pointer;display:flex;justify-content:space-between;border-top:1px solid #f1f3f4;padding-top:10px;gap:4px">
+        <div style="text-align:center;flex:1;min-width:0">
+          <div style="font-size:${labelSz};color:#adb5bd;text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px">Costo</div>
+          <div style="font-size:${valSz};font-weight:700;color:#212529;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${totalCost > 0 ? '$'+Math.round(totalCost).toLocaleString('es-CL') : '—'}</div>
         </div>
-        <div style="width:1px;background:#f1f3f4"></div>
-        <div style="text-align:center;flex:1">
-          <div style="font-size:10px;color:#adb5bd;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">Venta</div>
-          <div style="font-size:14px;font-weight:700;color:#212529">${selling > 0 ? '$'+selling.toLocaleString('es-CL') : '—'}</div>
+        <div style="width:1px;background:#f1f3f4;flex-shrink:0"></div>
+        <div style="text-align:center;flex:1;min-width:0">
+          <div style="font-size:${labelSz};color:#adb5bd;text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px">Venta</div>
+          <div style="font-size:${valSz};font-weight:700;color:#212529;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${selling > 0 ? '$'+selling.toLocaleString('es-CL') : '—'}</div>
         </div>
-        <div style="width:1px;background:#f1f3f4"></div>
-        <div style="text-align:center;flex:1">
-          <div style="font-size:10px;color:#adb5bd;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">Ingredientes</div>
-          <div style="font-size:14px;font-weight:700;color:#212529">${ingCount}</div>
+        <div style="width:1px;background:#f1f3f4;flex-shrink:0"></div>
+        <div style="text-align:center;flex:1;min-width:0">
+          <div style="font-size:${labelSz};color:#adb5bd;text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px">Ing.</div>
+          <div style="font-size:${valSz};font-weight:700;color:#212529">${ingCount}</div>
         </div>
       </div>
     </div>`;
