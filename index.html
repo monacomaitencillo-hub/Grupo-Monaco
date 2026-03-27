@@ -2671,7 +2671,7 @@ function qtyColor(qty, category) {
   const n = parseFloat(qty);
   if (isNaN(n)) return null;
   if (n <= t.low)  return '#dc3545'; // red
-  if (n <= t.high) return '#d97706'; // amber
+  if (n <= t.high) return '#ca8a04'; // yellow
   return '#16a34a';                  // green
 }
 
@@ -4024,7 +4024,7 @@ function renderHistDetail(id) {
             <div style="font-size:11px;color:#444;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">${cat}</div>
             ${items.map(item => `
               <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #1a1a1a;font-size:13px">
-                <span style="color:#ccc">${item.name}</span>
+                <span style="color:#212529">${item.name}</span>
                 <span style="color:${qtyColor(item.quantity, item.category||'Sin categoría') || '#212529'};font-weight:700">${item.quantity} <span style="color:#6c757d;font-weight:400">${item.unit}</span></span>
               </div>`).join('')}
           </div>`).join('')}
