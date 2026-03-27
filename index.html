@@ -5905,6 +5905,7 @@ let margenRecipes      = [];
 let margenPreparations = [];
 let margenIngredients  = [];
 let margenFilterRest   = '';
+let margenCols         = 3;
 
 async function initMargenesModule() {
   margenTabActive = 'recetas';
@@ -5972,6 +5973,11 @@ function renderMargenRecetas() {
           <option value="">Todos los locales</option>
           ${restaurants.map(r=>`<option value="${r.id}" ${margenFilterRest===r.id?'selected':''}>${r.name}</option>`).join('')}
         </select>
+        <div style="display:flex;border:1px solid #dee2e6;border-radius:8px;overflow:hidden">
+          ${[3,4,6].map(n => `<button onclick="margenCols=${n};renderMargenRecetas()"
+            style="padding:6px 12px;font-size:12px;font-weight:600;border:none;cursor:pointer;
+                   background:${margenCols===n?'#212529':'#fff'};color:${margenCols===n?'#fff':'#6c757d'}">${n}</button>`).join('')}
+        </div>
         <button class="btn-new" onclick="margenOpenFormModal(null)" style="padding:7px 14px;font-size:13px">+ Agregar producto</button>
         <label style="cursor:pointer;display:inline-flex;align-items:center">
           <input type="file" accept=".xlsx,.xls" style="display:none" onchange="margenImportExcel(this)">
@@ -5987,7 +5993,7 @@ function renderMargenRecetas() {
            <div style="font-size:15px;font-weight:600;margin-bottom:6px">Sin recetas aún</div>
            <div style="font-size:13px;color:#aaa">Subí un Excel con tus recetas para empezar, o descargá la plantilla.</div>
          </div>`
-      : `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:16px;padding:4px 0 24px">
+      : `<div style="display:grid;grid-template-columns:repeat(${margenCols},1fr);gap:16px;padding:4px 0 24px">
            ${filtered.map(r => margenCardHTML(r)).join('')}
          </div>`
     }`;
