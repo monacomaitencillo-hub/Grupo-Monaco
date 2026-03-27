@@ -390,6 +390,24 @@
     .hist-detail-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
     .hist-detail-title  { font-size: 14px; font-weight: 600; color: #212529; }
 
+    /* Grid de recetas responsivo */
+    .marg-grid { display:grid; gap:16px; padding:4px 0 24px; }
+    .marg-grid-3 { grid-template-columns: repeat(3, 1fr); }
+    .marg-grid-4 { grid-template-columns: repeat(4, 1fr); }
+    .marg-grid-6 { grid-template-columns: repeat(6, 1fr); }
+    @media (max-width: 1200px) {
+      .marg-grid-6 { grid-template-columns: repeat(4, 1fr); }
+    }
+    @media (max-width: 900px) {
+      .marg-grid-4, .marg-grid-6 { grid-template-columns: repeat(3, 1fr); }
+    }
+    @media (max-width: 680px) {
+      .marg-grid-3, .marg-grid-4, .marg-grid-6 { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 480px) {
+      .marg-grid-3, .marg-grid-4, .marg-grid-6 { grid-template-columns: 1fr; }
+    }
+
     /* Formulario añadir stock */
     .stock-form-cat   { margin-bottom: 24px; }
     .stock-form-cat-title { font-size: 11px; color: #6c757d; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid #dee2e6; }
@@ -5993,7 +6011,7 @@ function renderMargenRecetas() {
            <div style="font-size:15px;font-weight:600;margin-bottom:6px">Sin recetas aún</div>
            <div style="font-size:13px;color:#aaa">Subí un Excel con tus recetas para empezar, o descargá la plantilla.</div>
          </div>`
-      : `<div style="display:grid;grid-template-columns:repeat(${margenCols},1fr);gap:16px;padding:4px 0 24px">
+      : `<div class="marg-grid marg-grid-${margenCols}">
            ${filtered.map(r => margenCardHTML(r)).join('')}
          </div>`
     }`;
@@ -6877,7 +6895,7 @@ async function margenDeleteRecipe(id, name) {
       <button class="inv-tab"        id="mtab-costos"        onclick="switchMargenTab('costos')">Costos de ingredientes</button>
     </div>
   </div>
-  <div class="inv-main">
+  <div class="inv-main" style="max-width:none">
     <div id="marg-recetas"></div>
     <div id="marg-preparaciones" style="display:none"></div>
     <div id="marg-costos"        style="display:none"></div>
