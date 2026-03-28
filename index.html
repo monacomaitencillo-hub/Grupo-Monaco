@@ -3347,18 +3347,29 @@ function openModalProducto(id) {
         </div>
       </div>
 
-      <div style="margin-bottom:16px">
-        <div class="field-label">Unidad</div>
-        <select id="mprod-unit" class="inv-input" style="max-width:220px">
-          <option value="unidad" ${(p?.unit||'unidad')==='unidad'?'selected':''}>Unidad</option>
-          <option value="kg"     ${p?.unit==='kg'?'selected':''}>Kilogramo (kg)</option>
-          <option value="g"      ${p?.unit==='g'?'selected':''}>Gramo (g)</option>
-          <option value="L"      ${p?.unit==='L'?'selected':''}>Litro (L)</option>
-          <option value="ml"     ${p?.unit==='ml'?'selected':''}>Mililitro (ml)</option>
-          <option value="caja"   ${p?.unit==='caja'?'selected':''}>Caja</option>
-          <option value="bolsa"  ${p?.unit==='bolsa'?'selected':''}>Bolsa</option>
-          <option value="botella"${p?.unit==='botella'?'selected':''}>Botella</option>
-        </select>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+        <div>
+          <div class="field-label">Unidad</div>
+          <select id="mprod-unit" class="inv-input">
+            <option value="unidad"  ${(p?.unit||'unidad')==='unidad'?'selected':''}>Unidad</option>
+            <option value="kg"      ${p?.unit==='kg'?'selected':''}>Kilogramo (kg)</option>
+            <option value="g"       ${p?.unit==='g'?'selected':''}>Gramo (g)</option>
+            <option value="L"       ${p?.unit==='L'?'selected':''}>Litro (L)</option>
+            <option value="ml"      ${p?.unit==='ml'?'selected':''}>Mililitro (ml)</option>
+            <option value="caja"    ${p?.unit==='caja'?'selected':''}>Caja</option>
+            <option value="bolsa"   ${p?.unit==='bolsa'?'selected':''}>Bolsa</option>
+            <option value="botella" ${p?.unit==='botella'?'selected':''}>Botella</option>
+          </select>
+        </div>
+        <div>
+          <div class="field-label">Tipo de impuesto</div>
+          <select id="mprod-impuesto" class="inv-input">
+            <option value="alimento"    ${(p?.tipoImpuesto||'alimento')==='alimento'?'selected':''}>Alimento (IVA 19%)</option>
+            <option value="cerveza"     ${p?.tipoImpuesto==='cerveza'?'selected':''}>Cerveza (IVA+ILA 39.5%)</option>
+            <option value="vino_licor"  ${p?.tipoImpuesto==='vino_licor'?'selected':''}>Vino / Licor (IVA+ILA 50.5%)</option>
+            <option value="sin_impuesto"${p?.tipoImpuesto==='sin_impuesto'?'selected':''}>Sin impuesto (0%)</option>
+          </select>
+        </div>
       </div>
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
@@ -3389,18 +3400,66 @@ function openModalProducto(id) {
       ${p?.id ? `
       <hr style="border:none;border-top:1px solid #e9ecef;margin-bottom:24px">
       <div>
-        <h3 style="font-size:15px;font-weight:700;color:#212529;margin-bottom:16px">Historial de precios</h3>
-        <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
-          <input type="month" id="pp-mes" style="padding:8px 12px;border:1px solid #dee2e6;border-radius:8px;font-size:13px;color:#212529"
-            value="${new Date().toISOString().substring(0,7)}">
-          <div style="display:flex;align-items:center;border:1px solid #dee2e6;border-radius:8px;overflow:hidden;background:#fff">
-            <span style="padding:0 10px;color:#888;font-size:13px">$</span>
-            <input type="number" id="pp-precio" placeholder="Precio CLP" min="0" step="1"
-              style="border:none;outline:none;padding:8px 10px 8px 0;font-size:13px;color:#212529;width:140px"
-              onkeydown="if(event.key==='Enter'){event.preventDefault();ppAgregarPrecio()}">
+        <h3 style="font-size:15px;font-weight:700;color:#212529;margin-bottom:4px">Historial de precios</h3>
+        <p style="font-size:12px;color:#6c757d;margin:0 0 18px">Ingresa el precio bruto de factura. El costo neto unitario se calcula automáticamente.</p>
+
+        <div style="background:#f8f9fa;border:1px solid #e9ecef;border-radius:12px;padding:18px;margin-bottom:16px">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+            <div>
+              <div style="font-size:11px;color:#6c757d;font-weight:600;text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px">Mes</div>
+              <input type="month" id="pp-mes" style="width:100%;padding:8px 10px;border:1px solid #dee2e6;border-radius:8px;font-size:13px;color:#212529;background:#fff;box-sizing:border-box"
+                value="${new Date().toISOString().substring(0,7)}">
+            </div>
+            <div>
+              <div style="font-size:11px;color:#6c757d;font-weight:600;text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px">Precio bruto ($)</div>
+              <div style="display:flex;align-items:center;border:1px solid #dee2e6;border-radius:8px;overflow:hidden;background:#fff">
+                <span style="padding:0 10px;color:#888;font-size:13px;border-right:1px solid #dee2e6;background:#f8f9fa">$</span>
+                <input type="number" id="pp-bruto" placeholder="0" min="0" step="1"
+                  style="flex:1;border:none;outline:none;padding:8px 10px;font-size:13px;color:#212529"
+                  oninput="ppCalcPreview()">
+              </div>
+            </div>
           </div>
-          <button onclick="ppAgregarPrecio()" style="background:#ff5023;color:#fff;border:none;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:600;cursor:pointer">Agregar</button>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:14px">
+            <div>
+              <div style="font-size:11px;color:#6c757d;font-weight:600;text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px">Descuento (%)</div>
+              <input type="number" id="pp-dto" placeholder="0" min="0" max="100" step="0.1" value="0"
+                style="width:100%;padding:8px 10px;border:1px solid #dee2e6;border-radius:8px;font-size:13px;color:#212529;background:#fff;box-sizing:border-box"
+                oninput="ppCalcPreview()">
+            </div>
+            <div>
+              <div style="font-size:11px;color:#6c757d;font-weight:600;text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px">Cantidad compra</div>
+              <input type="number" id="pp-cantidad" placeholder="1" min="0.0001" step="any" value="1"
+                style="width:100%;padding:8px 10px;border:1px solid #dee2e6;border-radius:8px;font-size:13px;color:#212529;background:#fff;box-sizing:border-box"
+                oninput="ppCalcPreview()">
+            </div>
+            <div>
+              <div style="font-size:11px;color:#6c757d;font-weight:600;text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px">Descripción compra</div>
+              <input type="text" id="pp-unidad-compra" placeholder="Ej: caja x 6"
+                style="width:100%;padding:8px 10px;border:1px solid #dee2e6;border-radius:8px;font-size:13px;color:#212529;background:#fff;box-sizing:border-box">
+            </div>
+          </div>
+
+          <!-- Preview calculado -->
+          <div id="pp-preview" style="background:#fff;border:1px solid #e9ecef;border-radius:8px;padding:12px;display:none">
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center">
+              <div>
+                <div style="font-size:10px;color:#adb5bd;text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px">Precio neto</div>
+                <div id="pp-prev-neto" style="font-size:14px;font-weight:600;color:#495057">—</div>
+              </div>
+              <div>
+                <div style="font-size:10px;color:#adb5bd;text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px">Neto c/dto</div>
+                <div id="pp-prev-dto" style="font-size:14px;font-weight:600;color:#495057">—</div>
+              </div>
+              <div style="background:#f0fdf4;border-radius:6px;padding:4px 0">
+                <div style="font-size:10px;color:#16a34a;text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px;font-weight:600">Costo unitario</div>
+                <div id="pp-prev-unit" style="font-size:16px;font-weight:700;color:#16a34a">—</div>
+              </div>
+            </div>
+          </div>
         </div>
+
+        <button onclick="ppAgregarPrecio()" style="background:#ff5023;color:#fff;border:none;border-radius:8px;padding:9px 22px;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:14px">Agregar</button>
         <div id="pp-msg" style="font-size:12px;min-height:16px;margin-bottom:8px"></div>
         <div id="pp-list" style="color:#888;font-size:13px">Cargando...</div>
       </div>` : ''}
@@ -3417,6 +3476,33 @@ function openModalProducto(id) {
   }
 }
 
+const PP_DIVISORS = { alimento:1.19, cerveza:1.395, vino_licor:1.505, sin_impuesto:1.00 };
+
+function ppGetTipoImpuesto() {
+  return document.getElementById('mprod-impuesto')?.value || 'alimento';
+}
+
+function ppCalcPreview() {
+  const bruto    = parseFloat(document.getElementById('pp-bruto')?.value) || 0;
+  const dto      = parseFloat(document.getElementById('pp-dto')?.value)   || 0;
+  const cantidad = parseFloat(document.getElementById('pp-cantidad')?.value) || 1;
+  const preview  = document.getElementById('pp-preview');
+  if (!preview) return;
+  if (!bruto) { preview.style.display = 'none'; return; }
+
+  const divisor  = PP_DIVISORS[ppGetTipoImpuesto()] || 1.19;
+  const neto     = bruto / divisor;
+  const netoDto  = neto * (1 - dto / 100);
+  const unitario = netoDto / cantidad;
+
+  document.getElementById('pp-prev-neto').textContent = '$' + Math.round(neto).toLocaleString('es-CL');
+  document.getElementById('pp-prev-dto').textContent  = '$' + Math.round(netoDto).toLocaleString('es-CL');
+  document.getElementById('pp-prev-unit').textContent = '$' + Math.round(unitario * 100) / 100 > 0
+    ? '$' + (Math.round(unitario * 100) / 100).toLocaleString('es-CL', {minimumFractionDigits:0,maximumFractionDigits:2})
+    : '—';
+  preview.style.display = '';
+}
+
 function ppRenderList() {
   const el = document.getElementById('pp-list');
   if (!el) return;
@@ -3425,40 +3511,59 @@ function ppRenderList() {
     return;
   }
   const sorted = [...priceHistoryData].sort((a, b) => b.mes.localeCompare(a.mes));
-  el.innerHTML = sorted.map(p => `
-    <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#fff;border:1px solid #e9ecef;border-radius:8px;margin-bottom:8px">
-      <span style="width:80px;font-size:13px;color:#6c757d;font-weight:500;flex-shrink:0">${p.mes}</span>
-      <div style="flex:1;display:flex;align-items:center;border:1px solid #dee2e6;border-radius:8px;overflow:hidden;background:#fafafa">
-        <span style="padding:0 10px;color:#888;font-size:13px;flex-shrink:0">$</span>
-        <input type="number" value="${p.precio}" min="0" step="1" id="ph-inp-${p.id}"
-          style="flex:1;border:none;outline:none;padding:8px 8px 8px 0;font-size:13px;color:#212529;background:transparent;min-width:0"
-          onkeydown="if(event.key==='Enter'){event.preventDefault();savePrecioInline('${p.id}','${p.mes}')}">
+  el.innerHTML = sorted.map(p => {
+    const hasDetail = p.precioBruto != null;
+    const detailHtml = hasDetail ? `
+      <div style="font-size:11px;color:#6c757d;margin-top:4px;display:flex;flex-wrap:wrap;gap:10px">
+        <span>Bruto: <b>$${Number(p.precioBruto).toLocaleString('es-CL')}</b></span>
+        ${p.descuento ? `<span>Dto: <b>${p.descuento}%</b></span>` : ''}
+        ${p.cantidadCompra && p.cantidadCompra !== 1 ? `<span>Cant: <b>${p.cantidadCompra}${p.unidadCompra?' — '+p.unidadCompra:''}</b></span>` : (p.unidadCompra ? `<span>${p.unidadCompra}</span>` : '')}
+        ${p.precioNeto != null ? `<span>Neto: <b>$${Math.round(p.precioNeto).toLocaleString('es-CL')}</b></span>` : ''}
+      </div>` : '';
+    return `
+    <div style="padding:12px 14px;background:#fff;border:1px solid #e9ecef;border-radius:10px;margin-bottom:8px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="width:76px;font-size:13px;color:#6c757d;font-weight:500;flex-shrink:0">${p.mes}</span>
+        <div style="flex:1">
+          <div style="font-size:14px;font-weight:700;color:#212529">
+            Costo unitario: <span style="color:#16a34a">$${(p.precio||0).toLocaleString('es-CL', {minimumFractionDigits:0,maximumFractionDigits:2})}</span>
+          </div>
+          ${detailHtml}
+        </div>
+        <button onclick="ppEliminar('${p.id}')"
+          style="flex-shrink:0;background:none;border:1px solid #fca5a5;color:#ef4444;border-radius:8px;width:30px;height:30px;font-size:13px;cursor:pointer">✕</button>
       </div>
-      <button onclick="savePrecioInline('${p.id}','${p.mes}')"
-        style="flex-shrink:0;background:#212529;color:#fff;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:600;cursor:pointer">
-        Guardar
-      </button>
-      <button onclick="ppEliminar('${p.id}')"
-        style="flex-shrink:0;background:none;border:1px solid #fca5a5;color:#ef4444;border-radius:8px;width:32px;height:32px;font-size:14px;cursor:pointer">✕</button>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 async function ppAgregarPrecio() {
-  const mes    = document.getElementById('pp-mes')?.value;
-  const precio = document.getElementById('pp-precio')?.value;
-  const msgEl  = document.getElementById('pp-msg');
-  if (!mes || !precio) { if(msgEl){msgEl.style.color='#f87171';msgEl.textContent='Completa mes y precio.';} return; }
+  const mes         = document.getElementById('pp-mes')?.value;
+  const precioBruto = document.getElementById('pp-bruto')?.value;
+  const msgEl       = document.getElementById('pp-msg');
+  if (!mes || !precioBruto) { if(msgEl){msgEl.style.color='#f87171';msgEl.textContent='Completa mes y precio bruto.';} return; }
+  const body = {
+    mes,
+    precioBruto:    Number(precioBruto),
+    descuento:      parseFloat(document.getElementById('pp-dto')?.value)      || 0,
+    cantidadCompra: parseFloat(document.getElementById('pp-cantidad')?.value) || 1,
+    unidadCompra:   document.getElementById('pp-unidad-compra')?.value        || '',
+    tipoImpuesto:   ppGetTipoImpuesto()
+  };
   try {
-    const res = await apiFetch(`/api/inv/products/${priceHistoryProductId}/prices`, {
-      method: 'POST', body: JSON.stringify({ mes, precio: Number(precio) })
-    });
+    const res  = await apiFetch(`/api/inv/products/${priceHistoryProductId}/prices`, { method: 'POST', body: JSON.stringify(body) });
     const data = await res.json();
     if (data.error) throw new Error(data.error);
-    document.getElementById('pp-precio').value = '';
+    // Reset form
+    document.getElementById('pp-bruto').value = '';
+    document.getElementById('pp-dto').value   = '0';
+    document.getElementById('pp-cantidad').value = '1';
+    document.getElementById('pp-unidad-compra').value = '';
+    document.getElementById('pp-preview').style.display = 'none';
     const r2 = await apiFetch(`/api/inv/products/${priceHistoryProductId}/prices`);
     priceHistoryData = (await r2.json()).prices || [];
     ppRenderList();
-    if(msgEl){msgEl.style.color='#22c55e';msgEl.textContent='Agregado.';setTimeout(()=>{msgEl.textContent=''},1500);}
+    if(msgEl){msgEl.style.color='#22c55e';msgEl.textContent='✓ Agregado.';setTimeout(()=>{msgEl.textContent=''},2000);}
   } catch(e) { if(msgEl){msgEl.style.color='#f87171';msgEl.textContent=e.message;} }
 }
 
@@ -3485,13 +3590,14 @@ async function saveProducto() {
     if (secs.length) restaurantSections[restId] = secs;
   });
   const body = {
-    name:     document.getElementById('mprod-name').value.trim(),
-    category: document.getElementById('mprod-cat').value.trim(),
-    unit:     document.getElementById('mprod-unit').value,
+    name:          document.getElementById('mprod-name').value.trim(),
+    category:      document.getElementById('mprod-cat').value.trim(),
+    unit:          document.getElementById('mprod-unit').value,
+    tipoImpuesto:  document.getElementById('mprod-impuesto')?.value || 'alimento',
     restaurantIds,
-    supplierIds: [...document.querySelectorAll('#mprod-suppliers input:checked')].map(c => c.value),
+    supplierIds:   [...document.querySelectorAll('#mprod-suppliers input:checked')].map(c => c.value),
     restaurantSections,
-    esGDD: document.getElementById('mprod-gdd').checked
+    esGDD:         document.getElementById('mprod-gdd').checked
   };
   const msg = document.getElementById('mprod-msg');
   if (!body.name) { msg.style.color='#f87171'; msg.textContent = 'El nombre es requerido.'; return; }

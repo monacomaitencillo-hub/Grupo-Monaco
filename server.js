@@ -824,10 +824,11 @@ app.get('/api/inv/products', requireAuth, async (req, res) => {
 
 app.post('/api/inv/products', requireAuth, async (req, res) => {
   if (!await isEditor(req.uid)) return res.status(403).json({ error: 'Sin permisos' });
-  const { name, category, unit, supplierIds, restaurantIds, restaurantSections, esGDD, costPerUnit } = req.body;
+  const { name, category, unit, tipoImpuesto, supplierIds, restaurantIds, restaurantSections, esGDD, costPerUnit } = req.body;
   if (!name) return res.status(400).json({ error: 'Nombre requerido' });
   const ref = await db.collection('products').add({
     name, category: category||'', unit: unit||'unidad',
+    tipoImpuesto: tipoImpuesto || 'alimento',
     supplierIds: supplierIds||[], restaurantIds: restaurantIds||[],
     restaurantSections: restaurantSections||{},
     esGDD: esGDD === true,
@@ -838,9 +839,10 @@ app.post('/api/inv/products', requireAuth, async (req, res) => {
 
 app.put('/api/inv/products/:id', requireAuth, async (req, res) => {
   if (!await isEditor(req.uid)) return res.status(403).json({ error: 'Sin permisos' });
-  const { name, category, unit, supplierIds, restaurantIds, restaurantSections, esGDD, costPerUnit } = req.body;
+  const { name, category, unit, tipoImpuesto, supplierIds, restaurantIds, restaurantSections, esGDD, costPerUnit } = req.body;
   await db.collection('products').doc(req.params.id).update({
     name, category: category||'', unit: unit||'unidad',
+    tipoImpuesto: tipoImpuesto || 'alimento',
     supplierIds: supplierIds||[], restaurantIds: restaurantIds||[],
     restaurantSections: restaurantSections||{},
     esGDD: esGDD === true,
@@ -866,26 +868,58 @@ app.get('/api/inv/products/:id/prices', requireAuth, async (req, res) => {
   res.json({ prices });
 });
 
+// Divisores de impuesto por tipo (Chile)
+const TAX_DIVISORS = {
+  alimento:   1.19,   // IVA 19%
+  cerveza:    1.395,  // IVA 19% + ILA 20.5%
+  vino_licor: 1.505,  // IVA 19% + ILA 31.5%
+  sin_impuesto: 1.00
+};
+
 app.post('/api/inv/products/:id/prices', requireAuth, async (req, res) => {
   if (!await isEditor(req.uid)) return res.status(403).json({ error: 'Sin permisos' });
-  const { mes, precio } = req.body;
-  if (!mes || precio == null) return res.status(400).json({ error: 'Faltan campos' });
+  const { mes, precio, precioBruto, descuento, cantidadCompra, unidadCompra, tipoImpuesto } = req.body;
+  if (!mes) return res.status(400).json({ error: 'Faltan campos' });
+
+  // Si viene el flujo detallado, calcular costo unitario
+  let costoUnitario;
+  let entry = { productId: req.params.id, mes };
+
+  if (precioBruto != null) {
+    const divisor    = TAX_DIVISORS[tipoImpuesto] || 1.19;
+    const dto        = Math.max(0, Math.min(100, Number(descuento) || 0));
+    const cantidad   = Math.max(0.0001, Number(cantidadCompra) || 1);
+    const precioNeto = Number(precioBruto) / divisor;
+    const precioNetoConDto = precioNeto * (1 - dto / 100);
+    costoUnitario = precioNetoConDto / cantidad;
+
+    entry = { ...entry,
+      precioBruto: Number(precioBruto), descuento: dto,
+      cantidadCompra: cantidad, unidadCompra: unidadCompra || '',
+      tipoImpuesto: tipoImpuesto || 'alimento',
+      precioNeto: Math.round(precioNeto * 100) / 100,
+      precioNetoConDto: Math.round(precioNetoConDto * 100) / 100,
+      precio: Math.round(costoUnitario * 100) / 100
+    };
+  } else if (precio != null) {
+    // Flujo simple (compatibilidad hacia atrás)
+    costoUnitario = Number(precio);
+    entry.precio = costoUnitario;
+  } else {
+    return res.status(400).json({ error: 'Faltan campos' });
+  }
+
   // Upsert: if same productId+mes exists, overwrite
   const existing = await db.collection('product_price_history')
     .where('productId', '==', req.params.id)
     .where('mes', '==', mes)
     .get();
   if (!existing.empty) {
-    await existing.docs[0].ref.update({ precio: Number(precio), updatedAt: admin.firestore.FieldValue.serverTimestamp() });
-    res.json({ id: existing.docs[0].id });
+    await existing.docs[0].ref.update({ ...entry, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+    res.json({ id: existing.docs[0].id, precio: entry.precio });
   } else {
-    const ref = await db.collection('product_price_history').add({
-      productId: req.params.id,
-      mes,
-      precio: Number(precio),
-      createdAt: admin.firestore.FieldValue.serverTimestamp()
-    });
-    res.json({ id: ref.id });
+    const ref = await db.collection('product_price_history').add({ ...entry, createdAt: admin.firestore.FieldValue.serverTimestamp() });
+    res.json({ id: ref.id, precio: entry.precio });
   }
 });
 
