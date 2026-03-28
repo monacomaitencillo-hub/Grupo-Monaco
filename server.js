@@ -888,19 +888,20 @@ app.post('/api/inv/products/:id/prices', requireAuth, async (req, res) => {
   let entry = { productId: req.params.id, mes };
 
   if (precioBruto != null) {
-    const divisor    = TAX_DIVISORS[tipoImpuesto] || 1.19;
-    const dto        = Math.max(0, Math.min(100, Number(descuento) || 0));
-    const cantidad   = Math.max(0.0001, Number(cantidadCompra) || 1);
-    const precioNeto = Number(precioBruto) / divisor;
-    const precioNetoConDto = precioNeto * (1 - dto / 100);
-    costoUnitario = precioNetoConDto / cantidad;
+    // Orden correcto: descuento sobre bruto → luego se calcula neto sin impuestos
+    const divisor          = TAX_DIVISORS[tipoImpuesto] || 1.19;
+    const dto              = Math.max(0, Math.min(100, Number(descuento) || 0));
+    const cantidad         = Math.max(0.0001, Number(cantidadCompra) || 1);
+    const brutoConDto      = Number(precioBruto) * (1 - dto / 100);
+    const precioNeto       = brutoConDto / divisor;
+    costoUnitario          = precioNeto / cantidad;
 
     entry = { ...entry,
       precioBruto: Number(precioBruto), descuento: dto,
       cantidadCompra: cantidad, unidadCompra: unidadCompra || '',
       tipoImpuesto: tipoImpuesto || 'alimento',
+      precioBrutoConDto: Math.round(brutoConDto * 100) / 100,
       precioNeto: Math.round(precioNeto * 100) / 100,
-      precioNetoConDto: Math.round(precioNetoConDto * 100) / 100,
       precio: Math.round(costoUnitario * 100) / 100
     };
   } else if (precio != null) {

@@ -3446,11 +3446,11 @@ function openModalProducto(id) {
           <div id="pp-preview" style="background:#fff;border:1px solid #e9ecef;border-radius:8px;padding:12px;display:none">
             <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center">
               <div>
-                <div style="font-size:10px;color:#adb5bd;text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px">Precio neto</div>
+                <div style="font-size:10px;color:#adb5bd;text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px">Bruto c/dto</div>
                 <div id="pp-prev-neto" style="font-size:14px;font-weight:600;color:#495057">—</div>
               </div>
               <div>
-                <div style="font-size:10px;color:#adb5bd;text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px">Neto c/dto</div>
+                <div style="font-size:10px;color:#adb5bd;text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px">Precio neto</div>
                 <div id="pp-prev-dto" style="font-size:14px;font-weight:600;color:#495057">—</div>
               </div>
               <div style="background:#f0fdf4;border-radius:6px;padding:4px 0">
@@ -3492,14 +3492,15 @@ function ppCalcPreview() {
   if (!preview) return;
   if (!bruto) { preview.style.display = 'none'; return; }
 
-  const divisor  = PP_DIVISORS[ppGetTipoImpuesto()] || 1.19;
-  const neto     = bruto / divisor;
-  const netoDto  = neto * (1 - dto / 100);
-  const unitario = netoDto / cantidad;
+  // Orden correcto: descuento sobre bruto → neto → ÷ cantidad
+  const divisor     = PP_DIVISORS[ppGetTipoImpuesto()] || 1.19;
+  const brutoConDto = bruto * (1 - dto / 100);
+  const neto        = brutoConDto / divisor;
+  const unitario    = neto / cantidad;
 
-  document.getElementById('pp-prev-neto').textContent = '$' + Math.round(neto).toLocaleString('es-CL');
-  document.getElementById('pp-prev-dto').textContent  = '$' + Math.round(netoDto).toLocaleString('es-CL');
-  document.getElementById('pp-prev-unit').textContent = '$' + Math.round(unitario * 100) / 100 > 0
+  document.getElementById('pp-prev-neto').textContent = '$' + Math.round(brutoConDto).toLocaleString('es-CL');
+  document.getElementById('pp-prev-dto').textContent  = '$' + Math.round(neto).toLocaleString('es-CL');
+  document.getElementById('pp-prev-unit').textContent = unitario > 0
     ? '$' + (Math.round(unitario * 100) / 100).toLocaleString('es-CL', {minimumFractionDigits:0,maximumFractionDigits:2})
     : '—';
   preview.style.display = '';
@@ -3619,8 +3620,10 @@ function ppCalcEditPreview(id) {
   const prevEl   = document.getElementById(`ppe-preview-${id}`);
   const valEl    = document.getElementById(`ppe-prev-val-${id}`);
   if (!prevEl || !bruto) { if (prevEl) prevEl.style.display = 'none'; return; }
-  const divisor  = PP_DIVISORS[tipo] || 1.19;
-  const unitario = (bruto / divisor) * (1 - dto / 100) / cantidad;
+  // Orden correcto: descuento sobre bruto → neto → ÷ cantidad
+  const divisor     = PP_DIVISORS[tipo] || 1.19;
+  const brutoConDto = bruto * (1 - dto / 100);
+  const unitario    = (brutoConDto / divisor) / cantidad;
   valEl.textContent = '$' + (Math.round(unitario * 100) / 100).toLocaleString('es-CL', {minimumFractionDigits:0,maximumFractionDigits:2});
   prevEl.style.display = '';
 }
