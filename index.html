@@ -3364,10 +3364,12 @@ function openModalProducto(id) {
         <div>
           <div class="field-label">Tipo de impuesto</div>
           <select id="mprod-impuesto" class="inv-input">
-            <option value="alimento"    ${(p?.tipoImpuesto||'alimento')==='alimento'?'selected':''}>Alimento (IVA 19%)</option>
-            <option value="cerveza"     ${p?.tipoImpuesto==='cerveza'?'selected':''}>Cerveza (IVA+ILA 39.5%)</option>
-            <option value="vino_licor"  ${p?.tipoImpuesto==='vino_licor'?'selected':''}>Vino / Licor (IVA+ILA 50.5%)</option>
-            <option value="sin_impuesto"${p?.tipoImpuesto==='sin_impuesto'?'selected':''}>Sin impuesto (0%)</option>
+            <option value="alimento"       ${(p?.tipoImpuesto||'alimento')==='alimento'?'selected':''}>Alimento (IVA 19%)</option>
+            <option value="cerveza"        ${p?.tipoImpuesto==='cerveza'?'selected':''}>Cerveza (IVA+ILA 39.5%)</option>
+            <option value="vino_licor"     ${p?.tipoImpuesto==='vino_licor'?'selected':''}>Vino / Licor (IVA+ILA 50.5%)</option>
+            <option value="beb_azucarada"  ${p?.tipoImpuesto==='beb_azucarada'?'selected':''}>Bebida azucarada (IVA+IABA 37%)</option>
+            <option value="beb_sin_azucar" ${p?.tipoImpuesto==='beb_sin_azucar'?'selected':''}>Bebida sin azúcar (IVA+IABA 29%)</option>
+            <option value="sin_impuesto"   ${p?.tipoImpuesto==='sin_impuesto'?'selected':''}>Sin impuesto (0%)</option>
           </select>
         </div>
       </div>
@@ -3476,7 +3478,7 @@ function openModalProducto(id) {
   }
 }
 
-const PP_DIVISORS = { alimento:1.19, cerveza:1.395, vino_licor:1.505, sin_impuesto:1.00 };
+const PP_DIVISORS = { alimento:1.19, cerveza:1.395, vino_licor:1.505, beb_azucarada:1.37, beb_sin_azucar:1.29, sin_impuesto:1.00 };
 
 function ppGetTipoImpuesto() {
   return document.getElementById('mprod-impuesto')?.value || 'alimento';
@@ -3511,30 +3513,137 @@ function ppRenderList() {
     return;
   }
   const sorted = [...priceHistoryData].sort((a, b) => b.mes.localeCompare(a.mes));
+
+  const tipoLabels = { alimento:'Alimento', cerveza:'Cerveza', vino_licor:'Vino/Licor', beb_azucarada:'Beb. azucarada', beb_sin_azucar:'Beb. s/azúcar', sin_impuesto:'Sin impuesto' };
+
   el.innerHTML = sorted.map(p => {
     const hasDetail = p.precioBruto != null;
-    const detailHtml = hasDetail ? `
-      <div style="font-size:11px;color:#6c757d;margin-top:4px;display:flex;flex-wrap:wrap;gap:10px">
-        <span>Bruto: <b>$${Number(p.precioBruto).toLocaleString('es-CL')}</b></span>
-        ${p.descuento ? `<span>Dto: <b>${p.descuento}%</b></span>` : ''}
-        ${p.cantidadCompra && p.cantidadCompra !== 1 ? `<span>Cant: <b>${p.cantidadCompra}${p.unidadCompra?' — '+p.unidadCompra:''}</b></span>` : (p.unidadCompra ? `<span>${p.unidadCompra}</span>` : '')}
-        ${p.precioNeto != null ? `<span>Neto: <b>$${Math.round(p.precioNeto).toLocaleString('es-CL')}</b></span>` : ''}
-      </div>` : '';
+    const tipoLabel = tipoLabels[p.tipoImpuesto] || '';
+
+    // Edit form options for tipoImpuesto
+    const tipoOpts = Object.entries(tipoLabels).map(([v,l]) =>
+      `<option value="${v}" ${(p.tipoImpuesto||'alimento')===v?'selected':''}>${l}</option>`).join('');
+
     return `
-    <div style="padding:12px 14px;background:#fff;border:1px solid #e9ecef;border-radius:10px;margin-bottom:8px">
-      <div style="display:flex;align-items:center;gap:10px">
-        <span style="width:76px;font-size:13px;color:#6c757d;font-weight:500;flex-shrink:0">${p.mes}</span>
-        <div style="flex:1">
+    <div id="pp-entry-${p.id}" style="background:#fff;border:1px solid #e9ecef;border-radius:10px;margin-bottom:8px;overflow:hidden">
+      <!-- Vista resumen -->
+      <div style="display:flex;align-items:center;gap:10px;padding:12px 14px">
+        <span style="width:76px;font-size:13px;color:#6c757d;font-weight:600;flex-shrink:0">${p.mes}</span>
+        <div style="flex:1;min-width:0">
           <div style="font-size:14px;font-weight:700;color:#212529">
-            Costo unitario: <span style="color:#16a34a">$${(p.precio||0).toLocaleString('es-CL', {minimumFractionDigits:0,maximumFractionDigits:2})}</span>
+            Costo unitario: <span style="color:#16a34a">$${(p.precio||0).toLocaleString('es-CL',{minimumFractionDigits:0,maximumFractionDigits:2})}</span>
           </div>
-          ${detailHtml}
+          ${hasDetail ? `<div style="font-size:11px;color:#6c757d;margin-top:3px;display:flex;flex-wrap:wrap;gap:8px">
+            <span>Bruto: <b>$${Number(p.precioBruto).toLocaleString('es-CL')}</b></span>
+            ${p.descuento ? `<span>Dto: <b>${p.descuento}%</b></span>` : ''}
+            ${p.cantidadCompra && p.cantidadCompra !== 1 ? `<span>Cant: <b>${p.cantidadCompra}</b>${p.unidadCompra?' ('+p.unidadCompra+')':''}</span>` : (p.unidadCompra?`<span>${p.unidadCompra}</span>`:'')}
+            ${tipoLabel ? `<span style="background:#f1f5f9;border-radius:4px;padding:0 5px">${tipoLabel}</span>` : ''}
+          </div>` : ''}
         </div>
+        <button onclick="ppToggleEdit('${p.id}')"
+          style="flex-shrink:0;background:#f8f9fa;border:1px solid #dee2e6;color:#495057;border-radius:7px;padding:4px 11px;font-size:12px;font-weight:600;cursor:pointer">
+          Editar
+        </button>
         <button onclick="ppEliminar('${p.id}')"
-          style="flex-shrink:0;background:none;border:1px solid #fca5a5;color:#ef4444;border-radius:8px;width:30px;height:30px;font-size:13px;cursor:pointer">✕</button>
+          style="flex-shrink:0;background:none;border:1px solid #fca5a5;color:#ef4444;border-radius:7px;width:28px;height:28px;font-size:13px;cursor:pointer">✕</button>
+      </div>
+
+      <!-- Formulario edición (oculto por defecto) -->
+      <div id="pp-edit-${p.id}" style="display:none;padding:14px;border-top:1px solid #e9ecef;background:#fafbfc">
+        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:10px">
+          <div>
+            <div style="font-size:11px;color:#6c757d;font-weight:600;text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">Precio bruto ($)</div>
+            <div style="display:flex;align-items:center;border:1px solid #dee2e6;border-radius:7px;overflow:hidden;background:#fff">
+              <span style="padding:0 8px;color:#888;font-size:12px;border-right:1px solid #dee2e6;background:#f8f9fa">$</span>
+              <input type="number" id="ppe-bruto-${p.id}" value="${p.precioBruto||p.precio||''}" min="0" step="1"
+                style="flex:1;border:none;outline:none;padding:7px 8px;font-size:13px;color:#212529"
+                oninput="ppCalcEditPreview('${p.id}')">
+            </div>
+          </div>
+          <div>
+            <div style="font-size:11px;color:#6c757d;font-weight:600;text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">Tipo impuesto</div>
+            <select id="ppe-tipo-${p.id}" style="width:100%;padding:7px 8px;border:1px solid #dee2e6;border-radius:7px;font-size:12px;color:#212529;background:#fff"
+              onchange="ppCalcEditPreview('${p.id}')">
+              ${tipoOpts}
+            </select>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:10px">
+          <div>
+            <div style="font-size:11px;color:#6c757d;font-weight:600;text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">Descuento (%)</div>
+            <input type="number" id="ppe-dto-${p.id}" value="${p.descuento||0}" min="0" max="100" step="0.1"
+              style="width:100%;padding:7px 8px;border:1px solid #dee2e6;border-radius:7px;font-size:13px;color:#212529;background:#fff;box-sizing:border-box"
+              oninput="ppCalcEditPreview('${p.id}')">
+          </div>
+          <div>
+            <div style="font-size:11px;color:#6c757d;font-weight:600;text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">Cantidad</div>
+            <input type="number" id="ppe-cant-${p.id}" value="${p.cantidadCompra||1}" min="0.0001" step="any"
+              style="width:100%;padding:7px 8px;border:1px solid #dee2e6;border-radius:7px;font-size:13px;color:#212529;background:#fff;box-sizing:border-box"
+              oninput="ppCalcEditPreview('${p.id}')">
+          </div>
+          <div>
+            <div style="font-size:11px;color:#6c757d;font-weight:600;text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">Descripción</div>
+            <input type="text" id="ppe-desc-${p.id}" value="${p.unidadCompra||''}" placeholder="Ej: caja x 6"
+              style="width:100%;padding:7px 8px;border:1px solid #dee2e6;border-radius:7px;font-size:13px;color:#212529;background:#fff;box-sizing:border-box">
+          </div>
+        </div>
+        <!-- Preview edición -->
+        <div id="ppe-preview-${p.id}" style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:7px;padding:8px 12px;margin-bottom:10px;font-size:12px;color:#15803d;display:none">
+          Costo unitario calculado: <strong id="ppe-prev-val-${p.id}">—</strong>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button onclick="ppGuardarEdicion('${p.id}','${p.mes}')"
+            style="background:#212529;color:#fff;border:none;border-radius:7px;padding:7px 18px;font-size:12px;font-weight:600;cursor:pointer">Guardar</button>
+          <button onclick="ppToggleEdit('${p.id}')"
+            style="background:transparent;border:1px solid #dee2e6;color:#6c757d;border-radius:7px;padding:7px 14px;font-size:12px;cursor:pointer">Cancelar</button>
+          <span id="ppe-msg-${p.id}" style="font-size:11px;align-self:center"></span>
+        </div>
       </div>
     </div>`;
   }).join('');
+}
+
+function ppToggleEdit(id) {
+  const el = document.getElementById(`pp-edit-${id}`);
+  if (!el) return;
+  const open = el.style.display === 'none';
+  el.style.display = open ? '' : 'none';
+  if (open) ppCalcEditPreview(id);
+}
+
+function ppCalcEditPreview(id) {
+  const bruto    = parseFloat(document.getElementById(`ppe-bruto-${id}`)?.value) || 0;
+  const dto      = parseFloat(document.getElementById(`ppe-dto-${id}`)?.value)   || 0;
+  const cantidad = parseFloat(document.getElementById(`ppe-cant-${id}`)?.value)  || 1;
+  const tipo     = document.getElementById(`ppe-tipo-${id}`)?.value || 'alimento';
+  const prevEl   = document.getElementById(`ppe-preview-${id}`);
+  const valEl    = document.getElementById(`ppe-prev-val-${id}`);
+  if (!prevEl || !bruto) { if (prevEl) prevEl.style.display = 'none'; return; }
+  const divisor  = PP_DIVISORS[tipo] || 1.19;
+  const unitario = (bruto / divisor) * (1 - dto / 100) / cantidad;
+  valEl.textContent = '$' + (Math.round(unitario * 100) / 100).toLocaleString('es-CL', {minimumFractionDigits:0,maximumFractionDigits:2});
+  prevEl.style.display = '';
+}
+
+async function ppGuardarEdicion(id, mes) {
+  const msgEl = document.getElementById(`ppe-msg-${id}`);
+  const body = {
+    mes,
+    precioBruto:    parseFloat(document.getElementById(`ppe-bruto-${id}`)?.value) || 0,
+    descuento:      parseFloat(document.getElementById(`ppe-dto-${id}`)?.value)   || 0,
+    cantidadCompra: parseFloat(document.getElementById(`ppe-cant-${id}`)?.value)  || 1,
+    unidadCompra:   document.getElementById(`ppe-desc-${id}`)?.value              || '',
+    tipoImpuesto:   document.getElementById(`ppe-tipo-${id}`)?.value              || 'alimento'
+  };
+  if (!body.precioBruto) { if(msgEl){msgEl.style.color='#f87171';msgEl.textContent='Ingresa precio bruto.';} return; }
+  try {
+    const res  = await apiFetch(`/api/inv/products/${priceHistoryProductId}/prices`, { method:'POST', body: JSON.stringify(body) });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    const r2 = await apiFetch(`/api/inv/products/${priceHistoryProductId}/prices`);
+    priceHistoryData = (await r2.json()).prices || [];
+    ppRenderList();
+  } catch(e) { if(msgEl){msgEl.style.color='#f87171';msgEl.textContent=e.message;} }
 }
 
 async function ppAgregarPrecio() {

@@ -870,10 +870,12 @@ app.get('/api/inv/products/:id/prices', requireAuth, async (req, res) => {
 
 // Divisores de impuesto por tipo (Chile)
 const TAX_DIVISORS = {
-  alimento:   1.19,   // IVA 19%
-  cerveza:    1.395,  // IVA 19% + ILA 20.5%
-  vino_licor: 1.505,  // IVA 19% + ILA 31.5%
-  sin_impuesto: 1.00
+  alimento:        1.19,   // IVA 19%
+  cerveza:         1.395,  // IVA 19% + ILA 20.5%
+  vino_licor:      1.505,  // IVA 19% + ILA 31.5%
+  beb_azucarada:   1.37,   // IVA 19% + IABA 18%
+  beb_sin_azucar:  1.29,   // IVA 19% + IABA 10%
+  sin_impuesto:    1.00
 };
 
 app.post('/api/inv/products/:id/prices', requireAuth, async (req, res) => {
