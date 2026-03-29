@@ -6260,30 +6260,20 @@ function switchMargenTab(tab) {
   if (tab === 'costos')        renderMargenCostos();
 }
 
-// Costo promedio de un grupo de alternativas
-function margenGroupAvgCost(alternatives) {
-  if (!alternatives || !alternatives.length) return 0;
-  const total = alternatives.reduce((s, a) => {
-    const p = margenIngredients.find(x => x.id === a.productId || x.name === a.name);
-    return s + (p?.costPerUnit || 0);
-  }, 0);
-  return total / alternatives.length;
-}
-
 // Calcula el costo total de una preparación (solo ingredientes)
 function calcPrepCost(prep) {
+  const items = (prep?.ingredients || []).filter(i => i.quantity > 0);
   let cost = 0;
-  (prep?.ingredients || []).forEach(item => {
+  items.forEach(item => {
     if (item.type === 'preparation') {
       const subPrep = margenPreparations.find(p => p.id === item.preparationId || p.name === item.name);
       cost += calcPrepCost(subPrep) * (item.quantity || 0);
-    } else if (item.type === 'group') {
-      cost += margenGroupAvgCost(item.alternatives) * (item.quantity || 0);
     } else {
       const prod = margenIngredients.find(p => p.id === item.productId || p.name === item.name);
       cost += (prod?.costPerUnit || 0) * (item.quantity || 0);
     }
   });
+  if (prep?.esPromedio && items.length > 1) cost = cost / items.length;
   // Aplicar rendimientos propios de la preparación
   const agua = prep?.rendimientoAgua || 0;
   const aire = prep?.rendimientoAire || 0;
@@ -6347,14 +6337,11 @@ function margenSetRendimientos(rendimientoAgua, rendimientoAire) {
   });
 }
 
-// Calcula el costo de un item de receta (puede ser ingrediente, preparación o grupo)
+// Calcula el costo de un item de receta (puede ser ingrediente o preparación)
 function calcItemCost(item) {
   if (item.type === 'preparation') {
     const prep = margenPreparations.find(p => p.id === item.preparationId || p.name === item.name);
     return calcPrepCost(prep) * (item.quantity || 0);
-  }
-  if (item.type === 'group') {
-    return margenGroupAvgCost(item.alternatives) * (item.quantity || 0);
   }
   const prod = margenIngredients.find(p => p.id === item.productId || p.name === item.name);
   return (prod?.costPerUnit || 0) * (item.quantity || 0);
@@ -6474,19 +6461,6 @@ function margenOpenRecipe(id) {
   const rowsHtml = items.map(item => {
     const cost = calcItemCost(item);
     totalCost += cost;
-
-    if (item.type === 'group') {
-      const alts = (item.alternatives || []).map(a => a.name).join(', ');
-      const avgCost = margenGroupAvgCost(item.alternatives);
-      return `<tr style="border-bottom:1px solid #f1f3f4;background:#fffbeb">
-        <td style="padding:10px 16px;font-size:13px;color:#92400e;font-weight:500">
-          <span style="font-size:10px;background:#fef3c7;color:#b45309;border-radius:4px;padding:1px 6px;margin-right:6px;vertical-align:middle;font-weight:600">PROM.</span>${alts}
-        </td>
-        <td style="padding:10px 16px;font-size:13px;color:#495057;white-space:nowrap">${item.quantity}</td>
-        <td style="padding:10px 16px;font-size:13px;color:#6c757d;white-space:nowrap">prom. $${avgCost > 0 ? Math.round(avgCost).toLocaleString('es-CL') : '—'}</td>
-        <td style="padding:10px 16px;font-size:13px;font-weight:600;color:#212529;text-align:right;white-space:nowrap">${cost > 0 ? '$'+Math.round(cost).toLocaleString('es-CL') : '—'}</td>
-      </tr>`;
-    }
 
     const isPrep = item.type === 'preparation';
     let unitLabel = '', costUnitLabel = '';
@@ -6854,16 +6828,14 @@ function margenOpenPrepModal(id) {
   const container = document.getElementById('marg-form-ing-rows');
   container.innerHTML = '';
   margenFormIngCounter = 0;
-  margenFormGrpCounter = 0;
 
-  const existingIngs  = (prep?.ingredients || []).filter(i => i.quantity > 0 && i.type !== 'group');
-  const existingGrps  = (prep?.ingredients || []).filter(i => i.type === 'group');
+  const existingIngs = (prep?.ingredients || []).filter(i => i.quantity > 0);
   if (existingIngs.length > 0) {
     existingIngs.forEach(item => margenAddIngRow(item, true));
   } else {
     margenAddIngRow(null, true);
   }
-  existingGrps.forEach(g => margenAddGroupRow(g));
+  document.getElementById('marg-form-promedio').checked = prep?.esPromedio === true;
 
   margenSetRendimientos(prep?.rendimientoAgua, prep?.rendimientoAire);
   document.getElementById('marg-form-modal').style.display = 'flex';
@@ -6962,89 +6934,6 @@ async function margenSaveCost(productId, mes) {
 
 // ── Márgenes: Formulario crear/editar receta ───────────────
 let margenFormIngCounter = 0;
-let margenFormGrpCounter = 0;
-const margenFormGrpAltCounters = {};
-
-function margenAddGroupAlt(grpIdx, existing) {
-  const container = document.getElementById(`marg-grp-alts-${grpIdx}`);
-  if (!container) return;
-  const altIdx = (margenFormGrpAltCounters[grpIdx] = (margenFormGrpAltCounters[grpIdx] || 0) + 1);
-  const div = document.createElement('div');
-  div.id = `marg-grp-alt-${grpIdx}-${altIdx}`;
-  div.style.cssText = 'display:flex;align-items:center;gap:6px;margin-bottom:4px';
-  const opts = margenIngredients.sort((a,b)=>a.name.localeCompare(b.name,'es'))
-    .map(p => {
-      const sel = existing?.productId===p.id || existing?.name===p.name;
-      return `<option value="${p.id}" data-name="${p.name}" ${sel?'selected':''}>${p.name}</option>`;
-    }).join('');
-  div.innerHTML = `
-    <select id="marg-grp-alt-sel-${grpIdx}-${altIdx}" onchange="margenUpdateGroupCost(${grpIdx})"
-      style="flex:1;padding:6px 10px;border:1px solid #fde68a;border-radius:7px;font-size:13px;background:#fff;color:#212529">
-      <option value="">— Ingrediente —</option>${opts}
-    </select>
-    <button onclick="document.getElementById('marg-grp-alt-${grpIdx}-${altIdx}').remove();margenUpdateGroupCost(${grpIdx})"
-      style="flex-shrink:0;background:none;border:1px solid #fde68a;border-radius:6px;width:28px;height:28px;color:#92400e;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center">✕</button>`;
-  container.appendChild(div);
-  margenUpdateGroupCost(grpIdx);
-}
-
-function margenUpdateGroupCost(grpIdx) {
-  const costEl = document.getElementById(`marg-grp-cost-${grpIdx}`);
-  const qty    = parseFloat(document.getElementById(`marg-grp-qty-${grpIdx}`)?.value) || 0;
-  const sels   = document.querySelectorAll(`[id^="marg-grp-alt-sel-${grpIdx}-"]`);
-  const costs  = [];
-  sels.forEach(sel => {
-    if (!sel.value) return;
-    const p = margenIngredients.find(x => x.id === sel.value);
-    if (p?.costPerUnit > 0) costs.push(p.costPerUnit);
-  });
-  if (costEl) {
-    if (costs.length && qty > 0) {
-      const avg      = costs.reduce((s,c)=>s+c,0) / costs.length;
-      const subtotal = avg * qty;
-      costEl.innerHTML = `<span style="color:#92400e">Promedio: $${Math.round(avg).toLocaleString('es-CL')}</span>` +
-        ` <span style="color:#bbb">× ${qty}</span>` +
-        ` <span style="font-weight:600;color:#212529">= $${Math.round(subtotal).toLocaleString('es-CL')}</span>`;
-    } else {
-      costEl.textContent = '';
-    }
-  }
-  margenUpdateFormTotal();
-}
-
-function margenAddGroupRow(existing) {
-  const idx = margenFormGrpCounter++;
-  margenFormGrpAltCounters[idx] = 0;
-  const container = document.getElementById('marg-form-ing-rows');
-  const div = document.createElement('div');
-  div.id = `marg-grp-row-${idx}`;
-  div.style.cssText = 'background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:6px';
-  div.innerHTML = `
-    <div style="display:flex;align-items:center;gap:8px">
-      <span style="font-size:11px;font-weight:700;color:#b45309;background:#fef3c7;border-radius:4px;padding:2px 8px;flex-shrink:0">PROM.</span>
-      <div id="marg-grp-alts-${idx}" style="flex:1;display:flex;flex-direction:column;gap:4px"></div>
-      <div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex-shrink:0">
-        <div style="display:flex;align-items:center;border:1px solid #fde68a;border-radius:8px;overflow:hidden;background:#fff">
-          <input type="number" id="marg-grp-qty-${idx}" value="${existing?.quantity||''}" min="0" step="any" placeholder="0"
-            oninput="margenUpdateGroupCost(${idx})"
-            style="border:none;outline:none;padding:6px 8px;font-size:13px;width:70px;color:#212529">
-        </div>
-        <button onclick="margenAddGroupAlt(${idx})"
-          style="background:#fef3c7;border:1px solid #fde68a;border-radius:6px;padding:2px 10px;font-size:11px;color:#92400e;cursor:pointer;font-weight:600;white-space:nowrap">+ opción</button>
-      </div>
-      <button onclick="document.getElementById('marg-grp-row-${idx}').remove();margenUpdateFormTotal()"
-        style="flex-shrink:0;background:none;border:1px solid #fca5a5;border-radius:8px;width:32px;height:36px;color:#ef4444;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center">✕</button>
-    </div>
-    <div id="marg-grp-cost-${idx}" style="font-size:11px;min-height:14px;padding-left:4px"></div>`;
-  container.appendChild(div);
-  const alts = existing?.alternatives || [];
-  if (alts.length) {
-    alts.forEach(a => margenAddGroupAlt(idx, a));
-  } else {
-    margenAddGroupAlt(idx, null);
-    margenAddGroupAlt(idx, null);
-  }
-}
 
 function margenOpenFormModal(id) {
   const recipe = id ? margenRecipes.find(r => r.id === id) : null;
@@ -7070,16 +6959,14 @@ function margenOpenFormModal(id) {
   const container = document.getElementById('marg-form-ing-rows');
   container.innerHTML = '';
   margenFormIngCounter = 0;
-  margenFormGrpCounter = 0;
 
-  const existingIngs = (recipe?.ingredients || []).filter(i => i.quantity > 0 && i.type !== 'group');
-  const existingGrps = (recipe?.ingredients || []).filter(i => i.type === 'group');
+  const existingIngs = (recipe?.ingredients || []).filter(i => i.quantity > 0);
   if (existingIngs.length > 0) {
     existingIngs.forEach(item => margenAddIngRow(item, false));
   } else {
     margenAddIngRow(null, false);
   }
-  existingGrps.forEach(g => margenAddGroupRow(g));
+  document.getElementById('marg-form-promedio').checked = recipe?.esPromedio === true;
 
   margenSetRendimientos(recipe?.rendimientoAgua, recipe?.rendimientoAire);
   document.getElementById('marg-form-modal').style.display = 'flex';
@@ -7202,9 +7089,10 @@ function margenUpdateRowCost(idx) {
   margenUpdateFormTotal();
 }
 
-// Suma todos los subtotales y muestra costo total
+// Suma (o promedia) todos los subtotales y muestra costo total
 function margenUpdateFormTotal() {
   let costoBase = 0;
+  let rowCount  = 0;
   document.querySelectorAll('[id^="marg-ing-row-"]').forEach(row => {
     const idx     = row.id.replace('marg-ing-row-', '');
     const typeHid = document.getElementById(`marg-ing-type-${idx}`);
@@ -7212,27 +7100,19 @@ function margenUpdateFormTotal() {
     const sel     = document.getElementById(`marg-ing-sel-${idx}`);
     const qty     = parseFloat(document.getElementById(`marg-ing-qty-${idx}`)?.value) || 0;
     if (!sel?.value || qty <= 0) return;
+    let subtotal = 0;
     if (type === 'preparation') {
       const prep = margenPreparations.find(p => p.id === sel.value);
-      costoBase += calcPrepCost(prep) * qty;
+      subtotal = calcPrepCost(prep) * qty;
     } else {
       const prod = margenIngredients.find(p => p.id === sel.value);
-      costoBase += (prod?.costPerUnit || 0) * qty;
+      subtotal = (prod?.costPerUnit || 0) * qty;
     }
+    costoBase += subtotal;
+    if (subtotal > 0) rowCount++;
   });
-  document.querySelectorAll('[id^="marg-grp-row-"]').forEach(row => {
-    const idx  = row.id.replace('marg-grp-row-', '');
-    const qty  = parseFloat(document.getElementById(`marg-grp-qty-${idx}`)?.value) || 0;
-    if (qty <= 0) return;
-    const sels = row.querySelectorAll(`[id^="marg-grp-alt-sel-${idx}-"]`);
-    const costs = [];
-    sels.forEach(sel => {
-      if (!sel.value) return;
-      const p = margenIngredients.find(x => x.id === sel.value);
-      if (p?.costPerUnit > 0) costs.push(p.costPerUnit);
-    });
-    if (costs.length) costoBase += (costs.reduce((s,c)=>s+c,0) / costs.length) * qty;
-  });
+  const esPromedio = document.getElementById('marg-form-promedio')?.checked;
+  if (esPromedio && rowCount > 1) costoBase = costoBase / rowCount;
 
   const { agua, aire } = margenGetRendimientos();
   const costoConAgua = agua > 0 ? costoBase / (1 + agua / 100) : costoBase;
@@ -7286,19 +7166,8 @@ async function margenSaveForm() {
       ingredients.push({ type: 'ingredient', productId: sel.value, name: opt?.dataset.name || opt.text, quantity: qty });
     }
   });
-  document.querySelectorAll('[id^="marg-grp-row-"]').forEach(row => {
-    const idx  = row.id.replace('marg-grp-row-', '');
-    const qty  = parseFloat(document.getElementById(`marg-grp-qty-${idx}`)?.value) || 0;
-    if (qty <= 0) return;
-    const alternatives = [];
-    row.querySelectorAll(`[id^="marg-grp-alt-sel-${idx}-"]`).forEach(sel => {
-      if (!sel.value) return;
-      const opt = sel.options[sel.selectedIndex];
-      alternatives.push({ productId: sel.value, name: opt?.dataset.name || opt.text });
-    });
-    if (alternatives.length) ingredients.push({ type: 'group', quantity: qty, alternatives });
-  });
 
+  const esPromedio = document.getElementById('marg-form-promedio')?.checked === true;
   msg.style.color = '#888'; msg.textContent = 'Guardando...';
 
   // ── Guardar preparación ──
@@ -7317,16 +7186,16 @@ async function margenSaveForm() {
     try {
       let res, data;
       if (id) {
-        res  = await apiFetch(`/api/preparations/${id}`, { method: 'PUT', body: JSON.stringify({ name, category, unit, ingredients, esGDD, restaurantIds, restaurantSections, rendimientoAgua: rendAgua, rendimientoAire: rendAire }) });
+        res  = await apiFetch(`/api/preparations/${id}`, { method: 'PUT', body: JSON.stringify({ name, category, unit, ingredients, esGDD, esPromedio, restaurantIds, restaurantSections, rendimientoAgua: rendAgua, rendimientoAire: rendAire }) });
         data = await res.json();
         if (data.error) throw new Error(data.error);
         const idx2 = margenPreparations.findIndex(p => p.id === id);
-        if (idx2 >= 0) margenPreparations[idx2] = { ...margenPreparations[idx2], name, category, unit, ingredients, esGDD, restaurantIds, restaurantSections, rendimientoAgua: rendAgua, rendimientoAire: rendAire };
+        if (idx2 >= 0) margenPreparations[idx2] = { ...margenPreparations[idx2], name, category, unit, ingredients, esGDD, esPromedio, restaurantIds, restaurantSections, rendimientoAgua: rendAgua, rendimientoAire: rendAire };
       } else {
-        res  = await apiFetch('/api/preparations', { method: 'POST', body: JSON.stringify({ name, category, unit, ingredients, esGDD, restaurantIds, restaurantSections, rendimientoAgua: rendAgua, rendimientoAire: rendAire }) });
+        res  = await apiFetch('/api/preparations', { method: 'POST', body: JSON.stringify({ name, category, unit, ingredients, esGDD, esPromedio, restaurantIds, restaurantSections, rendimientoAgua: rendAgua, rendimientoAire: rendAire }) });
         data = await res.json();
         if (data.error) throw new Error(data.error);
-        margenPreparations.push({ id: data.id, name, category, unit, ingredients, esGDD, restaurantIds, restaurantSections, rendimientoAgua: rendAgua, rendimientoAire: rendAire });
+        margenPreparations.push({ id: data.id, name, category, unit, ingredients, esGDD, esPromedio, restaurantIds, restaurantSections, rendimientoAgua: rendAgua, rendimientoAire: rendAire });
       }
       margenCloseFormModal();
       renderMargenPreparaciones();
@@ -7346,7 +7215,7 @@ async function margenSaveForm() {
   try {
     if (id) {
       // Update existing
-      const res  = await apiFetch(`/api/recipes/${id}`, { method: 'PUT', body: JSON.stringify({ name, sellingPrice: price, ingredients, rendimientoAgua: rendAgua, rendimientoAire: rendAire }) });
+      const res  = await apiFetch(`/api/recipes/${id}`, { method: 'PUT', body: JSON.stringify({ name, sellingPrice: price, ingredients, esPromedio, rendimientoAgua: rendAgua, rendimientoAire: rendAire }) });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
     } else {
@@ -7525,14 +7394,21 @@ async function margenDeleteRecipe(id, name) {
               style="background:#e0f2fe;border:1px solid #bae6fd;border-radius:7px;padding:5px 14px;font-size:12px;font-weight:600;color:#0369a1;cursor:pointer">+ Ingrediente</button>
             <button id="marg-form-add-prep-btn" onclick="margenAddIngRow({type:'preparation'}, false)"
               style="background:#ede9fe;border:1px solid #ddd6fe;border-radius:7px;padding:5px 14px;font-size:12px;font-weight:600;color:#7c3aed;cursor:pointer">+ Preparación</button>
-            <button onclick="margenAddGroupRow(null)"
-              style="background:#fffbeb;border:1px solid #fde68a;border-radius:7px;padding:5px 14px;font-size:12px;font-weight:600;color:#92400e;cursor:pointer">+ Promedio</button>
           </div>
         </div>
         <div id="marg-form-ing-rows" style="display:flex;flex-direction:column;gap:10px"></div>
         <div id="marg-form-total" style="margin-top:10px;padding:12px 14px;background:#f8f9fa;border-radius:8px;font-size:13px;color:#495057;border:1px solid #e9ecef">
           Costo total: <strong>$0</strong>
         </div>
+      </div>
+
+      <!-- Promedio -->
+      <div style="margin-bottom:14px">
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;color:#212529;user-select:none">
+          <input type="checkbox" id="marg-form-promedio" onchange="margenUpdateFormTotal()" style="width:16px;height:16px;accent-color:#ff5023">
+          <span style="font-weight:600">Calcular costo como promedio</span>
+        </label>
+        <div style="font-size:12px;color:#6c757d;margin-top:4px;padding-left:26px">En vez de sumar los ingredientes, divide el total entre la cantidad de ingredientes.</div>
       </div>
 
       <!-- Rendimiento -->

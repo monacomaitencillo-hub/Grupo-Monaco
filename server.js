@@ -2049,10 +2049,11 @@ app.post('/api/recipes/import', requireAuth, async (req, res) => {
 app.put('/api/recipes/:id', requireAuth, async (req, res) => {
   if (!await isEditor(req.uid)) return res.status(403).json({ error: 'Sin permisos' });
   const update = {};
-  const { sellingPrice, ingredients, name, rendimientoAgua, rendimientoAire } = req.body;
+  const { sellingPrice, ingredients, name, esPromedio, rendimientoAgua, rendimientoAire } = req.body;
   if (sellingPrice     !== undefined) update.sellingPrice     = Number(sellingPrice) || 0;
   if (ingredients      !== undefined) update.ingredients      = ingredients;
   if (name             !== undefined) update.name             = name;
+  if (esPromedio       !== undefined) update.esPromedio       = esPromedio === true;
   if (rendimientoAgua  !== undefined) update.rendimientoAgua  = Number(rendimientoAgua)  || 0;
   if (rendimientoAire  !== undefined) update.rendimientoAire  = Number(rendimientoAire)  || 0;
   update.updatedAt = admin.firestore.FieldValue.serverTimestamp();
@@ -2074,11 +2075,12 @@ app.get('/api/preparations', requireAuth, async (req, res) => {
 
 app.post('/api/preparations', requireAuth, async (req, res) => {
   if (!await isEditor(req.uid)) return res.status(403).json({ error: 'Sin permisos' });
-  const { name, ingredients, esGDD, category, unit, restaurantIds, restaurantSections, rendimientoAgua, rendimientoAire } = req.body;
+  const { name, ingredients, esGDD, esPromedio, category, unit, restaurantIds, restaurantSections, rendimientoAgua, rendimientoAire } = req.body;
   if (!name) return res.status(400).json({ error: 'Nombre requerido' });
   const ref = await db.collection('preparations').add({
     name, ingredients: ingredients || [],
     esGDD: esGDD === true,
+    esPromedio: esPromedio === true,
     category: category || '',
     unit: unit || 'unidad',
     restaurantIds: restaurantIds || [],
@@ -2092,11 +2094,12 @@ app.post('/api/preparations', requireAuth, async (req, res) => {
 
 app.put('/api/preparations/:id', requireAuth, async (req, res) => {
   if (!await isEditor(req.uid)) return res.status(403).json({ error: 'Sin permisos' });
-  const { name, ingredients, esGDD, category, unit, restaurantIds, restaurantSections, rendimientoAgua, rendimientoAire } = req.body;
+  const { name, ingredients, esGDD, esPromedio, category, unit, restaurantIds, restaurantSections, rendimientoAgua, rendimientoAire } = req.body;
   const update = { updatedAt: admin.firestore.FieldValue.serverTimestamp() };
   if (name               !== undefined) update.name               = name;
   if (ingredients        !== undefined) update.ingredients        = ingredients;
   if (esGDD              !== undefined) update.esGDD              = esGDD === true;
+  if (esPromedio         !== undefined) update.esPromedio         = esPromedio === true;
   if (category           !== undefined) update.category           = category;
   if (unit               !== undefined) update.unit               = unit;
   if (restaurantIds      !== undefined) update.restaurantIds      = restaurantIds;
