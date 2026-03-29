@@ -880,28 +880,47 @@ const TAX_DIVISORS = {
 
 app.post('/api/inv/products/:id/prices', requireAuth, async (req, res) => {
   if (!await isEditor(req.uid)) return res.status(403).json({ error: 'Sin permisos' });
-  const { mes, precio, precioBruto, descuento, cantidadCompra, unidadCompra, tipoImpuesto } = req.body;
+  const { mes, precio, precioBruto, precioNeto, descuento, cantidadCompra, unidadCompra, tipoImpuesto } = req.body;
   if (!mes) return res.status(400).json({ error: 'Faltan campos' });
 
   // Si viene el flujo detallado, calcular costo unitario
   let costoUnitario;
   let entry = { productId: req.params.id, mes };
 
-  if (precioBruto != null) {
-    // Orden correcto: descuento sobre bruto → luego se calcula neto sin impuestos
+  if (precioNeto != null) {
+    // Flujo nuevo: usuario ingresa precio neto → calculamos bruto
+    const divisor          = TAX_DIVISORS[tipoImpuesto] || 1.19;
+    const dto              = Math.max(0, Math.min(100, Number(descuento) || 0));
+    const cantidad         = Math.max(0.0001, Number(cantidadCompra) || 1);
+    const neto             = Number(precioNeto);
+    const netoConDto       = neto * (1 - dto / 100);
+    const brutoRef         = neto * divisor;
+    costoUnitario          = netoConDto / cantidad;
+
+    entry = { ...entry,
+      precioNeto: Math.round(neto * 100) / 100,
+      precioBruto: Math.round(brutoRef * 100) / 100,
+      descuento: dto,
+      cantidadCompra: cantidad, unidadCompra: unidadCompra || '',
+      tipoImpuesto: tipoImpuesto || 'alimento',
+      precioNetoConDto: Math.round(netoConDto * 100) / 100,
+      precio: Math.round(costoUnitario * 100) / 100
+    };
+  } else if (precioBruto != null) {
+    // Flujo legado: usuario ingresó bruto → calculamos neto
     const divisor          = TAX_DIVISORS[tipoImpuesto] || 1.19;
     const dto              = Math.max(0, Math.min(100, Number(descuento) || 0));
     const cantidad         = Math.max(0.0001, Number(cantidadCompra) || 1);
     const brutoConDto      = Number(precioBruto) * (1 - dto / 100);
-    const precioNeto       = brutoConDto / divisor;
-    costoUnitario          = precioNeto / cantidad;
+    const neto             = brutoConDto / divisor;
+    costoUnitario          = neto / cantidad;
 
     entry = { ...entry,
       precioBruto: Number(precioBruto), descuento: dto,
       cantidadCompra: cantidad, unidadCompra: unidadCompra || '',
       tipoImpuesto: tipoImpuesto || 'alimento',
       precioBrutoConDto: Math.round(brutoConDto * 100) / 100,
-      precioNeto: Math.round(precioNeto * 100) / 100,
+      precioNeto: Math.round(neto * 100) / 100,
       precio: Math.round(costoUnitario * 100) / 100
     };
   } else if (precio != null) {
@@ -917,13 +936,26 @@ app.post('/api/inv/products/:id/prices', requireAuth, async (req, res) => {
     .where('productId', '==', req.params.id)
     .where('mes', '==', mes)
     .get();
+  let entryId;
   if (!existing.empty) {
     await existing.docs[0].ref.update({ ...entry, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
-    res.json({ id: existing.docs[0].id, precio: entry.precio });
+    entryId = existing.docs[0].id;
   } else {
     const ref = await db.collection('product_price_history').add({ ...entry, createdAt: admin.firestore.FieldValue.serverTimestamp() });
-    res.json({ id: ref.id, precio: entry.precio });
+    entryId = ref.id;
   }
+
+  // Actualizar costPerUnit en el producto si el mes es igual o más reciente
+  const prodSnap = await db.collection('products').doc(req.params.id).get();
+  const currentMonth = prodSnap.exists ? (prodSnap.data().lastPriceMonth || '') : '';
+  if (entry.mes >= currentMonth) {
+    await db.collection('products').doc(req.params.id).update({
+      costPerUnit:    entry.precio,
+      lastPriceMonth: entry.mes
+    });
+  }
+
+  res.json({ id: entryId, precio: entry.precio });
 });
 
 app.delete('/api/inv/products/:id/prices/:entryId', requireAuth, async (req, res) => {
@@ -948,8 +980,9 @@ app.get('/api/inv/stock/:restaurantId', requireAuth, async (req, res) => {
     return res.status(403).json({ error: 'Sin acceso a este local' });
   }
 
-  const [prodSnap, stockSnap, supSnap] = await Promise.all([
+  const [prodSnap, prepSnap, stockSnap, supSnap] = await Promise.all([
     db.collection('products').orderBy('name').get(),
+    db.collection('preparations').orderBy('name').get(),
     db.collection('stock').doc(restaurantId).collection('products').get(),
     db.collection('suppliers').get()
   ]);
@@ -959,24 +992,24 @@ app.get('/api/inv/stock/:restaurantId', requireAuth, async (req, res) => {
   const suppliersMap = {};
   supSnap.docs.forEach(d => { suppliersMap[d.id] = d.data().name; });
 
-  const allowedCats = userData.categories || []; // empty = all
-  const sectionFilter = req.query.section || '';
+  const allowedCats   = userData.categories || [];
+  const sectionFilter = req.query.section   || '';
 
-  // Only products assigned to this restaurant (and filtered by user categories)
-  const items = prodSnap.docs
-    .filter(d => {
-      const data = d.data();
-      const inRest = (data.restaurantIds || []).includes(restaurantId);
-      const inCat  = allowedCats.length === 0 || allowedCats.includes(data.category);
-      if (!inRest || !inCat) return false;
-      if (sectionFilter) {
-        const assignedSections = (data.restaurantSections || {})[restaurantId] || [];
-        if (!assignedSections.includes(sectionFilter)) return false;
-      }
-      return true;
-    })
+  function passesFilters(data) {
+    const inRest = (data.restaurantIds || []).includes(restaurantId);
+    const inCat  = allowedCats.length === 0 || allowedCats.includes(data.category);
+    if (!inRest || !inCat) return false;
+    if (sectionFilter) {
+      const assignedSections = (data.restaurantSections || {})[restaurantId] || [];
+      if (!assignedSections.includes(sectionFilter)) return false;
+    }
+    return true;
+  }
+
+  const prodItems = prodSnap.docs
+    .filter(d => passesFilters(d.data()))
     .map(d => ({
-      id: d.id,
+      id: d.id, type: 'ingredient',
       name: d.data().name,
       category: d.data().category || '',
       unit: d.data().unit || 'unidad',
@@ -987,6 +1020,22 @@ app.get('/api/inv/stock/:restaurantId', requireAuth, async (req, res) => {
       lastUpdated: stockMap[d.id]?.lastUpdated ?? null,
       updatedBy:   stockMap[d.id]?.updatedBy   ?? null,
     }));
+
+  const prepItems = prepSnap.docs
+    .filter(d => passesFilters(d.data()))
+    .map(d => ({
+      id: d.id, type: 'preparation',
+      name: d.data().name,
+      category: d.data().category || '',
+      unit: d.data().unit || 'unidad',
+      supplierIds: [], supplierNames: [],
+      quantity:    stockMap[d.id]?.quantity    ?? null,
+      minQuantity: stockMap[d.id]?.minQuantity ?? null,
+      lastUpdated: stockMap[d.id]?.lastUpdated ?? null,
+      updatedBy:   stockMap[d.id]?.updatedBy   ?? null,
+    }));
+
+  const items = [...prodItems, ...prepItems].sort((a, b) => a.name.localeCompare(b.name, 'es'));
 
   res.json({ items });
 });
@@ -1979,6 +2028,8 @@ app.post('/api/recipes/import', requireAuth, async (req, res) => {
       restaurantId: r.restaurantId || null,
       restaurantName: r.restaurantName || '',
       ingredients: r.ingredients || [],
+      rendimientoAgua: Number(r.rendimientoAgua) || 0,
+      rendimientoAire: Number(r.rendimientoAire) || 0,
       updatedAt: admin.firestore.FieldValue.serverTimestamp()
     };
     if (docId) {
@@ -1986,7 +2037,7 @@ app.post('/api/recipes/import', requireAuth, async (req, res) => {
     } else {
       const ref = db.collection('recipes').doc();
       data.createdAt = admin.firestore.FieldValue.serverTimestamp();
-      data.sellingPrice = 0;
+      data.sellingPrice = r.sellingPrice || 0;
       batch.set(ref, data);
     }
     count++;
@@ -1998,10 +2049,12 @@ app.post('/api/recipes/import', requireAuth, async (req, res) => {
 app.put('/api/recipes/:id', requireAuth, async (req, res) => {
   if (!await isEditor(req.uid)) return res.status(403).json({ error: 'Sin permisos' });
   const update = {};
-  const { sellingPrice, ingredients, name } = req.body;
-  if (sellingPrice !== undefined) update.sellingPrice = Number(sellingPrice) || 0;
-  if (ingredients  !== undefined) update.ingredients  = ingredients;
-  if (name         !== undefined) update.name         = name;
+  const { sellingPrice, ingredients, name, rendimientoAgua, rendimientoAire } = req.body;
+  if (sellingPrice     !== undefined) update.sellingPrice     = Number(sellingPrice) || 0;
+  if (ingredients      !== undefined) update.ingredients      = ingredients;
+  if (name             !== undefined) update.name             = name;
+  if (rendimientoAgua  !== undefined) update.rendimientoAgua  = Number(rendimientoAgua)  || 0;
+  if (rendimientoAire  !== undefined) update.rendimientoAire  = Number(rendimientoAire)  || 0;
   update.updatedAt = admin.firestore.FieldValue.serverTimestamp();
   await db.collection('recipes').doc(req.params.id).update(update);
   res.json({ ok: true });
@@ -2021,10 +2074,17 @@ app.get('/api/preparations', requireAuth, async (req, res) => {
 
 app.post('/api/preparations', requireAuth, async (req, res) => {
   if (!await isEditor(req.uid)) return res.status(403).json({ error: 'Sin permisos' });
-  const { name, ingredients } = req.body;
+  const { name, ingredients, esGDD, category, unit, restaurantIds, restaurantSections, rendimientoAgua, rendimientoAire } = req.body;
   if (!name) return res.status(400).json({ error: 'Nombre requerido' });
   const ref = await db.collection('preparations').add({
     name, ingredients: ingredients || [],
+    esGDD: esGDD === true,
+    category: category || '',
+    unit: unit || 'unidad',
+    restaurantIds: restaurantIds || [],
+    restaurantSections: restaurantSections || {},
+    rendimientoAgua: Number(rendimientoAgua) || 0,
+    rendimientoAire: Number(rendimientoAire) || 0,
     createdAt: admin.firestore.FieldValue.serverTimestamp()
   });
   res.json({ id: ref.id });
@@ -2032,18 +2092,128 @@ app.post('/api/preparations', requireAuth, async (req, res) => {
 
 app.put('/api/preparations/:id', requireAuth, async (req, res) => {
   if (!await isEditor(req.uid)) return res.status(403).json({ error: 'Sin permisos' });
-  const { name, ingredients } = req.body;
+  const { name, ingredients, esGDD, category, unit, restaurantIds, restaurantSections, rendimientoAgua, rendimientoAire } = req.body;
   const update = { updatedAt: admin.firestore.FieldValue.serverTimestamp() };
-  if (name        !== undefined) update.name        = name;
-  if (ingredients !== undefined) update.ingredients = ingredients;
+  if (name               !== undefined) update.name               = name;
+  if (ingredients        !== undefined) update.ingredients        = ingredients;
+  if (esGDD              !== undefined) update.esGDD              = esGDD === true;
+  if (category           !== undefined) update.category           = category;
+  if (unit               !== undefined) update.unit               = unit;
+  if (restaurantIds      !== undefined) update.restaurantIds      = restaurantIds;
+  if (restaurantSections !== undefined) update.restaurantSections = restaurantSections;
+  if (rendimientoAgua    !== undefined) update.rendimientoAgua    = Number(rendimientoAgua)  || 0;
+  if (rendimientoAire    !== undefined) update.rendimientoAire    = Number(rendimientoAire)  || 0;
   await db.collection('preparations').doc(req.params.id).update(update);
   res.json({ ok: true });
+});
+
+// Helper: chequea uso de cualquier ID (ingrediente o preparación)
+async function checkUsage(id, { isPrep = false } = {}) {
+  const usage = [];
+
+  const [recipesSnap, prepsSnap, restsSnap, invSnap] = await Promise.all([
+    db.collection('recipes').get(),
+    db.collection('preparations').get(),
+    db.collection('restaurants').get(),
+    db.collection('inventoryRecords').orderBy('createdAt', 'desc').limit(500).get()
+  ]);
+
+  // Recetas que lo usan
+  const ingField = isPrep ? 'preparationId' : 'productId';
+  const usedRecipes = recipesSnap.docs.filter(d =>
+    (d.data().ingredients || []).some(i => i[ingField] === id));
+  if (usedRecipes.length)
+    usage.push({ tipo: 'Recetas', items: usedRecipes.map(d => d.data().name) });
+
+  // Preparaciones que lo usan
+  const usedPreps = prepsSnap.docs.filter(d =>
+    d.id !== id && (d.data().ingredients || []).some(i => i[ingField] === id));
+  if (usedPreps.length)
+    usage.push({ tipo: 'Preparaciones', items: usedPreps.map(d => d.data().name) });
+
+  // Stock actual en cada local (por ID — aplica a productos y preparaciones)
+  const stockChecks = await Promise.all(
+    restsSnap.docs.map(r => db.collection('stock').doc(r.id).collection('products').doc(id).get())
+  );
+  const restsWithStock = restsSnap.docs.filter((r, i) => {
+    const s = stockChecks[i];
+    return s.exists && (s.data().quantity || 0) > 0;
+  });
+  if (restsWithStock.length)
+    usage.push({ tipo: 'Stock en locales', items: restsWithStock.map(d => d.data().name) });
+
+  // Registros de inventario históricos (productId = id, aplica a ingredientes y preparaciones)
+  const usedInv = invSnap.docs.filter(d =>
+    (d.data().items || []).some(i => i.productId === id));
+  if (usedInv.length)
+    usage.push({ tipo: 'Registros de inventario', items: [`${usedInv.length} registro(s) histórico(s)`] });
+
+  return usage;
+}
+
+// Verificar uso de un ingrediente antes de eliminar
+app.get('/api/inv/products/:id/usage', requireAuth, async (req, res) => {
+  const usage = await checkUsage(req.params.id, { isPrep: false });
+  res.json({ usage, seguro: usage.length === 0 });
+});
+
+// Verificar uso de una preparación antes de eliminar
+app.get('/api/preparations/:id/usage', requireAuth, async (req, res) => {
+  const usage = await checkUsage(req.params.id, { isPrep: true });
+  res.json({ usage, seguro: usage.length === 0 });
+});
+
+// Convertir ingrediente → preparación
+app.post('/api/inv/products/:id/convert-to-prep', requireAuth, async (req, res) => {
+  if (!await isEditor(req.uid)) return res.status(403).json({ error: 'Sin permisos' });
+  const prodSnap = await db.collection('products').doc(req.params.id).get();
+  if (!prodSnap.exists) return res.status(404).json({ error: 'Ingrediente no encontrado' });
+  const prod = prodSnap.data();
+  const ref = await db.collection('preparations').add({
+    name: prod.name,
+    ingredients: [],
+    esGDD: prod.esGDD === true,
+    category: prod.category || '',
+    unit: prod.unit || 'unidad',
+    createdAt: admin.firestore.FieldValue.serverTimestamp()
+  });
+  await db.collection('products').doc(req.params.id).delete();
+  res.json({ ok: true, prepId: ref.id });
 });
 
 app.delete('/api/preparations/:id', requireAuth, async (req, res) => {
   if (!await isEditor(req.uid)) return res.status(403).json({ error: 'Sin permisos' });
   await db.collection('preparations').doc(req.params.id).delete();
   res.json({ ok: true });
+});
+
+// ── Config: unidades personalizadas ──────────────────────────────────────────
+const UNITS_DOC = () => db.collection('config').doc('units');
+
+app.get('/api/config/units', requireAuth, async (req, res) => {
+  const snap = await UNITS_DOC().get();
+  res.json({ units: snap.exists ? (snap.data().list || []) : [] });
+});
+
+app.post('/api/config/units', requireAuth, async (req, res) => {
+  if (!await isEditor(req.uid)) return res.status(403).json({ error: 'Sin permisos' });
+  const { value, label } = req.body;
+  if (!value || !label) return res.status(400).json({ error: 'Faltan campos' });
+  const snap = await UNITS_DOC().get();
+  const list = snap.exists ? (snap.data().list || []) : [];
+  if (list.find(u => u.value === value)) return res.status(400).json({ error: 'Ya existe' });
+  list.push({ value, label });
+  await UNITS_DOC().set({ list });
+  res.json({ ok: true, units: list });
+});
+
+app.delete('/api/config/units/:value', requireAuth, async (req, res) => {
+  if (!await isEditor(req.uid)) return res.status(403).json({ error: 'Sin permisos' });
+  const snap = await UNITS_DOC().get();
+  const list = snap.exists ? (snap.data().list || []) : [];
+  const updated = list.filter(u => u.value !== req.params.value);
+  await UNITS_DOC().set({ list: updated });
+  res.json({ ok: true, units: updated });
 });
 
 module.exports = app;

@@ -1304,11 +1304,7 @@
         <div>
           <div class="field-label">Unidad</div>
           <select id="mcat-unit">
-            <option value="unidad">Unidad</option>
-            <option value="kg">Kilogramo (kg)</option>
-            <option value="lt">Litro (lt)</option>
-            <option value="caja">Caja</option>
-            <option value="pote">Pote</option>
+            ${buildUnitOptions('unidad')}
           </select>
         </div>
         <div><div class="field-label">Precio neto ($)</div><input type="number" id="mcat-price" placeholder="0" min="0" step="1"></div>
@@ -2675,6 +2671,36 @@ async function savePermisosPage(uid) {
 // ── Inventario ─────────────────────────────────────────────
 let invTab = 'agregar';
 let invSuppliers = [], invProducts = [];
+
+const DEFAULT_UNITS = [
+  { value:'unidad',  label:'Unidad' },
+  { value:'kg',      label:'Kilogramo (kg)' },
+  { value:'g',       label:'Gramo (g)' },
+  { value:'L',       label:'Litro (L)' },
+  { value:'ml',      label:'Mililitro (ml)' },
+  { value:'caja',    label:'Caja' },
+  { value:'bolsa',   label:'Bolsa' },
+  { value:'botella', label:'Botella' },
+  { value:'tarro',   label:'Tarro' },
+  { value:'pote',    label:'Pote' },
+];
+let customUnits = [];
+
+function allUnits() { return [...DEFAULT_UNITS, ...customUnits]; }
+
+function buildUnitOptions(selected) {
+  return allUnits().map(u =>
+    `<option value="${u.value}" ${(selected||'unidad')===u.value?'selected':''}>${u.label}</option>`
+  ).join('');
+}
+
+async function loadCustomUnits() {
+  try {
+    const r = await apiFetch('/api/config/units');
+    const d = await r.json();
+    customUnits = d.units || [];
+  } catch {}
+}
 let catThresholds = {}; // { "Bebidas": { low: 24, high: 72 }, ... }
 
 async function loadCatThresholds() {
@@ -3216,7 +3242,7 @@ let prodFilterRest = '';
 async function renderInvProductos() {
   const el = document.getElementById('inv-productos');
   el.innerHTML = '<div style="color:#555;font-size:13px">Cargando...</div>';
-  const [pr, sr] = await Promise.all([apiFetch('/api/inv/products'), apiFetch('/api/inv/suppliers')]);
+  const [pr, sr] = await Promise.all([apiFetch('/api/inv/products'), apiFetch('/api/inv/suppliers'), loadCustomUnits()]);
   invProducts  = (await pr.json()).products  || [];
   invSuppliers = (await sr.json()).suppliers || [];
   prodFilterCat = '';
@@ -3240,7 +3266,10 @@ function renderProdTable() {
   el.innerHTML = `
     <div class="inv-toolbar">
       <h2>Ingredientes</h2>
-      ${(userRole === 'admin' || userRole === 'superadmin') ? '<button class="btn-new" onclick="openModalProducto()">+ Nuevo ingrediente</button>' : ''}
+      <div style="display:flex;gap:8px">
+        ${(userRole === 'admin' || userRole === 'superadmin') ? '<button class="btn-new" onclick="openModalProducto()">+ Nuevo ingrediente</button>' : ''}
+        ${(userRole === 'admin' || userRole === 'superadmin') ? '<button onclick="openUnitsModal()" style="background:#f8f9fa;border:1px solid #dee2e6;color:#495057;border-radius:8px;padding:7px 14px;font-size:13px;font-weight:500;cursor:pointer">Unidades</button>' : ''}
+      </div>
     </div>
     <div class="prod-filters">
       <input class="prod-filter-sel" type="search" placeholder="Buscar ingrediente..." value="${prodFilterSearch}"
@@ -3269,13 +3298,14 @@ function renderProdTable() {
         <th>Nombre</th>
         <th>Categoría</th>
         <th>Unidad</th>
+        <th>Último precio</th>
         <th>Proveedores</th>
         <th>Locales</th>
         ${(userRole==='admin'||userRole==='superadmin')?'<th></th>':''}
       </tr></thead>
       <tbody>
         ${filtered.length === 0
-          ? `<tr><td colspan="6" style="color:#444;padding:20px">Sin resultados</td></tr>`
+          ? `<tr><td colspan="7" style="color:#444;padding:20px">Sin resultados</td></tr>`
           : filtered.map(p => {
               const localesHtml = (p.restaurantIds || []).map(rid => {
                 const rname = restaurants.find(r => r.id === rid)?.name || rid;
@@ -3285,11 +3315,15 @@ function renderProdTable() {
                   ${secs.length ? `<span style="font-size:10px;color:#6c757d;margin-top:2px;padding-left:2px">${secs.join(', ')}</span>` : ''}
                 </div>`;
               }).join('') || '<span style="color:#adb5bd">—</span>';
+              const precioHtml = p.costPerUnit > 0
+                ? `<span style="font-weight:600;color:#16a34a">$${Number(p.costPerUnit).toLocaleString('es-CL',{minimumFractionDigits:0,maximumFractionDigits:2})}</span><span style="font-size:10px;color:#6c757d;margin-left:4px">${p.lastPriceMonth||''}</span>`
+                : `<span style="color:#adb5bd;font-size:12px">Sin precio</span>`;
               return `
               <tr>
                 <td style="color:#212529;font-weight:500">${p.name}${p.esGDD ? ' <span style="background:#dcfce7;color:#16a34a;font-size:10px;padding:1px 6px;border-radius:4px;font-weight:600;vertical-align:middle">GDD</span>' : ''}</td>
                 <td>${p.category || '—'}</td>
                 <td><span class="tag">${p.unit}</span></td>
+                <td>${precioHtml}</td>
                 <td>${(p.supplierNames||[]).map(s=>`<span class="tag">${s}</span>`).join(' ') || '<span style="color:#adb5bd">—</span>'}</td>
                 <td>${localesHtml}</td>
                 ${(userRole==='admin'||userRole==='superadmin') ? `<td style="white-space:nowrap">
@@ -3351,14 +3385,7 @@ function openModalProducto(id) {
         <div>
           <div class="field-label">Unidad</div>
           <select id="mprod-unit" class="inv-input">
-            <option value="unidad"  ${(p?.unit||'unidad')==='unidad'?'selected':''}>Unidad</option>
-            <option value="kg"      ${p?.unit==='kg'?'selected':''}>Kilogramo (kg)</option>
-            <option value="g"       ${p?.unit==='g'?'selected':''}>Gramo (g)</option>
-            <option value="L"       ${p?.unit==='L'?'selected':''}>Litro (L)</option>
-            <option value="ml"      ${p?.unit==='ml'?'selected':''}>Mililitro (ml)</option>
-            <option value="caja"    ${p?.unit==='caja'?'selected':''}>Caja</option>
-            <option value="bolsa"   ${p?.unit==='bolsa'?'selected':''}>Bolsa</option>
-            <option value="botella" ${p?.unit==='botella'?'selected':''}>Botella</option>
+            ${buildUnitOptions(p?.unit)}
           </select>
         </div>
         <div>
@@ -3397,6 +3424,7 @@ function openModalProducto(id) {
       <div style="display:flex;gap:10px;margin-bottom:32px">
         <button onclick="saveProducto()" style="background:#ff5023;color:#fff;border:none;border-radius:8px;padding:11px 28px;font-size:14px;font-weight:600;cursor:pointer">Guardar</button>
         <button onclick="renderProdTable()" style="background:transparent;border:1px solid #dee2e6;border-radius:8px;padding:11px 20px;font-size:14px;color:#6c757d;cursor:pointer">Cancelar</button>
+        ${p?.id ? `<button onclick="convertirAPreparacion('${p.id}','${(p.name||'').replace(/'/g,"\\'")}')" style="background:transparent;border:1px solid #7c3aed;color:#7c3aed;border-radius:8px;padding:11px 18px;font-size:13px;font-weight:500;cursor:pointer">Convertir a preparación</button>` : ''}
       </div>
 
       ${p?.id ? `
@@ -3413,10 +3441,10 @@ function openModalProducto(id) {
                 value="${new Date().toISOString().substring(0,7)}">
             </div>
             <div>
-              <div style="font-size:11px;color:#6c757d;font-weight:600;text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px">Precio bruto ($)</div>
+              <div style="font-size:11px;color:#6c757d;font-weight:600;text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px">Precio neto ($)</div>
               <div style="display:flex;align-items:center;border:1px solid #dee2e6;border-radius:8px;overflow:hidden;background:#fff">
                 <span style="padding:0 10px;color:#888;font-size:13px;border-right:1px solid #dee2e6;background:#f8f9fa">$</span>
-                <input type="number" id="pp-bruto" placeholder="0" min="0" step="1"
+                <input type="number" id="pp-neto" placeholder="0" min="0" step="1"
                   style="flex:1;border:none;outline:none;padding:8px 10px;font-size:13px;color:#212529"
                   oninput="ppCalcPreview()">
               </div>
@@ -3446,11 +3474,11 @@ function openModalProducto(id) {
           <div id="pp-preview" style="background:#fff;border:1px solid #e9ecef;border-radius:8px;padding:12px;display:none">
             <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center">
               <div>
-                <div style="font-size:10px;color:#adb5bd;text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px">Bruto c/dto</div>
+                <div style="font-size:10px;color:#adb5bd;text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px">Neto c/dto</div>
                 <div id="pp-prev-neto" style="font-size:14px;font-weight:600;color:#495057">—</div>
               </div>
               <div>
-                <div style="font-size:10px;color:#adb5bd;text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px">Precio neto</div>
+                <div style="font-size:10px;color:#adb5bd;text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px">Bruto ref.</div>
                 <div id="pp-prev-dto" style="font-size:14px;font-weight:600;color:#495057">—</div>
               </div>
               <div style="background:#f0fdf4;border-radius:6px;padding:4px 0">
@@ -3485,21 +3513,21 @@ function ppGetTipoImpuesto() {
 }
 
 function ppCalcPreview() {
-  const bruto    = parseFloat(document.getElementById('pp-bruto')?.value) || 0;
+  const neto     = parseFloat(document.getElementById('pp-neto')?.value) || 0;
   const dto      = parseFloat(document.getElementById('pp-dto')?.value)   || 0;
   const cantidad = parseFloat(document.getElementById('pp-cantidad')?.value) || 1;
   const preview  = document.getElementById('pp-preview');
   if (!preview) return;
-  if (!bruto) { preview.style.display = 'none'; return; }
+  if (!neto) { preview.style.display = 'none'; return; }
 
-  // Orden correcto: descuento sobre bruto → neto → ÷ cantidad
+  // Usuario ingresa neto → descuento sobre neto → costo unitario
   const divisor     = PP_DIVISORS[ppGetTipoImpuesto()] || 1.19;
-  const brutoConDto = bruto * (1 - dto / 100);
-  const neto        = brutoConDto / divisor;
-  const unitario    = neto / cantidad;
+  const netoConDto  = neto * (1 - dto / 100);                 // neto después de descuento
+  const bruto       = neto * divisor;                         // bruto referencial (sin dto)
+  const unitario    = netoConDto / cantidad;
 
-  document.getElementById('pp-prev-neto').textContent = '$' + Math.round(brutoConDto).toLocaleString('es-CL');
-  document.getElementById('pp-prev-dto').textContent  = '$' + Math.round(neto).toLocaleString('es-CL');
+  document.getElementById('pp-prev-neto').textContent = '$' + Math.round(netoConDto).toLocaleString('es-CL');
+  document.getElementById('pp-prev-dto').textContent  = '$' + Math.round(bruto).toLocaleString('es-CL');
   document.getElementById('pp-prev-unit').textContent = unitario > 0
     ? '$' + (Math.round(unitario * 100) / 100).toLocaleString('es-CL', {minimumFractionDigits:0,maximumFractionDigits:2})
     : '—';
@@ -3535,7 +3563,7 @@ function ppRenderList() {
             Costo unitario: <span style="color:#16a34a">$${(p.precio||0).toLocaleString('es-CL',{minimumFractionDigits:0,maximumFractionDigits:2})}</span>
           </div>
           ${hasDetail ? `<div style="font-size:11px;color:#6c757d;margin-top:3px;display:flex;flex-wrap:wrap;gap:8px">
-            <span>Bruto: <b>$${Number(p.precioBruto).toLocaleString('es-CL')}</b></span>
+            <span>Neto: <b>$${Number(p.precioNeto||p.precio||0).toLocaleString('es-CL')}</b></span>
             ${p.descuento ? `<span>Dto: <b>${p.descuento}%</b></span>` : ''}
             ${p.cantidadCompra && p.cantidadCompra !== 1 ? `<span>Cant: <b>${p.cantidadCompra}</b>${p.unidadCompra?' ('+p.unidadCompra+')':''}</span>` : (p.unidadCompra?`<span>${p.unidadCompra}</span>`:'')}
             ${tipoLabel ? `<span style="background:#f1f5f9;border-radius:4px;padding:0 5px">${tipoLabel}</span>` : ''}
@@ -3553,10 +3581,10 @@ function ppRenderList() {
       <div id="pp-edit-${p.id}" style="display:none;padding:14px;border-top:1px solid #e9ecef;background:#fafbfc">
         <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:10px">
           <div>
-            <div style="font-size:11px;color:#6c757d;font-weight:600;text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">Precio bruto ($)</div>
+            <div style="font-size:11px;color:#6c757d;font-weight:600;text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">Precio neto ($)</div>
             <div style="display:flex;align-items:center;border:1px solid #dee2e6;border-radius:7px;overflow:hidden;background:#fff">
               <span style="padding:0 8px;color:#888;font-size:12px;border-right:1px solid #dee2e6;background:#f8f9fa">$</span>
-              <input type="number" id="ppe-bruto-${p.id}" value="${p.precioBruto||p.precio||''}" min="0" step="1"
+              <input type="number" id="ppe-neto-${p.id}" value="${p.precioNeto||p.precio||''}" min="0" step="1"
                 style="flex:1;border:none;outline:none;padding:7px 8px;font-size:13px;color:#212529"
                 oninput="ppCalcEditPreview('${p.id}')">
             </div>
@@ -3613,17 +3641,13 @@ function ppToggleEdit(id) {
 }
 
 function ppCalcEditPreview(id) {
-  const bruto    = parseFloat(document.getElementById(`ppe-bruto-${id}`)?.value) || 0;
+  const neto     = parseFloat(document.getElementById(`ppe-neto-${id}`)?.value) || 0;
   const dto      = parseFloat(document.getElementById(`ppe-dto-${id}`)?.value)   || 0;
   const cantidad = parseFloat(document.getElementById(`ppe-cant-${id}`)?.value)  || 1;
-  const tipo     = document.getElementById(`ppe-tipo-${id}`)?.value || 'alimento';
   const prevEl   = document.getElementById(`ppe-preview-${id}`);
   const valEl    = document.getElementById(`ppe-prev-val-${id}`);
-  if (!prevEl || !bruto) { if (prevEl) prevEl.style.display = 'none'; return; }
-  // Orden correcto: descuento sobre bruto → neto → ÷ cantidad
-  const divisor     = PP_DIVISORS[tipo] || 1.19;
-  const brutoConDto = bruto * (1 - dto / 100);
-  const unitario    = (brutoConDto / divisor) / cantidad;
+  if (!prevEl || !neto) { if (prevEl) prevEl.style.display = 'none'; return; }
+  const unitario = neto * (1 - dto / 100) / cantidad;
   valEl.textContent = '$' + (Math.round(unitario * 100) / 100).toLocaleString('es-CL', {minimumFractionDigits:0,maximumFractionDigits:2});
   prevEl.style.display = '';
 }
@@ -3632,13 +3656,13 @@ async function ppGuardarEdicion(id, mes) {
   const msgEl = document.getElementById(`ppe-msg-${id}`);
   const body = {
     mes,
-    precioBruto:    parseFloat(document.getElementById(`ppe-bruto-${id}`)?.value) || 0,
+    precioNeto:     parseFloat(document.getElementById(`ppe-neto-${id}`)?.value) || 0,
     descuento:      parseFloat(document.getElementById(`ppe-dto-${id}`)?.value)   || 0,
     cantidadCompra: parseFloat(document.getElementById(`ppe-cant-${id}`)?.value)  || 1,
     unidadCompra:   document.getElementById(`ppe-desc-${id}`)?.value              || '',
     tipoImpuesto:   document.getElementById(`ppe-tipo-${id}`)?.value              || 'alimento'
   };
-  if (!body.precioBruto) { if(msgEl){msgEl.style.color='#f87171';msgEl.textContent='Ingresa precio bruto.';} return; }
+  if (!body.precioNeto) { if(msgEl){msgEl.style.color='#f87171';msgEl.textContent='Ingresa precio neto.';} return; }
   try {
     const res  = await apiFetch(`/api/inv/products/${priceHistoryProductId}/prices`, { method:'POST', body: JSON.stringify(body) });
     const data = await res.json();
@@ -3650,13 +3674,13 @@ async function ppGuardarEdicion(id, mes) {
 }
 
 async function ppAgregarPrecio() {
-  const mes         = document.getElementById('pp-mes')?.value;
-  const precioBruto = document.getElementById('pp-bruto')?.value;
-  const msgEl       = document.getElementById('pp-msg');
-  if (!mes || !precioBruto) { if(msgEl){msgEl.style.color='#f87171';msgEl.textContent='Completa mes y precio bruto.';} return; }
+  const mes        = document.getElementById('pp-mes')?.value;
+  const precioNeto = document.getElementById('pp-neto')?.value;
+  const msgEl      = document.getElementById('pp-msg');
+  if (!mes || !precioNeto) { if(msgEl){msgEl.style.color='#f87171';msgEl.textContent='Completa mes y precio neto.';} return; }
   const body = {
     mes,
-    precioBruto:    Number(precioBruto),
+    precioNeto:     Number(precioNeto),
     descuento:      parseFloat(document.getElementById('pp-dto')?.value)      || 0,
     cantidadCompra: parseFloat(document.getElementById('pp-cantidad')?.value) || 1,
     unidadCompra:   document.getElementById('pp-unidad-compra')?.value        || '',
@@ -3667,7 +3691,7 @@ async function ppAgregarPrecio() {
     const data = await res.json();
     if (data.error) throw new Error(data.error);
     // Reset form
-    document.getElementById('pp-bruto').value = '';
+    document.getElementById('pp-neto').value = '';
     document.getElementById('pp-dto').value   = '0';
     document.getElementById('pp-cantidad').value = '1';
     document.getElementById('pp-unidad-compra').value = '';
@@ -3690,6 +3714,24 @@ async function ppEliminar(entryId) {
 function toggleProdRestaurant(restId, checked) {
   const wrap = document.getElementById(`psec-${restId}`);
   if (wrap) wrap.style.display = checked ? '' : 'none';
+}
+function togglePrepRestaurant(restId, checked) {
+  const wrap = document.getElementById(`prepsec-${restId}`);
+  if (wrap) wrap.style.display = checked ? '' : 'none';
+}
+
+async function convertirAPreparacion(id, nombre) {
+  if (!confirm(`¿Convertir "${nombre}" a preparación? Se eliminará de ingredientes.`)) return;
+  const msgEl = document.getElementById('mprod-msg');
+  try {
+    const r = await apiFetch(`/api/inv/products/${id}/convert-to-prep`, { method: 'POST' });
+    const d = await r.json();
+    if (d.error) throw new Error(d.error);
+    invProducts = invProducts.filter(p => p.id !== id);
+    renderProdTable();
+  } catch(e) {
+    if (msgEl) { msgEl.style.color = '#dc2626'; msgEl.textContent = 'Error: ' + e.message; }
+  }
 }
 
 async function saveProducto() {
@@ -3725,11 +3767,27 @@ async function saveProducto() {
   } catch(e) { msg.style.color='#f87171'; msg.textContent = e.message; }
 }
 
+function confirmarEliminacion(name, tipo, usage) {
+  if (!usage || usage.length === 0) {
+    return confirm(`¿Eliminar ${tipo} "${name}"?`);
+  }
+  let msg = `⚠️ "${name}" está siendo usado en:\n\n`;
+  usage.forEach(u => {
+    msg += `• ${u.tipo}: ${u.items.slice(0,5).join(', ')}${u.items.length > 5 ? ` (+${u.items.length-5} más)` : ''}\n`;
+  });
+  msg += `\n¿Seguro que quieres eliminar este ${tipo}? Esto puede afectar los registros mencionados.`;
+  return confirm(msg);
+}
+
 async function delProducto(id, name) {
-  if (!confirm(`¿Eliminar ingrediente "${name}"?`)) return;
-  await apiFetch(`/api/inv/products/${id}`, { method: 'DELETE' });
-  invProducts = invProducts.filter(p => p.id !== id);
-  renderProdTable();
+  try {
+    const r = await apiFetch(`/api/inv/products/${id}/usage`);
+    const d = await r.json();
+    if (!confirmarEliminacion(name, 'ingrediente', d.usage)) return;
+    await apiFetch(`/api/inv/products/${id}`, { method: 'DELETE' });
+    invProducts = invProducts.filter(p => p.id !== id);
+    renderProdTable();
+  } catch(e) { alert('Error: ' + e.message); }
 }
 
 // ── Historial de Precios ───────────────────────────────────
@@ -6206,10 +6264,75 @@ function switchMargenTab(tab) {
 function calcPrepCost(prep) {
   let cost = 0;
   (prep?.ingredients || []).forEach(item => {
-    const prod = margenIngredients.find(p => p.id === item.productId || p.name === item.name);
-    cost += (prod?.costPerUnit || 0) * (item.quantity || 0);
+    if (item.type === 'preparation') {
+      const subPrep = margenPreparations.find(p => p.id === item.preparationId || p.name === item.name);
+      cost += calcPrepCost(subPrep) * (item.quantity || 0);
+    } else {
+      const prod = margenIngredients.find(p => p.id === item.productId || p.name === item.name);
+      cost += (prod?.costPerUnit || 0) * (item.quantity || 0);
+    }
   });
+  // Aplicar rendimientos propios de la preparación
+  const agua = prep?.rendimientoAgua || 0;
+  const aire = prep?.rendimientoAire || 0;
+  if (agua > 0) cost = cost / (1 + agua / 100);
+  if (aire > 0) cost = cost / (1 + aire / 100);
   return cost;
+}
+
+function margenToggleRendimiento() {
+  const enabled = document.getElementById('marg-rend-enabled')?.checked;
+  const fields  = document.getElementById('marg-rend-fields');
+  if (fields) fields.style.display = enabled ? '' : 'none';
+  if (!enabled) {
+    ['agua','aire'].forEach(t => {
+      const chk = document.getElementById(`marg-rend-${t}-chk`);
+      if (chk) chk.checked = false;
+      const wrap = document.getElementById(`marg-rend-${t}-wrap`);
+      if (wrap) wrap.style.display = 'none';
+    });
+  }
+  margenUpdateFormTotal();
+}
+
+function margenToggleRendimientoField(tipo) {
+  const chk  = document.getElementById(`marg-rend-${tipo}-chk`);
+  const wrap = document.getElementById(`marg-rend-${tipo}-wrap`);
+  if (wrap) wrap.style.display = chk?.checked ? '' : 'none';
+  if (!chk?.checked) {
+    const inp = document.getElementById(`marg-rend-${tipo}`);
+    if (inp) inp.value = '';
+  }
+  margenUpdateFormTotal();
+}
+
+function margenGetRendimientos() {
+  const enabled = document.getElementById('marg-rend-enabled')?.checked;
+  if (!enabled) return { agua: 0, aire: 0 };
+  const agua = document.getElementById('marg-rend-agua-chk')?.checked
+    ? (parseFloat(document.getElementById('marg-rend-agua')?.value) || 0) : 0;
+  const aire = document.getElementById('marg-rend-aire-chk')?.checked
+    ? (parseFloat(document.getElementById('marg-rend-aire')?.value) || 0) : 0;
+  return { agua, aire };
+}
+
+function margenSetRendimientos(rendimientoAgua, rendimientoAire) {
+  const agua = Number(rendimientoAgua) || 0;
+  const aire = Number(rendimientoAire) || 0;
+  const hasAny = agua > 0 || aire > 0;
+  const enabledChk = document.getElementById('marg-rend-enabled');
+  if (enabledChk) enabledChk.checked = hasAny;
+  const fields = document.getElementById('marg-rend-fields');
+  if (fields) fields.style.display = hasAny ? '' : 'none';
+  ['agua','aire'].forEach(t => {
+    const val  = t === 'agua' ? agua : aire;
+    const chk  = document.getElementById(`marg-rend-${t}-chk`);
+    const wrap = document.getElementById(`marg-rend-${t}-wrap`);
+    const inp  = document.getElementById(`marg-rend-${t}`);
+    if (chk)  chk.checked            = val > 0;
+    if (wrap) wrap.style.display     = val > 0 ? '' : 'none';
+    if (inp)  inp.value              = val > 0 ? val : '';
+  });
 }
 
 // Calcula el costo de un item de receta (puede ser ingrediente o preparación)
@@ -6292,6 +6415,9 @@ function margenCardHTML(r, cols) {
           <div style="font-size:${subSz};color:#6c757d;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.restaurantName || '—'}</div>
         </div>
         <div style="display:flex;align-items:center;gap:${gap};flex-shrink:0">
+          ${(r.rendimientoAgua > 0 || r.rendimientoAire > 0)
+            ? `<div style="background:#e0f2fe;color:#0369a1;border-radius:20px;padding:${badgePad};font-size:${badgeSz};font-weight:600;white-space:nowrap" title="Rendimiento activo">⟳</div>`
+            : ''}
           ${margin !== null
             ? `<div style="background:${mColor}18;color:${mColor};border:1.5px solid ${mColor}44;border-radius:20px;padding:${badgePad};font-size:${badgeSz};font-weight:700;white-space:nowrap">${margin.toFixed(1)}%</div>`
             : `<div style="background:#f1f3f4;color:#aaa;border-radius:20px;padding:${badgePad};font-size:${badgeSz};white-space:nowrap">—</div>`}
@@ -6585,7 +6711,10 @@ function margenPrepCardHTML(p) {
       <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px">
         <div style="flex:1;cursor:pointer" onclick="margenOpenPrepDetail('${p.id}')">
           <div style="font-size:15px;font-weight:700;color:#212529;line-height:1.3">${p.name}</div>
-          <div style="font-size:11px;color:#7c3aed;background:#ede9fe;border-radius:4px;padding:1px 7px;margin-top:4px;display:inline-block;font-weight:600">PREPARACIÓN</div>
+          <div style="display:flex;align-items:center;gap:6px;margin-top:4px;flex-wrap:wrap">
+            <div style="font-size:11px;color:#7c3aed;background:#ede9fe;border-radius:4px;padding:1px 7px;font-weight:600">PREPARACIÓN</div>
+            ${(p.rendimientoAgua > 0 || p.rendimientoAire > 0) ? `<div style="font-size:11px;color:#0369a1;background:#e0f2fe;border-radius:4px;padding:1px 7px;font-weight:600" title="Rendimiento activo">⟳ rend.</div>` : ''}
+          </div>
         </div>
         <div style="display:flex;gap:6px;flex-shrink:0;margin-left:10px">
           <button onclick="event.stopPropagation();margenOpenPrepModal('${p.id}')"
@@ -6668,6 +6797,26 @@ function margenOpenPrepModal(id) {
   document.getElementById('marg-form-rest').closest('div').style.display   = 'none';
   document.getElementById('marg-form-price').closest('div').style.display  = 'none';
   document.getElementById('marg-form-add-prep-btn').style.display          = 'none';
+  document.getElementById('marg-form-prep-extras').style.display           = '';
+  document.getElementById('marg-form-gdd').checked                         = prep?.esGDD === true;
+  document.getElementById('marg-form-cat').value                           = prep?.category || '';
+  document.getElementById('marg-form-unit').innerHTML                      = buildUnitOptions(prep?.unit || 'unidad');
+
+  // Poblar checkboxes de locales con subsecciones
+  const currentRests    = prep?.restaurantIds     || [];
+  const currentSections = prep?.restaurantSections || {};
+  document.getElementById('marg-form-prep-rests').innerHTML = restaurants.length
+    ? restaurants.map(r => {
+        const checked     = currentRests.includes(r.id);
+        const hasSections = (r.sections || []).length > 0;
+        return `<div class="rest-check-row">
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#495057;cursor:pointer">
+            <input type="checkbox" value="${r.id}" onchange="togglePrepRestaurant('${r.id}',this.checked)" ${checked?'checked':''} style="accent-color:#ff5023;width:15px;height:15px"> ${r.name}
+          </label>
+          ${hasSections ? `<div id="prepsec-${r.id}" class="prod-sections-wrap" ${checked?'':'style="display:none"'}>${r.sections.map(s=>`<label class="prod-section-label"><input type="checkbox" name="prepsec-${r.id}" value="${s}" ${(currentSections[r.id]||[]).includes(s)?'checked':''}> ${s}</label>`).join('')}</div>` : ''}
+        </div>`;
+      }).join('')
+    : '<span style="color:#888;font-size:13px">Sin locales creados</span>';
 
   // Poblar filas de ingredientes (solo ingredientes, no preparaciones)
   const container = document.getElementById('marg-form-ing-rows');
@@ -6681,14 +6830,17 @@ function margenOpenPrepModal(id) {
     margenAddIngRow(null, true);
   }
 
+  margenSetRendimientos(prep?.rendimientoAgua, prep?.rendimientoAire);
   document.getElementById('marg-form-modal').style.display = 'flex';
   document.getElementById('marg-form-name').focus();
   setTimeout(margenUpdateFormTotal, 30);
 }
 
 async function margenDeletePrep(id, name) {
-  if (!confirm(`¿Eliminar la preparación "${name}"?`)) return;
   try {
+    const r = await apiFetch(`/api/preparations/${id}/usage`);
+    const d = await r.json();
+    if (!confirmarEliminacion(name, 'preparación', d.usage)) return;
     const res  = await apiFetch(`/api/preparations/${id}`, { method: 'DELETE' });
     const data = await res.json();
     if (data.error) throw new Error(data.error);
@@ -6789,6 +6941,7 @@ function margenOpenFormModal(id) {
   document.getElementById('marg-form-rest').closest('div').style.display   = '';
   document.getElementById('marg-form-price').closest('div').style.display  = '';
   document.getElementById('marg-form-add-prep-btn').style.display          = '';
+  document.getElementById('marg-form-prep-extras').style.display           = 'none';
 
   // Poblar selector de locales
   const sel = document.getElementById('marg-form-rest');
@@ -6807,6 +6960,7 @@ function margenOpenFormModal(id) {
     margenAddIngRow(null, false);
   }
 
+  margenSetRendimientos(recipe?.rendimientoAgua, recipe?.rendimientoAire);
   document.getElementById('marg-form-modal').style.display = 'flex';
   document.getElementById('marg-form-name').focus();
   setTimeout(margenUpdateFormTotal, 30);
@@ -6929,7 +7083,7 @@ function margenUpdateRowCost(idx) {
 
 // Suma todos los subtotales y muestra costo total
 function margenUpdateFormTotal() {
-  let total = 0;
+  let costoBase = 0;
   document.querySelectorAll('[id^="marg-ing-row-"]').forEach(row => {
     const idx     = row.id.replace('marg-ing-row-', '');
     const typeHid = document.getElementById(`marg-ing-type-${idx}`);
@@ -6939,14 +7093,31 @@ function margenUpdateFormTotal() {
     if (!sel?.value || qty <= 0) return;
     if (type === 'preparation') {
       const prep = margenPreparations.find(p => p.id === sel.value);
-      total += calcPrepCost(prep) * qty;
+      costoBase += calcPrepCost(prep) * qty;
     } else {
       const prod = margenIngredients.find(p => p.id === sel.value);
-      total += (prod?.costPerUnit || 0) * qty;
+      costoBase += (prod?.costPerUnit || 0) * qty;
     }
   });
+
+  const { agua, aire } = margenGetRendimientos();
+  const costoConAgua = agua > 0 ? costoBase / (1 + agua / 100) : costoBase;
+  const costoFinal   = aire > 0 ? costoConAgua / (1 + aire / 100) : costoConAgua;
+
   const el = document.getElementById('marg-form-total');
-  if (el) el.innerHTML = `Costo total: <strong>$${total.toLocaleString('es-CL')}</strong>`;
+  if (!el) return;
+
+  if (agua > 0 || aire > 0) {
+    let html = `<div style="display:flex;flex-direction:column;gap:4px">`;
+    html += `<div style="display:flex;justify-content:space-between"><span>Costo ingredientes:</span><span>$${Math.round(costoBase).toLocaleString('es-CL')}</span></div>`;
+    if (agua > 0) html += `<div style="display:flex;justify-content:space-between;color:#0369a1"><span>💧 ÷ Agua (+${agua}%):</span><span>$${Math.round(costoConAgua).toLocaleString('es-CL')}</span></div>`;
+    if (aire > 0) html += `<div style="display:flex;justify-content:space-between;color:#7c3aed"><span>💨 ÷ Aire (+${aire}%):</span><span>$${Math.round(costoFinal).toLocaleString('es-CL')}</span></div>`;
+    html += `<div style="display:flex;justify-content:space-between;font-weight:700;color:#212529;border-top:1px solid #dee2e6;padding-top:4px;margin-top:2px"><span>Costo final:</span><span>$${Math.round(costoFinal).toLocaleString('es-CL')}</span></div>`;
+    html += `</div>`;
+    el.innerHTML = html;
+  } else {
+    el.innerHTML = `Costo total: <strong>$${Math.round(costoFinal).toLocaleString('es-CL')}</strong>`;
+  }
 }
 
 function margenUpdateUnit(idx) {
@@ -6986,19 +7157,30 @@ async function margenSaveForm() {
 
   // ── Guardar preparación ──
   if (isPrep) {
+    const esGDD    = document.getElementById('marg-form-gdd')?.checked === true;
+    const category = document.getElementById('marg-form-cat')?.value.trim() || '';
+    const unit     = document.getElementById('marg-form-unit')?.value || 'unidad';
+    const restaurantIds = [...document.querySelectorAll('#marg-form-prep-rests input[type=checkbox]:not([name^="prepsec-"]):checked')].map(c => c.value);
+    const restaurantSections = {};
+    document.querySelectorAll('#marg-form-prep-rests [id^="prepsec-"]').forEach(wrap => {
+      const rId = wrap.id.replace('prepsec-', '');
+      const secs = [...wrap.querySelectorAll('input:checked')].map(i => i.value);
+      if (secs.length) restaurantSections[rId] = secs;
+    });
+    const { agua: rendAgua, aire: rendAire } = margenGetRendimientos();
     try {
       let res, data;
       if (id) {
-        res  = await apiFetch(`/api/preparations/${id}`, { method: 'PUT', body: JSON.stringify({ name, ingredients }) });
+        res  = await apiFetch(`/api/preparations/${id}`, { method: 'PUT', body: JSON.stringify({ name, category, unit, ingredients, esGDD, restaurantIds, restaurantSections, rendimientoAgua: rendAgua, rendimientoAire: rendAire }) });
         data = await res.json();
         if (data.error) throw new Error(data.error);
         const idx2 = margenPreparations.findIndex(p => p.id === id);
-        if (idx2 >= 0) margenPreparations[idx2] = { ...margenPreparations[idx2], name, ingredients };
+        if (idx2 >= 0) margenPreparations[idx2] = { ...margenPreparations[idx2], name, category, unit, ingredients, esGDD, restaurantIds, restaurantSections, rendimientoAgua: rendAgua, rendimientoAire: rendAire };
       } else {
-        res  = await apiFetch('/api/preparations', { method: 'POST', body: JSON.stringify({ name, ingredients }) });
+        res  = await apiFetch('/api/preparations', { method: 'POST', body: JSON.stringify({ name, category, unit, ingredients, esGDD, restaurantIds, restaurantSections, rendimientoAgua: rendAgua, rendimientoAire: rendAire }) });
         data = await res.json();
         if (data.error) throw new Error(data.error);
-        margenPreparations.push({ id: data.id, name, ingredients });
+        margenPreparations.push({ id: data.id, name, category, unit, ingredients, esGDD, restaurantIds, restaurantSections, rendimientoAgua: rendAgua, rendimientoAire: rendAire });
       }
       margenCloseFormModal();
       renderMargenPreparaciones();
@@ -7014,17 +7196,18 @@ async function margenSaveForm() {
 
   if (!restId) { msg.style.color='#dc2626'; msg.textContent='Selecciona el local.'; return; }
 
+  const { agua: rendAgua, aire: rendAire } = margenGetRendimientos();
   try {
     if (id) {
       // Update existing
-      const res  = await apiFetch(`/api/recipes/${id}`, { method: 'PUT', body: JSON.stringify({ name, sellingPrice: price, ingredients }) });
+      const res  = await apiFetch(`/api/recipes/${id}`, { method: 'PUT', body: JSON.stringify({ name, sellingPrice: price, ingredients, rendimientoAgua: rendAgua, rendimientoAire: rendAire }) });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
     } else {
       // Create new via import endpoint (handles upsert by name+rest)
       const res  = await apiFetch('/api/recipes/import', {
         method: 'POST',
-        body: JSON.stringify({ recipes: [{ name, restaurantId: restId, restaurantName: restName, sellingPrice: price, ingredients }] })
+        body: JSON.stringify({ recipes: [{ name, restaurantId: restId, restaurantName: restName, sellingPrice: price, ingredients, rendimientoAgua: rendAgua, rendimientoAire: rendAire }] })
       });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
@@ -7199,9 +7382,72 @@ async function margenDeleteRecipe(id, name) {
           </div>
         </div>
         <div id="marg-form-ing-rows" style="display:flex;flex-direction:column;gap:10px"></div>
-        <div id="marg-form-total" style="margin-top:10px;padding:10px 14px;background:#f8f9fa;border-radius:8px;font-size:13px;color:#495057;border:1px solid #e9ecef">
+        <div id="marg-form-total" style="margin-top:10px;padding:12px 14px;background:#f8f9fa;border-radius:8px;font-size:13px;color:#495057;border:1px solid #e9ecef">
           Costo total: <strong>$0</strong>
         </div>
+      </div>
+
+      <!-- Rendimiento -->
+      <div style="margin-bottom:16px">
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;color:#212529;user-select:none">
+          <input type="checkbox" id="marg-rend-enabled" onchange="margenToggleRendimiento()" style="width:16px;height:16px;accent-color:#ff5023">
+          <span style="font-weight:600">Tiene rendimiento</span>
+        </label>
+        <div id="marg-rend-fields" style="display:none;margin-top:12px;background:#fff8f0;border:1px solid #fed7aa;border-radius:10px;padding:14px;display:none">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+            <!-- Agua -->
+            <div style="background:#fff;border:1px solid #e9ecef;border-radius:8px;padding:12px">
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:600;color:#0369a1;margin-bottom:8px">
+                <input type="checkbox" id="marg-rend-agua-chk" onchange="margenToggleRendimientoField('agua')" style="width:14px;height:14px;accent-color:#0369a1">
+                💧 Rendimiento de agua
+              </label>
+              <div id="marg-rend-agua-wrap" style="display:none">
+                <div style="font-size:11px;color:#6c757d;margin-bottom:4px">% de aumento de volumen</div>
+                <div style="display:flex;align-items:center;gap:6px">
+                  <input type="number" id="marg-rend-agua" min="0" max="500" step="0.1" placeholder="0"
+                    style="width:80px;padding:6px 8px;border:1px solid #dee2e6;border-radius:6px;font-size:13px;color:#212529"
+                    oninput="margenUpdateFormTotal()">
+                  <span style="font-size:13px;color:#495057">%</span>
+                </div>
+              </div>
+            </div>
+            <!-- Aire -->
+            <div style="background:#fff;border:1px solid #e9ecef;border-radius:8px;padding:12px">
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:600;color:#7c3aed;margin-bottom:8px">
+                <input type="checkbox" id="marg-rend-aire-chk" onchange="margenToggleRendimientoField('aire')" style="width:14px;height:14px;accent-color:#7c3aed">
+                💨 Rendimiento de aire
+              </label>
+              <div id="marg-rend-aire-wrap" style="display:none">
+                <div style="font-size:11px;color:#6c757d;margin-bottom:4px">% de overrun (volumen de aire)</div>
+                <div style="display:flex;align-items:center;gap:6px">
+                  <input type="number" id="marg-rend-aire" min="0" max="500" step="0.1" placeholder="0"
+                    style="width:80px;padding:6px 8px;border:1px solid #dee2e6;border-radius:6px;font-size:13px;color:#212529"
+                    oninput="margenUpdateFormTotal()">
+                  <span style="font-size:13px;color:#495057">%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="marg-form-prep-extras" style="display:none;margin-bottom:14px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+          <div>
+            <div class="field-label">Categoría</div>
+            <input id="marg-form-cat" class="inv-input" placeholder="Ej: Salsas, Masas...">
+          </div>
+          <div>
+            <div class="field-label">Unidad</div>
+            <select id="marg-form-unit" class="inv-input"></select>
+          </div>
+        </div>
+        <div class="field-label" style="margin-bottom:8px">Locales donde se usa</div>
+        <div id="marg-form-prep-rests" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px"></div>
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;color:#212529;padding:10px 14px;border:1px solid #dee2e6;border-radius:8px;width:fit-content">
+          <input type="checkbox" id="marg-form-gdd" style="width:16px;height:16px;accent-color:#ff5023">
+          Viene por Guía de Despacho (GDD)
+        </label>
       </div>
       <div id="marg-form-msg" style="font-size:13px;min-height:18px;margin-bottom:4px"></div>
       <div style="display:flex;gap:10px">
@@ -7244,6 +7490,76 @@ async function margenDeleteRecipe(id, name) {
   <div id="pdf-viewer-loading" style="display:none;flex:1;align-items:center;justify-content:center;color:#555;font-size:13px;position:absolute;inset:53px 0 0;background:rgba(0,0,0,.5);z-index:1">Cargando PDF…</div>
   <iframe id="pdf-viewer-frame" src="" style="flex:1;border:none;width:100%;background:#1a1a1a"></iframe>
 </div>
+
+<!-- Modal gestionar unidades -->
+<div id="modal-units" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:14px;padding:28px;width:380px;max-width:95vw;box-shadow:0 8px 40px rgba(0,0,0,.18)">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <h3 style="font-size:16px;font-weight:700;color:#212529;margin:0">Gestionar unidades</h3>
+      <button onclick="closeUnitsModal()" style="background:none;border:none;font-size:20px;color:#aaa;cursor:pointer;line-height:1">×</button>
+    </div>
+    <div id="units-list" style="margin-bottom:16px"></div>
+    <div style="display:flex;gap:8px">
+      <input id="units-new-label" placeholder="Nombre (ej: Tarro)" type="text"
+        style="flex:1;padding:8px 10px;border:1px solid #dee2e6;border-radius:8px;font-size:13px;color:#212529"
+        onkeydown="if(event.key==='Enter')unitsAgregar()">
+      <button onclick="unitsAgregar()" style="background:#ff5023;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer">Agregar</button>
+    </div>
+    <div id="units-msg" style="font-size:12px;min-height:16px;margin-top:6px"></div>
+  </div>
+</div>
+
+<script>
+function openUnitsModal() {
+  const el = document.getElementById('modal-units');
+  el.style.display = 'flex';
+  unitsRenderList();
+}
+function closeUnitsModal() {
+  document.getElementById('modal-units').style.display = 'none';
+}
+document.getElementById('modal-units').addEventListener('click', function(e) {
+  if (e.target === this) closeUnitsModal();
+});
+
+function unitsRenderList() {
+  const el = document.getElementById('units-list');
+  const all = allUnits();
+  const defaultVals = new Set(DEFAULT_UNITS.map(u => u.value));
+  el.innerHTML = all.map(u => `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;border-radius:7px;background:#f8f9fa;margin-bottom:6px">
+      <span style="font-size:13px;color:#212529">${u.label}</span>
+      ${!defaultVals.has(u.value) ? `<button onclick="unitsEliminar('${u.value}')" style="background:none;border:1px solid #fca5a5;color:#ef4444;border-radius:6px;width:26px;height:26px;font-size:12px;cursor:pointer">✕</button>` : '<span style="font-size:11px;color:#adb5bd">base</span>'}
+    </div>`).join('');
+}
+
+async function unitsAgregar() {
+  const msgEl = document.getElementById('units-msg');
+  const label = document.getElementById('units-new-label').value.trim();
+  if (!label) return;
+  const value = label.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'');
+  try {
+    const r = await apiFetch('/api/config/units', { method:'POST', body: JSON.stringify({ value, label }) });
+    const d = await r.json();
+    if (d.error) throw new Error(d.error);
+    customUnits = d.units || [];
+    document.getElementById('units-new-label').value = '';
+    unitsRenderList();
+    msgEl.style.color = '#22c55e'; msgEl.textContent = '✓ Agregado'; setTimeout(() => msgEl.textContent='', 2000);
+  } catch(e) { msgEl.style.color = '#ef4444'; msgEl.textContent = e.message; }
+}
+
+async function unitsEliminar(value) {
+  const msgEl = document.getElementById('units-msg');
+  try {
+    const r = await apiFetch(`/api/config/units/${value}`, { method:'DELETE' });
+    const d = await r.json();
+    if (d.error) throw new Error(d.error);
+    customUnits = d.units || [];
+    unitsRenderList();
+  } catch(e) { msgEl.style.color = '#ef4444'; msgEl.textContent = e.message; }
+}
+</script>
 
 <!-- jQuery (required by AdminLTE) -->
 <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
