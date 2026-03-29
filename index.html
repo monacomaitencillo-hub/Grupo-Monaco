@@ -6226,6 +6226,7 @@ let margenPreparations = [];
 let margenIngredients  = [];
 let margenFilterRest   = '';
 let margenCols         = 3;
+let margenView         = 'grid'; // 'grid' | 'list'
 
 async function initMargenesModule() {
   margenTabActive = 'recetas';
@@ -6361,9 +6362,12 @@ function renderMargenRecetas() {
           ${restaurants.map(r=>`<option value="${r.id}" ${margenFilterRest===r.id?'selected':''}>${r.name}</option>`).join('')}
         </select>
         <div style="display:flex;border:1px solid #dee2e6;border-radius:8px;overflow:hidden">
-          ${[3,4,6].map(n => `<button onclick="margenCols=${n};renderMargenRecetas()"
+          <button onclick="margenView='list';renderMargenRecetas()"
+            style="padding:6px 10px;font-size:13px;font-weight:600;border:none;border-right:1px solid #dee2e6;cursor:pointer;
+                   background:${margenView==='list'?'#212529':'#fff'};color:${margenView==='list'?'#fff':'#6c757d'}" title="Vista lista">☰</button>
+          ${[3,4,6].map(n => `<button onclick="margenView='grid';margenCols=${n};renderMargenRecetas()"
             style="padding:6px 12px;font-size:12px;font-weight:600;border:none;cursor:pointer;
-                   background:${margenCols===n?'#212529':'#fff'};color:${margenCols===n?'#fff':'#6c757d'}">${n}</button>`).join('')}
+                   background:${margenView==='grid'&&margenCols===n?'#212529':'#fff'};color:${margenView==='grid'&&margenCols===n?'#fff':'#6c757d'}">${n}</button>`).join('')}
         </div>
         <button class="btn-new" onclick="margenOpenFormModal(null)" style="padding:7px 14px;font-size:13px">+ Agregar producto</button>
         <label style="cursor:pointer;display:inline-flex;align-items:center">
@@ -6380,10 +6384,61 @@ function renderMargenRecetas() {
            <div style="font-size:15px;font-weight:600;margin-bottom:6px">Sin recetas aún</div>
            <div style="font-size:13px;color:#aaa">Subí un Excel con tus recetas para empezar, o descargá la plantilla.</div>
          </div>`
-      : `<div class="marg-grid marg-grid-${margenCols}">
-           ${filtered.map(r => margenCardHTML(r, margenCols)).join('')}
-         </div>`
+      : margenView === 'list'
+        ? margenListHTML(filtered)
+        : `<div class="marg-grid marg-grid-${margenCols}">
+             ${filtered.map(r => margenCardHTML(r, margenCols)).join('')}
+           </div>`
     }`;
+}
+
+function margenListHTML(recipes) {
+  const rows = recipes.map(r => {
+    let totalCost = 0;
+    (r.ingredients || []).forEach(item => { totalCost += calcItemCost(item); });
+    const selling    = r.sellingPrice || 0;
+    const sellingNet = selling / 1.19;
+    const margin     = selling > 0 ? ((sellingNet - totalCost) / sellingNet * 100) : null;
+    const mColor     = margin === null ? '#adb5bd' : margin >= 60 ? '#16a34a' : margin >= 40 ? '#ca8a04' : '#dc2626';
+    const ingCount   = (r.ingredients || []).filter(i => i.quantity > 0).length;
+    return `<tr style="border-bottom:1px solid #f1f3f4;cursor:pointer" onclick="margenOpenRecipe('${r.id}')"
+              onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background=''">
+      <td style="padding:10px 14px;font-size:13px;font-weight:600;color:#212529">${r.name}</td>
+      <td style="padding:10px 14px;font-size:12px;color:#6c757d">${r.restaurantName || '—'}</td>
+      <td style="padding:10px 14px;font-size:13px;color:#212529;text-align:right">${totalCost > 0 ? '$'+Math.round(totalCost).toLocaleString('es-CL') : '—'}</td>
+      <td style="padding:10px 14px;font-size:13px;color:#212529;text-align:right">${selling > 0 ? '$'+selling.toLocaleString('es-CL') : '—'}</td>
+      <td style="padding:10px 14px;text-align:center">
+        ${margin !== null
+          ? `<span style="background:${mColor}18;color:${mColor};border:1.5px solid ${mColor}44;border-radius:20px;padding:2px 10px;font-size:12px;font-weight:700">${margin.toFixed(1)}%</span>`
+          : '<span style="color:#adb5bd;font-size:13px">—</span>'}
+      </td>
+      <td style="padding:10px 14px;font-size:13px;color:#6c757d;text-align:center">${ingCount}</td>
+      <td style="padding:10px 14px;text-align:right" onclick="event.stopPropagation()">
+        <div style="display:flex;gap:6px;justify-content:flex-end">
+          <button onclick="margenOpenFormModal('${r.id}')"
+            style="background:#f1f3f4;border:none;border-radius:7px;width:28px;height:28px;cursor:pointer;color:#495057;font-size:13px;display:flex;align-items:center;justify-content:center">✎</button>
+          <button onclick="margenDeleteRecipe('${r.id}','${r.name.replace(/'/g,"\\'")}')"
+            style="background:#fff0f0;border:1px solid #fca5a5;border-radius:7px;width:28px;height:28px;cursor:pointer;color:#ef4444;font-size:13px;display:flex;align-items:center;justify-content:center">✕</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+  return `<div style="overflow-x:auto">
+    <table style="width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden;border:1px solid #e9ecef">
+      <thead>
+        <tr style="background:#f8f9fa;border-bottom:2px solid #e9ecef">
+          <th style="padding:10px 14px;text-align:left;font-size:11px;color:#6c757d;font-weight:600;text-transform:uppercase;letter-spacing:.4px">Receta</th>
+          <th style="padding:10px 14px;text-align:left;font-size:11px;color:#6c757d;font-weight:600;text-transform:uppercase;letter-spacing:.4px">Local</th>
+          <th style="padding:10px 14px;text-align:right;font-size:11px;color:#6c757d;font-weight:600;text-transform:uppercase;letter-spacing:.4px">Costo</th>
+          <th style="padding:10px 14px;text-align:right;font-size:11px;color:#6c757d;font-weight:600;text-transform:uppercase;letter-spacing:.4px">Venta</th>
+          <th style="padding:10px 14px;text-align:center;font-size:11px;color:#6c757d;font-weight:600;text-transform:uppercase;letter-spacing:.4px">Margen</th>
+          <th style="padding:10px 14px;text-align:center;font-size:11px;color:#6c757d;font-weight:600;text-transform:uppercase;letter-spacing:.4px">Ing.</th>
+          <th style="padding:10px 14px"></th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+  </div>`;
 }
 
 function margenCardHTML(r, cols) {
