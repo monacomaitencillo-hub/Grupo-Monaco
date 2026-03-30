@@ -7265,13 +7265,14 @@ function margenOpenPromoModal(id) {
   document.getElementById('marg-promo-name').value        = promo?.name || '';
   document.getElementById('marg-promo-price').value       = promo?.sellingPrice || '';
   document.getElementById('marg-promo-msg').textContent   = '';
+  document.getElementById('marg-promo-search').value      = '';
 
   const restSel = document.getElementById('marg-promo-rest');
   restSel.innerHTML = '<option value="">— Seleccionar local —</option>' +
     restaurants.map(r => `<option value="${r.id}"${promo?.restaurantId === r.id ? ' selected' : ''}>${r.name}</option>`).join('');
 
-  const selectedIds  = promo?.recipes || [];
-  const recipeList   = document.getElementById('marg-promo-recipes');
+  const selectedIds   = promo?.recipes || [];
+  const recipeList    = document.getElementById('marg-promo-recipes');
   const sortedRecipes = [...margenRecipes].sort((a, b) => a.name.localeCompare(b.name, 'es'));
   recipeList.innerHTML = sortedRecipes.length === 0
     ? '<div style="color:#888;font-size:13px;padding:8px 0">No hay recetas disponibles</div>'
@@ -7287,6 +7288,18 @@ function margenOpenPromoModal(id) {
   document.getElementById('marg-promo-modal').style.display = 'flex';
 }
 
+function margenPromoFilterRecipes(q) {
+  const qq = q.toLowerCase();
+  document.querySelectorAll('#marg-promo-recipes label').forEach(label => {
+    label.style.display = label.textContent.toLowerCase().includes(qq) ? '' : 'none';
+  });
+}
+
+function margenPromoRemoveRecipe(id) {
+  const cb = document.querySelector(`#marg-promo-recipes input[value="${id}"]`);
+  if (cb) { cb.checked = false; margenPromoUpdatePreview(); }
+}
+
 function margenPromoUpdatePreview() {
   const selectedIds = [...document.querySelectorAll('#marg-promo-recipes input[type=checkbox]:checked')].map(cb => cb.value);
   const recipes     = selectedIds.map(id => margenRecipes.find(r => r.id === id)).filter(Boolean);
@@ -7298,6 +7311,15 @@ function margenPromoUpdatePreview() {
   document.getElementById('marg-promo-preview').innerHTML =
     `Costo total: <strong>$${Math.round(totalCost).toLocaleString('es-CL')}</strong>` +
     (margin !== null ? `&nbsp;&nbsp;·&nbsp;&nbsp;Margen: <strong style="color:${mColor}">${Math.round(margin)}%</strong>` : '');
+  // Actualizar chips de seleccionadas
+  const chips = document.getElementById('marg-promo-chips');
+  if (!chips) return;
+  chips.innerHTML = recipes.map(r => `
+    <span style="display:inline-flex;align-items:center;gap:4px;background:#fff0eb;border:1px solid #ffcdb8;border-radius:20px;padding:3px 8px 3px 10px;font-size:12px;color:#cc3a0d;font-weight:500">
+      ${r.name}
+      <button onclick="margenPromoRemoveRecipe('${r.id}')"
+        style="background:none;border:none;cursor:pointer;color:#cc3a0d;font-size:14px;line-height:1;padding:0;margin:0;display:flex;align-items:center">×</button>
+    </span>`).join('');
 }
 
 async function margenSavePromo() {
@@ -7820,7 +7842,11 @@ async function margenDeleteRecipe(id, name) {
       </div>
       <div style="margin-bottom:16px">
         <div class="field-label" style="margin-bottom:8px">Recetas incluidas</div>
-        <div id="marg-promo-recipes" style="max-height:240px;overflow-y:auto;border:1px solid #dee2e6;border-radius:8px;padding:4px 12px"></div>
+        <div id="marg-promo-chips" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px"></div>
+        <input id="marg-promo-search" class="inv-input" placeholder="Buscar receta..."
+          oninput="clearTimeout(this._t);this._t=setTimeout(()=>margenPromoFilterRecipes(this.value),200)"
+          style="margin-bottom:8px">
+        <div id="marg-promo-recipes" style="max-height:200px;overflow-y:auto;border:1px solid #dee2e6;border-radius:8px;padding:4px 12px"></div>
       </div>
       <div id="marg-promo-preview" style="padding:12px 14px;background:#f8f9fa;border-radius:8px;font-size:13px;color:#495057;border:1px solid #e9ecef;margin-bottom:8px">
         Costo total: <strong>$0</strong>
