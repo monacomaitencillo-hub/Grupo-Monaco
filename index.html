@@ -7309,10 +7309,10 @@ function margenPromoUpdatePreview() {
   const sellingNet  = selling > 0 ? selling / 1.19 : 0;
   const margin      = sellingNet > 0 ? ((sellingNet - totalCost) / sellingNet * 100) : null;
   const mColor      = margin === null ? '#888' : margin >= 60 ? '#16a34a' : margin >= 40 ? '#d97706' : '#dc2626';
-  const sumPrecioVenta = recipes.reduce((s, r) => s + (r.sellingPrice || 0), 0);
+  const sumPrecioVenta = recipes.reduce((s, r) => s + (Number(r.sellingPrice) || 0), 0);
   document.getElementById('marg-promo-preview').innerHTML =
     `Costo total: <strong>$${Math.round(totalCost).toLocaleString('es-CL')}</strong>` +
-    (sumPrecioVenta > 0 ? `&nbsp;&nbsp;·&nbsp;&nbsp;Precio regular: <strong>$${Math.round(sumPrecioVenta).toLocaleString('es-CL')}</strong>` : '') +
+    (recipes.length > 0 ? `&nbsp;&nbsp;·&nbsp;&nbsp;Precio regular (c/IVA): <strong>$${Math.round(sumPrecioVenta).toLocaleString('es-CL')}</strong>` : '') +
     (margin !== null ? `&nbsp;&nbsp;·&nbsp;&nbsp;Margen: <strong style="color:${mColor}">${Math.round(margin)}%</strong>` : '');
   // Actualizar chips de seleccionadas
   const chips = document.getElementById('marg-promo-chips');
