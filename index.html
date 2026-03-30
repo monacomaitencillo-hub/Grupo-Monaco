@@ -6456,16 +6456,18 @@ function margenListHTML(recipes) {
   const rows = recipes.map(r => {
     let totalCost = 0;
     (r.ingredients || []).forEach(item => { totalCost += calcItemCost(item); });
+    const porciones    = r.porciones > 1 ? r.porciones : 1;
+    const costoPorcion = porciones > 1 ? totalCost / porciones : totalCost;
     const selling    = r.sellingPrice || 0;
     const sellingNet = selling / 1.19;
-    const margin     = selling > 0 ? ((sellingNet - totalCost) / sellingNet * 100) : null;
+    const margin     = selling > 0 ? ((sellingNet - costoPorcion) / sellingNet * 100) : null;
     const mColor     = margin === null ? '#adb5bd' : margin >= 60 ? '#16a34a' : margin >= 40 ? '#ca8a04' : '#dc2626';
     const ingCount   = (r.ingredients || []).filter(i => i.quantity > 0).length;
     return `<tr style="border-bottom:1px solid #f1f3f4;cursor:pointer" onclick="margenOpenRecipe('${r.id}')"
               onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background=''">
       <td style="padding:10px 14px;font-size:13px;font-weight:600;color:#212529">${r.name}</td>
       <td style="padding:10px 14px;font-size:12px;color:#6c757d">${r.restaurantName || '—'}</td>
-      <td style="padding:10px 14px;font-size:13px;color:#212529;text-align:right">${totalCost > 0 ? '$'+Math.round(totalCost).toLocaleString('es-CL') : '—'}</td>
+      <td style="padding:10px 14px;font-size:13px;color:#212529;text-align:right">${costoPorcion > 0 ? '$'+Math.round(costoPorcion).toLocaleString('es-CL')+(porciones > 1 ? '/p' : '') : '—'}</td>
       <td style="padding:10px 14px;font-size:13px;color:#212529;text-align:right">${selling > 0 ? '$'+selling.toLocaleString('es-CL') : '—'}</td>
       <td style="padding:10px 14px;text-align:center">
         ${margin !== null
@@ -6789,10 +6791,12 @@ function margenExportarExcel() {
       const prod = margenIngredients.find(p => p.id === item.productId || p.name === item.name);
       totalCost += (prod?.costPerUnit || 0) * (item.quantity || 0);
     });
+    const porcXls    = r.porciones > 1 ? r.porciones : 1;
+    const costoXls   = porcXls > 1 ? totalCost / porcXls : totalCost;
     const selling    = r.sellingPrice || 0;
     const sellingNet = selling / 1.19;
-    const marginPct  = selling > 0 ? ((sellingNet - totalCost) / sellingNet * 100).toFixed(1) : '';
-    return [r.name, r.restaurantName||'', selling||'', totalCost > 0 ? Math.round(totalCost) : '', marginPct,
+    const marginPct  = selling > 0 ? ((sellingNet - costoXls) / sellingNet * 100).toFixed(1) : '';
+    return [r.name, r.restaurantName||'', selling||'', costoXls > 0 ? Math.round(costoXls) : '', marginPct,
             ...ingNames.map(n => qtyMap[n] || 0)];
   });
 
