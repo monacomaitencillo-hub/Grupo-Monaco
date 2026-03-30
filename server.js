@@ -915,7 +915,8 @@ app.post('/api/inv/products/:id/prices', requireAuth, async (req, res) => {
       const costoBotella = (netoConDto + ila) / cantidad + flete;
       costoUnitario      = costoBotella / ccBotella;
     } else {
-      costoUnitario = netoConDto / cantidad;
+      // Fórmula normal: neto c/dto / cantidad + flete por unidad
+      costoUnitario = netoConDto / cantidad + flete;
     }
 
     entry = { ...entry,
