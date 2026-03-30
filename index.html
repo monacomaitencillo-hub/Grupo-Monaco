@@ -6350,11 +6350,70 @@ function calcItemCost(item) {
   return (prod?.costPerUnit || 0) * (item.quantity || 0);
 }
 
+function margenUpdateViewBtns() {
+  ['list',3,4,6].forEach(v => {
+    const btn = document.getElementById('marg-view-' + v);
+    if (!btn) return;
+    const active = v === 'list' ? margenView === 'list' : (margenView === 'grid' && margenCols === v);
+    btn.style.background = active ? '#212529' : '#fff';
+    btn.style.color      = active ? '#fff' : '#6c757d';
+  });
+}
+
 function renderMargenRecetas() {
-  const el = document.getElementById('marg-recetas');
+  // Toolbar: se construye una sola vez
+  const toolbar = document.getElementById('marg-recetas-toolbar');
+  if (toolbar && !toolbar.dataset.built) {
+    toolbar.dataset.built = '1';
+    toolbar.innerHTML = `
+      <h2 style="margin:0">Recetas</h2>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-left:auto">
+        <div style="display:flex;align-items:center;border:1px solid #dee2e6;border-radius:8px;overflow:hidden;background:#fff">
+          <span style="padding:0 10px;color:#adb5bd;font-size:13px">&#128269;</span>
+          <input type="text" id="marg-search-input" placeholder="Buscar receta..."
+            oninput="margenFilterSearch=this.value;renderMargenRecetasContent()"
+            style="border:none;outline:none;padding:6px 10px 6px 0;font-size:13px;width:160px;color:#212529">
+        </div>
+        <select id="marg-filter-rest" class="prod-filter-sel" onchange="margenFilterRest=this.value;renderMargenRecetasContent()">
+          <option value="">Todos los locales</option>
+          ${restaurants.map(r => '<option value="' + r.id + '">' + r.name + '</option>').join('')}
+        </select>
+        <select id="marg-filter-margen" class="prod-filter-sel" onchange="margenFilterMargen=this.value;renderMargenRecetasContent()">
+          <option value="">Todos los márgenes</option>
+          <option value="sin_precio">Sin precio</option>
+          <option value="bajo">Bajo (&lt;40%)</option>
+          <option value="normal">Normal (40-60%)</option>
+          <option value="bueno">Bueno (&gt;60%)</option>
+        </select>
+        <div style="display:flex;border:1px solid #dee2e6;border-radius:8px;overflow:hidden">
+          <button id="marg-view-list" onclick="margenView='list';margenUpdateViewBtns();renderMargenRecetasContent()"
+            style="padding:6px 10px;font-size:13px;font-weight:600;border:none;border-right:1px solid #dee2e6;cursor:pointer;background:#fff;color:#6c757d" title="Vista lista">&#9776;</button>
+          <button id="marg-view-3" onclick="margenView='grid';margenCols=3;margenUpdateViewBtns();renderMargenRecetasContent()"
+            style="padding:6px 12px;font-size:12px;font-weight:600;border:none;cursor:pointer;background:#212529;color:#fff">3</button>
+          <button id="marg-view-4" onclick="margenView='grid';margenCols=4;margenUpdateViewBtns();renderMargenRecetasContent()"
+            style="padding:6px 12px;font-size:12px;font-weight:600;border:none;cursor:pointer;background:#fff;color:#6c757d">4</button>
+          <button id="marg-view-6" onclick="margenView='grid';margenCols=6;margenUpdateViewBtns();renderMargenRecetasContent()"
+            style="padding:6px 12px;font-size:12px;font-weight:600;border:none;cursor:pointer;background:#fff;color:#6c757d">6</button>
+        </div>
+        <button class="btn-new" onclick="margenOpenFormModal(null)" style="padding:7px 14px;font-size:13px">+ Agregar producto</button>
+        <label style="cursor:pointer;display:inline-flex;align-items:center">
+          <input type="file" accept=".xlsx,.xls" style="display:none" onchange="margenImportExcel(this)">
+          <span class="btn-edit" style="cursor:pointer;padding:7px 14px;font-size:13px" onclick="this.closest('label').querySelector('input').click()">&#8679; Subir Excel</span>
+        </label>
+        <button class="btn-edit" onclick="margenDescargarPlantilla()" style="padding:7px 14px;font-size:13px">&#8681; Plantilla</button>
+        <button class="btn-edit" onclick="margenExportarExcel()"      style="padding:7px 14px;font-size:13px">&#8681; Exportar</button>
+      </div>`;
+  }
+  renderMargenRecetasContent();
+}
+
+function renderMargenRecetasContent() {
+  const content = document.getElementById('marg-recetas-content');
+  if (!content) return;
+
   let filtered = margenRecipes;
   if (margenFilterRest)   filtered = filtered.filter(r => r.restaurantId === margenFilterRest);
-  if (margenFilterSearch) filtered = filtered.filter(r => r.name.toLowerCase().includes(margenFilterSearch.toLowerCase()));
+  if (margenFilterSearch) filtered = filtered.filter(r => (r.name || '').toLowerCase().includes(margenFilterSearch.toLowerCase()));
   if (margenFilterMargen) {
     filtered = filtered.filter(r => {
       let totalCost = 0;
@@ -6370,57 +6429,21 @@ function renderMargenRecetas() {
     });
   }
 
-  el.innerHTML = `
-    <div class="inv-toolbar" style="flex-wrap:wrap;gap:10px">
-      <h2 style="margin:0">Recetas</h2>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-left:auto">
-        <div style="display:flex;align-items:center;border:1px solid #dee2e6;border-radius:8px;overflow:hidden;background:#fff">
-          <span style="padding:0 10px;color:#adb5bd;font-size:13px">🔍</span>
-          <input type="text" value="${margenFilterSearch}" placeholder="Buscar receta..."
-            oninput="margenFilterSearch=this.value;renderMargenRecetas()"
-            style="border:none;outline:none;padding:6px 10px 6px 0;font-size:13px;width:160px;color:#212529">
-          ${margenFilterSearch ? `<button onclick="margenFilterSearch='';renderMargenRecetas()" style="border:none;background:none;padding:0 8px;color:#aaa;cursor:pointer;font-size:14px">✕</button>` : ''}
-        </div>
-        <select class="prod-filter-sel" onchange="margenFilterRest=this.value;renderMargenRecetas()">
-          <option value="">Todos los locales</option>
-          ${restaurants.map(r=>`<option value="${r.id}" ${margenFilterRest===r.id?'selected':''}>${r.name}</option>`).join('')}
-        </select>
-        <select class="prod-filter-sel" onchange="margenFilterMargen=this.value;renderMargenRecetas()">
-          <option value="">Todos los márgenes</option>
-          <option value="sin_precio" ${margenFilterMargen==='sin_precio'?'selected':''}>Sin precio</option>
-          <option value="bajo"       ${margenFilterMargen==='bajo'      ?'selected':''}>Bajo (&lt;40%)</option>
-          <option value="normal"     ${margenFilterMargen==='normal'    ?'selected':''}>Normal (40–60%)</option>
-          <option value="bueno"      ${margenFilterMargen==='bueno'     ?'selected':''}>Bueno (&gt;60%)</option>
-        </select>
-        <div style="display:flex;border:1px solid #dee2e6;border-radius:8px;overflow:hidden">
-          <button onclick="margenView='list';renderMargenRecetas()"
-            style="padding:6px 10px;font-size:13px;font-weight:600;border:none;border-right:1px solid #dee2e6;cursor:pointer;
-                   background:${margenView==='list'?'#212529':'#fff'};color:${margenView==='list'?'#fff':'#6c757d'}" title="Vista lista">☰</button>
-          ${[3,4,6].map(n => `<button onclick="margenView='grid';margenCols=${n};renderMargenRecetas()"
-            style="padding:6px 12px;font-size:12px;font-weight:600;border:none;cursor:pointer;
-                   background:${margenView==='grid'&&margenCols===n?'#212529':'#fff'};color:${margenView==='grid'&&margenCols===n?'#fff':'#6c757d'}">${n}</button>`).join('')}
-        </div>
-        <button class="btn-new" onclick="margenOpenFormModal(null)" style="padding:7px 14px;font-size:13px">+ Agregar producto</button>
-        <label style="cursor:pointer;display:inline-flex;align-items:center">
-          <input type="file" accept=".xlsx,.xls" style="display:none" onchange="margenImportExcel(this)">
-          <span class="btn-edit" style="cursor:pointer;padding:7px 14px;font-size:13px" onclick="this.closest('label').querySelector('input').click()">⬆ Subir Excel</span>
-        </label>
-        <button class="btn-edit" onclick="margenDescargarPlantilla()" style="padding:7px 14px;font-size:13px">⬇ Plantilla</button>
-        <button class="btn-edit" onclick="margenExportarExcel()"      style="padding:7px 14px;font-size:13px">⬇ Exportar</button>
-      </div>
-    </div>
-    ${filtered.length === 0
-      ? `<div style="text-align:center;padding:60px 20px;color:#888">
-           <div style="font-size:40px;margin-bottom:12px">📐</div>
-           <div style="font-size:15px;font-weight:600;margin-bottom:6px">Sin recetas aún</div>
-           <div style="font-size:13px;color:#aaa">Subí un Excel con tus recetas para empezar, o descargá la plantilla.</div>
-         </div>`
-      : margenView === 'list'
-        ? margenListHTML(filtered)
-        : `<div class="marg-grid marg-grid-${margenCols}">
-             ${filtered.map(r => margenCardHTML(r, margenCols)).join('')}
-           </div>`
-    }`;
+  if (filtered.length === 0) {
+    content.innerHTML = `<div style="text-align:center;padding:60px 20px;color:#888">
+      <div style="font-size:40px;margin-bottom:12px">&#128208;</div>
+      <div style="font-size:15px;font-weight:600;margin-bottom:6px">Sin recetas</div>
+      <div style="font-size:13px;color:#aaa">${margenRecipes.length === 0 ? 'Subí un Excel con tus recetas para empezar, o descargá la plantilla.' : 'No hay recetas que coincidan con los filtros.'}</div>
+    </div>`;
+    return;
+  }
+
+  if (margenView === 'list') {
+    content.innerHTML = margenListHTML(filtered);
+  } else {
+    content.innerHTML = '<div class="marg-grid marg-grid-' + margenCols + '">' +
+      filtered.map(r => margenCardHTML(r, margenCols)).join('') + '</div>';
+  }
 }
 
 function margenListHTML(recipes) {
@@ -7437,7 +7460,12 @@ async function margenDeleteRecipe(id, name) {
     </div>
   </div>
   <div class="inv-main" style="max-width:none">
-    <div id="marg-recetas"></div>
+    <div id="marg-recetas">
+      <!-- toolbar estático -->
+      <div class="inv-toolbar" style="flex-wrap:wrap;gap:10px;margin-bottom:0" id="marg-recetas-toolbar" style="display:none"></div>
+      <!-- contenido dinámico -->
+      <div id="marg-recetas-content"></div>
+    </div>
     <div id="marg-preparaciones" style="display:none"></div>
     <div id="marg-costos"        style="display:none"></div>
   </div>
