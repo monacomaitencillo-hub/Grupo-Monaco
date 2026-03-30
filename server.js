@@ -839,14 +839,15 @@ app.post('/api/inv/products', requireAuth, async (req, res) => {
 
 app.put('/api/inv/products/:id', requireAuth, async (req, res) => {
   if (!await isEditor(req.uid)) return res.status(403).json({ error: 'Sin permisos' });
-  const { name, category, unit, tipoImpuesto, supplierIds, restaurantIds, restaurantSections, esGDD, costPerUnit } = req.body;
+  const { name, category, unit, tipoImpuesto, supplierIds, restaurantIds, restaurantSections, esGDD, costPerUnit, capacidadCC } = req.body;
   await db.collection('products').doc(req.params.id).update({
     name, category: category||'', unit: unit||'unidad',
     tipoImpuesto: tipoImpuesto || 'alimento',
     supplierIds: supplierIds||[], restaurantIds: restaurantIds||[],
     restaurantSections: restaurantSections||{},
     esGDD: esGDD === true,
-    costPerUnit: costPerUnit != null ? Number(costPerUnit) : 0
+    costPerUnit: costPerUnit != null ? Number(costPerUnit) : 0,
+    capacidadCC: capacidadCC != null ? Math.max(0, Number(capacidadCC) || 0) : 0
   });
   res.json({ ok: true });
 });
@@ -877,10 +878,19 @@ const TAX_DIVISORS = {
   beb_sin_azucar:  1.29,   // IVA 19% + IABA 10%
   sin_impuesto:    1.00
 };
+// Tasas de ILA/IABA (sin IVA) — para cálculo de tragos por cc
+const ILA_RATES = {
+  alimento:        0,
+  cerveza:         0.205,  // 20.5%
+  vino_licor:      0.315,  // 31.5%
+  beb_azucarada:   0.18,   // 18%
+  beb_sin_azucar:  0.10,   // 10%
+  sin_impuesto:    0
+};
 
 app.post('/api/inv/products/:id/prices', requireAuth, async (req, res) => {
   if (!await isEditor(req.uid)) return res.status(403).json({ error: 'Sin permisos' });
-  const { mes, precio, precioBruto, precioNeto, descuento, cantidadCompra, unidadCompra, tipoImpuesto } = req.body;
+  const { mes, precio, precioBruto, precioNeto, descuento, cantidadCompra, unidadCompra, tipoImpuesto, fleteNeto, capacidadCC } = req.body;
   if (!mes) return res.status(400).json({ error: 'Faltan campos' });
 
   // Si viene el flujo detallado, calcular costo unitario
@@ -895,7 +905,18 @@ app.post('/api/inv/products/:id/prices', requireAuth, async (req, res) => {
     const neto             = Number(precioNeto);
     const netoConDto       = neto * (1 - dto / 100);
     const brutoRef         = neto * divisor;
-    costoUnitario          = netoConDto / cantidad;
+    const ccBotella        = Math.max(0, Number(capacidadCC) || 0);
+    const flete            = Math.max(0, Number(fleteNeto) || 0);
+
+    if (ccBotella > 0) {
+      // Fórmula tragos: (netoConDto + ILA) / cantidad + fleteNeto → dividir por cc
+      const ilaRate      = ILA_RATES[tipoImpuesto] || 0;
+      const ila          = netoConDto * ilaRate;
+      const costoBotella = (netoConDto + ila) / cantidad + flete;
+      costoUnitario      = costoBotella / ccBotella;
+    } else {
+      costoUnitario = netoConDto / cantidad;
+    }
 
     entry = { ...entry,
       precioNeto: Math.round(neto * 100) / 100,
@@ -904,6 +925,7 @@ app.post('/api/inv/products/:id/prices', requireAuth, async (req, res) => {
       cantidadCompra: cantidad, unidadCompra: unidadCompra || '',
       tipoImpuesto: tipoImpuesto || 'alimento',
       precioNetoConDto: Math.round(netoConDto * 100) / 100,
+      ...(ccBotella > 0 ? { fleteNeto: flete, capacidadCC: ccBotella } : {}),
       precio: Math.round(costoUnitario * 100) / 100
     };
   } else if (precioBruto != null) {

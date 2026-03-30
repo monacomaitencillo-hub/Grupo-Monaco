@@ -3382,7 +3382,7 @@ function openModalProducto(id) {
         </div>
       </div>
 
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px">
         <div>
           <div class="field-label">Unidad</div>
           <select id="mprod-unit" class="inv-input">
@@ -3399,6 +3399,12 @@ function openModalProducto(id) {
             <option value="beb_sin_azucar" ${p?.tipoImpuesto==='beb_sin_azucar'?'selected':''}>Bebida sin azúcar (IVA+IABA 29%)</option>
             <option value="sin_impuesto"   ${p?.tipoImpuesto==='sin_impuesto'?'selected':''}>Sin impuesto (0%)</option>
           </select>
+        </div>
+        <div>
+          <div class="field-label">Capacidad botella (cc)</div>
+          <input type="number" id="mprod-cc" class="inv-input" min="0" step="1" placeholder="Ej: 750"
+            value="${p?.capacidadCC > 0 ? p.capacidadCC : ''}"
+            title="Solo para tragos. Cantidad de cc por botella. Activa el cálculo de costo por cc.">
         </div>
       </div>
 
@@ -3451,7 +3457,7 @@ function openModalProducto(id) {
               </div>
             </div>
           </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:14px">
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr ${p?.capacidadCC > 0 ? '1fr' : ''};gap:12px;margin-bottom:14px">
             <div>
               <div style="font-size:11px;color:#6c757d;font-weight:600;text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px">Descuento (%)</div>
               <input type="number" id="pp-dto" placeholder="0" min="0" max="100" step="0.1" value="0"
@@ -3469,21 +3475,35 @@ function openModalProducto(id) {
               <input type="text" id="pp-unidad-compra" placeholder="Ej: caja x 6"
                 style="width:100%;padding:8px 10px;border:1px solid #dee2e6;border-radius:8px;font-size:13px;color:#212529;background:#fff;box-sizing:border-box">
             </div>
+            ${p?.capacidadCC > 0 ? `<div>
+              <div style="font-size:11px;color:#7c3aed;font-weight:600;text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px">Flete neto ($)</div>
+              <input type="number" id="pp-flete" placeholder="0" min="0" step="1" value="0"
+                style="width:100%;padding:8px 10px;border:1px solid #ddd6fe;border-radius:8px;font-size:13px;color:#212529;background:#faf5ff;box-sizing:border-box"
+                oninput="ppCalcPreview()">
+            </div>` : ''}
           </div>
 
           <!-- Preview calculado -->
           <div id="pp-preview" style="background:#fff;border:1px solid #e9ecef;border-radius:8px;padding:12px;display:none">
-            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center">
+            <div id="pp-prev-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center">
               <div>
                 <div style="font-size:10px;color:#adb5bd;text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px">Neto c/dto</div>
                 <div id="pp-prev-neto" style="font-size:14px;font-weight:600;color:#495057">—</div>
+              </div>
+              <div id="pp-prev-ila-col" style="display:none">
+                <div style="font-size:10px;color:#7c3aed;text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px">ILA</div>
+                <div id="pp-prev-ila" style="font-size:14px;font-weight:600;color:#7c3aed">—</div>
+              </div>
+              <div id="pp-prev-botella-col" style="display:none">
+                <div style="font-size:10px;color:#adb5bd;text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px">Costo/botella</div>
+                <div id="pp-prev-botella" style="font-size:14px;font-weight:600;color:#495057">—</div>
               </div>
               <div>
                 <div style="font-size:10px;color:#adb5bd;text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px">Bruto ref.</div>
                 <div id="pp-prev-dto" style="font-size:14px;font-weight:600;color:#495057">—</div>
               </div>
               <div style="background:#f0fdf4;border-radius:6px;padding:4px 0">
-                <div style="font-size:10px;color:#16a34a;text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px;font-weight:600">Costo unitario</div>
+                <div style="font-size:10px;color:#16a34a;text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px;font-weight:600" id="pp-prev-unit-label">Costo unitario</div>
                 <div id="pp-prev-unit" style="font-size:16px;font-weight:700;color:#16a34a">—</div>
               </div>
             </div>
@@ -3499,6 +3519,7 @@ function openModalProducto(id) {
   // cargar historial de precios si es edición
   if (p?.id) {
     priceHistoryProductId = p.id;
+    priceHistoryCapacidadCC = Number(p.capacidadCC) || 0;
     priceHistoryData = [];
     apiFetch(`/api/inv/products/${p.id}/prices`)
       .then(r => r.json())
@@ -3507,30 +3528,53 @@ function openModalProducto(id) {
   }
 }
 
-const PP_DIVISORS = { alimento:1.19, cerveza:1.395, vino_licor:1.505, beb_azucarada:1.37, beb_sin_azucar:1.29, sin_impuesto:1.00 };
+const PP_DIVISORS  = { alimento:1.19, cerveza:1.395, vino_licor:1.505, beb_azucarada:1.37, beb_sin_azucar:1.29, sin_impuesto:1.00 };
+const PP_ILA_RATES = { alimento:0, cerveza:0.205, vino_licor:0.315, beb_azucarada:0.18, beb_sin_azucar:0.10, sin_impuesto:0 };
 
 function ppGetTipoImpuesto() {
   return document.getElementById('mprod-impuesto')?.value || 'alimento';
 }
 
 function ppCalcPreview() {
-  const neto     = parseFloat(document.getElementById('pp-neto')?.value) || 0;
-  const dto      = parseFloat(document.getElementById('pp-dto')?.value)   || 0;
-  const cantidad = parseFloat(document.getElementById('pp-cantidad')?.value) || 1;
+  const neto     = parseFloat(document.getElementById('pp-neto')?.value)     || 0;
+  const dto      = parseFloat(document.getElementById('pp-dto')?.value)       || 0;
+  const cantidad = parseFloat(document.getElementById('pp-cantidad')?.value)  || 1;
+  const flete    = parseFloat(document.getElementById('pp-flete')?.value)     || 0;
   const preview  = document.getElementById('pp-preview');
   if (!preview) return;
   if (!neto) { preview.style.display = 'none'; return; }
 
-  // Usuario ingresa neto → descuento sobre neto → costo unitario
-  const divisor     = PP_DIVISORS[ppGetTipoImpuesto()] || 1.19;
-  const netoConDto  = neto * (1 - dto / 100);                 // neto después de descuento
-  const bruto       = neto * divisor;                         // bruto referencial (sin dto)
-  const unitario    = netoConDto / cantidad;
+  const tipo       = ppGetTipoImpuesto();
+  const divisor    = PP_DIVISORS[tipo] || 1.19;
+  const ilaRate    = PP_ILA_RATES[tipo] || 0;
+  const netoConDto = neto * (1 - dto / 100);
+  const bruto      = neto * divisor;
+  const esTrago    = priceHistoryCapacidadCC > 0;
+
+  let unitario;
+  if (esTrago) {
+    const ila          = netoConDto * ilaRate;
+    const costoBotella = (netoConDto + ila) / cantidad + flete;
+    unitario           = costoBotella / priceHistoryCapacidadCC;
+    // Mostrar columnas extra
+    document.getElementById('pp-prev-ila-col').style.display     = '';
+    document.getElementById('pp-prev-botella-col').style.display = '';
+    document.getElementById('pp-prev-ila').textContent     = '$' + Math.round(ila).toLocaleString('es-CL');
+    document.getElementById('pp-prev-botella').textContent = '$' + Math.round(costoBotella).toLocaleString('es-CL');
+    document.getElementById('pp-prev-unit-label').textContent = 'Costo/cc';
+    document.getElementById('pp-prev-grid').style.gridTemplateColumns = 'repeat(4,1fr)';
+  } else {
+    unitario = netoConDto / cantidad;
+    document.getElementById('pp-prev-ila-col').style.display     = 'none';
+    document.getElementById('pp-prev-botella-col').style.display = 'none';
+    document.getElementById('pp-prev-unit-label').textContent = 'Costo unitario';
+    document.getElementById('pp-prev-grid').style.gridTemplateColumns = 'repeat(3,1fr)';
+  }
 
   document.getElementById('pp-prev-neto').textContent = '$' + Math.round(netoConDto).toLocaleString('es-CL');
   document.getElementById('pp-prev-dto').textContent  = '$' + Math.round(bruto).toLocaleString('es-CL');
   document.getElementById('pp-prev-unit').textContent = unitario > 0
-    ? '$' + (Math.round(unitario * 100) / 100).toLocaleString('es-CL', {minimumFractionDigits:0,maximumFractionDigits:2})
+    ? '$' + (Math.round(unitario * 1000) / 1000).toLocaleString('es-CL', {minimumFractionDigits:0,maximumFractionDigits:3})
     : '—';
   preview.style.display = '';
 }
@@ -3567,6 +3611,8 @@ function ppRenderList() {
             <span>Neto: <b>$${Number(p.precioNeto||p.precio||0).toLocaleString('es-CL')}</b></span>
             ${p.descuento ? `<span>Dto: <b>${p.descuento}%</b></span>` : ''}
             ${p.cantidadCompra && p.cantidadCompra !== 1 ? `<span>Cant: <b>${p.cantidadCompra}</b>${p.unidadCompra?' ('+p.unidadCompra+')':''}</span>` : (p.unidadCompra?`<span>${p.unidadCompra}</span>`:'')}
+            ${p.fleteNeto > 0 ? `<span style="color:#7c3aed">Flete: <b>$${Number(p.fleteNeto).toLocaleString('es-CL')}</b></span>` : ''}
+            ${p.capacidadCC > 0 ? `<span style="color:#7c3aed">${p.capacidadCC}cc</span>` : ''}
             ${tipoLabel ? `<span style="background:#f1f5f9;border-radius:4px;padding:0 5px">${tipoLabel}</span>` : ''}
           </div>` : ''}
         </div>
@@ -3598,7 +3644,7 @@ function ppRenderList() {
             </select>
           </div>
         </div>
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:10px">
+        <div style="display:grid;grid-template-columns:repeat(${priceHistoryCapacidadCC > 0 ? 4 : 3},1fr);gap:10px;margin-bottom:10px">
           <div>
             <div style="font-size:11px;color:#6c757d;font-weight:600;text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">Descuento (%)</div>
             <input type="number" id="ppe-dto-${p.id}" value="${p.descuento||0}" min="0" max="100" step="0.1"
@@ -3616,6 +3662,12 @@ function ppRenderList() {
             <input type="text" id="ppe-desc-${p.id}" value="${p.unidadCompra||''}" placeholder="Ej: caja x 6"
               style="width:100%;padding:7px 8px;border:1px solid #dee2e6;border-radius:7px;font-size:13px;color:#212529;background:#fff;box-sizing:border-box">
           </div>
+          ${priceHistoryCapacidadCC > 0 ? `<div>
+            <div style="font-size:11px;color:#7c3aed;font-weight:600;text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">Flete neto ($)</div>
+            <input type="number" id="ppe-flete-${p.id}" value="${p.fleteNeto||0}" min="0" step="1"
+              style="width:100%;padding:7px 8px;border:1px solid #ddd6fe;border-radius:7px;font-size:13px;color:#212529;background:#faf5ff;box-sizing:border-box"
+              oninput="ppCalcEditPreview('${p.id}')">
+          </div>` : ''}
         </div>
         <!-- Preview edición -->
         <div id="ppe-preview-${p.id}" style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:7px;padding:8px 12px;margin-bottom:10px;font-size:12px;color:#15803d;display:none">
@@ -3642,14 +3694,26 @@ function ppToggleEdit(id) {
 }
 
 function ppCalcEditPreview(id) {
-  const neto     = parseFloat(document.getElementById(`ppe-neto-${id}`)?.value) || 0;
-  const dto      = parseFloat(document.getElementById(`ppe-dto-${id}`)?.value)   || 0;
-  const cantidad = parseFloat(document.getElementById(`ppe-cant-${id}`)?.value)  || 1;
+  const neto     = parseFloat(document.getElementById(`ppe-neto-${id}`)?.value)  || 0;
+  const dto      = parseFloat(document.getElementById(`ppe-dto-${id}`)?.value)    || 0;
+  const cantidad = parseFloat(document.getElementById(`ppe-cant-${id}`)?.value)   || 1;
+  const flete    = parseFloat(document.getElementById(`ppe-flete-${id}`)?.value)  || 0;
+  const tipo     = document.getElementById(`ppe-tipo-${id}`)?.value || 'alimento';
   const prevEl   = document.getElementById(`ppe-preview-${id}`);
   const valEl    = document.getElementById(`ppe-prev-val-${id}`);
   if (!prevEl || !neto) { if (prevEl) prevEl.style.display = 'none'; return; }
-  const unitario = neto * (1 - dto / 100) / cantidad;
-  valEl.textContent = '$' + (Math.round(unitario * 100) / 100).toLocaleString('es-CL', {minimumFractionDigits:0,maximumFractionDigits:2});
+
+  const netoConDto = neto * (1 - dto / 100);
+  let unitario;
+  if (priceHistoryCapacidadCC > 0) {
+    const ila      = netoConDto * (PP_ILA_RATES[tipo] || 0);
+    const costoBotella = (netoConDto + ila) / cantidad + flete;
+    unitario       = costoBotella / priceHistoryCapacidadCC;
+    valEl.textContent = '$' + (Math.round(unitario * 1000) / 1000).toLocaleString('es-CL', {minimumFractionDigits:0,maximumFractionDigits:3}) + '/cc';
+  } else {
+    unitario = netoConDto / cantidad;
+    valEl.textContent = '$' + (Math.round(unitario * 100) / 100).toLocaleString('es-CL', {minimumFractionDigits:0,maximumFractionDigits:2});
+  }
   prevEl.style.display = '';
 }
 
@@ -3657,11 +3721,15 @@ async function ppGuardarEdicion(id, mes) {
   const msgEl = document.getElementById(`ppe-msg-${id}`);
   const body = {
     mes,
-    precioNeto:     parseFloat(document.getElementById(`ppe-neto-${id}`)?.value) || 0,
-    descuento:      parseFloat(document.getElementById(`ppe-dto-${id}`)?.value)   || 0,
-    cantidadCompra: parseFloat(document.getElementById(`ppe-cant-${id}`)?.value)  || 1,
-    unidadCompra:   document.getElementById(`ppe-desc-${id}`)?.value              || '',
-    tipoImpuesto:   document.getElementById(`ppe-tipo-${id}`)?.value              || 'alimento'
+    precioNeto:     parseFloat(document.getElementById(`ppe-neto-${id}`)?.value)  || 0,
+    descuento:      parseFloat(document.getElementById(`ppe-dto-${id}`)?.value)    || 0,
+    cantidadCompra: parseFloat(document.getElementById(`ppe-cant-${id}`)?.value)   || 1,
+    unidadCompra:   document.getElementById(`ppe-desc-${id}`)?.value               || '',
+    tipoImpuesto:   document.getElementById(`ppe-tipo-${id}`)?.value               || 'alimento',
+    ...(priceHistoryCapacidadCC > 0 ? {
+      fleteNeto:   parseFloat(document.getElementById(`ppe-flete-${id}`)?.value)   || 0,
+      capacidadCC: priceHistoryCapacidadCC
+    } : {})
   };
   if (!body.precioNeto) { if(msgEl){msgEl.style.color='#f87171';msgEl.textContent='Ingresa precio neto.';} return; }
   try {
@@ -3685,7 +3753,11 @@ async function ppAgregarPrecio() {
     descuento:      parseFloat(document.getElementById('pp-dto')?.value)      || 0,
     cantidadCompra: parseFloat(document.getElementById('pp-cantidad')?.value) || 1,
     unidadCompra:   document.getElementById('pp-unidad-compra')?.value        || '',
-    tipoImpuesto:   ppGetTipoImpuesto()
+    tipoImpuesto:   ppGetTipoImpuesto(),
+    ...(priceHistoryCapacidadCC > 0 ? {
+      fleteNeto:   parseFloat(document.getElementById('pp-flete')?.value) || 0,
+      capacidadCC: priceHistoryCapacidadCC
+    } : {})
   };
   try {
     const res  = await apiFetch(`/api/inv/products/${priceHistoryProductId}/prices`, { method: 'POST', body: JSON.stringify(body) });
@@ -3749,6 +3821,7 @@ async function saveProducto() {
     category:      document.getElementById('mprod-cat').value.trim(),
     unit:          document.getElementById('mprod-unit').value,
     tipoImpuesto:  document.getElementById('mprod-impuesto')?.value || 'alimento',
+    capacidadCC:   Number(document.getElementById('mprod-cc')?.value) || 0,
     restaurantIds,
     supplierIds:   [...document.querySelectorAll('#mprod-suppliers input:checked')].map(c => c.value),
     restaurantSections,
@@ -3794,6 +3867,7 @@ async function delProducto(id, name) {
 // ── Historial de Precios ───────────────────────────────────
 let priceHistoryProductId = '';
 let priceHistoryData = [];
+let priceHistoryCapacidadCC = 0;
 
 async function openPriceHistory(id, name) {
   priceHistoryProductId = id;
