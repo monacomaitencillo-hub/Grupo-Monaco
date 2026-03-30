@@ -6409,6 +6409,8 @@ function renderMargenRecetas() {
           <button id="marg-view-6" onclick="margenView='grid';margenCols=6;margenUpdateViewBtns();renderMargenRecetasContent()"
             style="padding:6px 12px;font-size:12px;font-weight:600;border:none;cursor:pointer;background:#fff;color:#6c757d">6</button>
         </div>
+        <button onclick="margenLimpiarFiltros()" id="marg-btn-limpiar"
+          style="padding:7px 14px;font-size:13px;background:#f1f3f4;border:1px solid #dee2e6;border-radius:8px;cursor:pointer;color:#495057;font-weight:500;display:none">✕ Limpiar</button>
         <button class="btn-new" onclick="margenOpenFormModal(null)" style="padding:7px 14px;font-size:13px">+ Agregar producto</button>
         <label style="cursor:pointer;display:inline-flex;align-items:center">
           <input type="file" accept=".xlsx,.xls" style="display:none" onchange="margenImportExcel(this)">
@@ -6421,9 +6423,22 @@ function renderMargenRecetas() {
   renderMargenRecetasContent();
 }
 
+function margenLimpiarFiltros() {
+  margenFilterRest = ''; margenFilterCat = ''; margenFilterSearch = ''; margenFilterMargen = '';
+  const s = document.getElementById('marg-search-input');   if (s) s.value = '';
+  const r = document.getElementById('marg-filter-rest');    if (r) r.value = '';
+  const c = document.getElementById('marg-filter-cat');     if (c) c.value = '';
+  const m = document.getElementById('marg-filter-margen');  if (m) m.value = '';
+  renderMargenRecetasContent();
+}
+
 function renderMargenRecetasContent() {
   const content = document.getElementById('marg-recetas-content');
   if (!content) return;
+
+  // Mostrar botón limpiar si hay algún filtro activo
+  const btnLimpiar = document.getElementById('marg-btn-limpiar');
+  if (btnLimpiar) btnLimpiar.style.display = (margenFilterRest || margenFilterCat || margenFilterSearch || margenFilterMargen) ? '' : 'none';
 
   let filtered = margenRecipes;
   if (margenFilterRest)   filtered = filtered.filter(r => r.restaurantId === margenFilterRest);
