@@ -2221,6 +2221,44 @@ app.delete('/api/preparations/:id', requireAuth, async (req, res) => {
   res.json({ ok: true });
 });
 
+// ── Márgenes: Promos ─────────────────────────────────────────────────────────
+app.get('/api/promos', requireAuth, async (req, res) => {
+  const snap = await db.collection('promos').orderBy('name').get();
+  res.json({ promos: snap.docs.map(d => ({ id: d.id, ...d.data() })) });
+});
+
+app.post('/api/promos', requireAuth, async (req, res) => {
+  if (!await isEditor(req.uid)) return res.status(403).json({ error: 'Sin permisos' });
+  const { name, restaurantId, restaurantName, sellingPrice, recipes } = req.body;
+  if (!name) return res.status(400).json({ error: 'Nombre requerido' });
+  const ref = await db.collection('promos').add({
+    name, restaurantId: restaurantId || null, restaurantName: restaurantName || '',
+    sellingPrice: Number(sellingPrice) || 0,
+    recipes: recipes || [],
+    createdAt: admin.firestore.FieldValue.serverTimestamp()
+  });
+  res.json({ id: ref.id });
+});
+
+app.put('/api/promos/:id', requireAuth, async (req, res) => {
+  if (!await isEditor(req.uid)) return res.status(403).json({ error: 'Sin permisos' });
+  const { name, restaurantId, restaurantName, sellingPrice, recipes } = req.body;
+  const update = { updatedAt: admin.firestore.FieldValue.serverTimestamp() };
+  if (name             !== undefined) update.name             = name;
+  if (restaurantId     !== undefined) update.restaurantId     = restaurantId;
+  if (restaurantName   !== undefined) update.restaurantName   = restaurantName;
+  if (sellingPrice     !== undefined) update.sellingPrice     = Number(sellingPrice) || 0;
+  if (recipes          !== undefined) update.recipes          = recipes;
+  await db.collection('promos').doc(req.params.id).update(update);
+  res.json({ ok: true });
+});
+
+app.delete('/api/promos/:id', requireAuth, async (req, res) => {
+  if (!await isEditor(req.uid)) return res.status(403).json({ error: 'Sin permisos' });
+  await db.collection('promos').doc(req.params.id).delete();
+  res.json({ ok: true });
+});
+
 // ── Config: unidades personalizadas ──────────────────────────────────────────
 const UNITS_DOC = () => db.collection('config').doc('units');
 

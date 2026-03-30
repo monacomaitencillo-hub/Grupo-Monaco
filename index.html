@@ -6297,6 +6297,7 @@ let margenTabActive    = 'recetas';
 let margenRecipes      = [];
 let margenPreparations = [];
 let margenIngredients  = [];
+let margenPromos       = [];
 let margenFilterRest   = '';
 let margenFilterSearch = '';
 let margenFilterMargen = ''; // '' | 'sin_precio' | 'bajo' | 'normal' | 'bueno'
@@ -6306,7 +6307,7 @@ let margenView         = 'grid'; // 'grid' | 'list'
 
 async function initMargenesModule() {
   margenTabActive = 'recetas';
-  ['recetas','preparaciones','costos'].forEach(t => {
+  ['recetas','preparaciones','costos','promos'].forEach(t => {
     document.getElementById(`mtab-${t}`).classList.toggle('active', t === 'recetas');
     document.getElementById(`marg-${t}`).style.display = t === 'recetas' ? '' : 'none';
   });
@@ -6319,25 +6320,28 @@ async function initMargenesModule() {
 }
 
 async function loadMargenData() {
-  const [rr, pp, pr] = await Promise.all([
+  const [rr, pp, pr, prm] = await Promise.all([
     apiFetch('/api/recipes'),
     apiFetch('/api/preparations'),
-    apiFetch('/api/inv/products')
+    apiFetch('/api/inv/products'),
+    apiFetch('/api/promos')
   ]);
   margenRecipes      = (await rr.json()).recipes      || [];
   margenPreparations = (await pp.json()).preparations || [];
   margenIngredients  = (await pr.json()).products     || [];
+  margenPromos       = (await prm.json()).promos      || [];
 }
 
 function switchMargenTab(tab) {
   margenTabActive = tab;
-  ['recetas','preparaciones','costos'].forEach(t => {
+  ['recetas','preparaciones','costos','promos'].forEach(t => {
     document.getElementById(`mtab-${t}`).classList.toggle('active', t === tab);
     document.getElementById(`marg-${t}`).style.display = t === tab ? '' : 'none';
   });
   if (tab === 'recetas')       renderMargenRecetas();
   if (tab === 'preparaciones') renderMargenPreparaciones();
   if (tab === 'costos')        renderMargenCostos();
+  if (tab === 'promos')        renderMargenPromos();
 }
 
 // Calcula el costo total de una preparación (solo ingredientes)
@@ -7169,6 +7173,179 @@ async function margenSaveCost(productId, mes) {
   }
 }
 
+// ── Márgenes: Promos ──────────────────────────────────────
+function calcRecipeCost(recipe) {
+  let totalCost = 0;
+  const items = (recipe.ingredients || []).filter(i => i.quantity > 0);
+  items.forEach(item => { totalCost += calcItemCost(item); });
+  if (recipe.esPromedio && items.length > 1) totalCost = totalCost / items.length;
+  const agua = recipe.rendimientoAgua || 0;
+  const aire = recipe.rendimientoAire || 0;
+  if (agua > 0) totalCost = totalCost / (1 + agua / 100);
+  if (aire > 0) totalCost = totalCost / (1 + aire / 100);
+  const porciones = recipe.porciones > 1 ? recipe.porciones : 1;
+  return porciones > 1 ? totalCost / porciones : totalCost;
+}
+
+function renderMargenPromos() {
+  const el = document.getElementById('marg-promos');
+  el.innerHTML = `
+    <div class="inv-toolbar" style="flex-wrap:wrap;gap:10px">
+      <h2 style="margin:0">Promos</h2>
+      <div style="display:flex;gap:8px;align-items:center;margin-left:auto">
+        <button class="btn-new" onclick="margenOpenPromoModal(null)" style="padding:7px 14px;font-size:13px">+ Nueva promo</button>
+      </div>
+    </div>
+    <p style="font-size:13px;color:#6c757d;margin:-4px 0 20px">
+      Agrupá recetas en una promo, asignale un precio de venta y calculá el margen.
+    </p>
+    ${margenPromos.length === 0
+      ? `<div style="text-align:center;padding:60px 20px;color:#888">
+           <div style="font-size:40px;margin-bottom:12px">🎉</div>
+           <div style="font-size:15px;font-weight:600;margin-bottom:6px">Sin promos aún</div>
+           <div style="font-size:13px;color:#aaa">Creá una promo para combinar recetas con un precio especial.</div>
+         </div>`
+      : `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;padding:4px 0 24px">
+           ${margenPromos.map(p => margenPromoCardHTML(p)).join('')}
+         </div>`
+    }`;
+}
+
+function margenPromoCardHTML(promo) {
+  const recipes    = (promo.recipes || []).map(id => margenRecipes.find(r => r.id === id)).filter(Boolean);
+  const totalCost  = recipes.reduce((sum, r) => sum + calcRecipeCost(r), 0);
+  const sellingNet = promo.sellingPrice > 0 ? promo.sellingPrice / 1.19 : 0;
+  const margin     = sellingNet > 0 ? ((sellingNet - totalCost) / sellingNet * 100) : null;
+  const mColor     = margin === null ? '#888' : margin >= 60 ? '#16a34a' : margin >= 40 ? '#d97706' : '#dc2626';
+  const safeName   = (promo.name || '').replace(/'/g, "\\'");
+  return `
+    <div style="background:#fff;border:1px solid #e9ecef;border-radius:14px;padding:20px;transition:box-shadow .18s,transform .18s"
+      onmouseover="this.style.boxShadow='0 6px 24px rgba(0,0,0,.09)';this.style.transform='translateY(-2px)'"
+      onmouseout="this.style.boxShadow='';this.style.transform=''">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px">
+        <div style="flex:1">
+          <div style="font-size:15px;font-weight:700;color:#212529;line-height:1.3">${promo.name}</div>
+          <div style="font-size:12px;color:#6c757d;margin-top:3px">${promo.restaurantName || '—'}</div>
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0;margin-left:10px">
+          <button onclick="margenOpenPromoModal('${promo.id}')"
+            style="background:#f1f3f4;border:none;border-radius:8px;width:30px;height:30px;cursor:pointer;color:#495057;font-size:14px;display:flex;align-items:center;justify-content:center"
+            title="Editar">✎</button>
+          <button onclick="margenDeletePromo('${promo.id}','${safeName}')"
+            style="background:#fff0f0;border:1px solid #fca5a5;border-radius:8px;width:30px;height:30px;cursor:pointer;color:#ef4444;font-size:14px;display:flex;align-items:center;justify-content:center"
+            title="Eliminar">✕</button>
+        </div>
+      </div>
+      <div style="font-size:12px;color:#6c757d;margin-bottom:12px">
+        ${recipes.length} receta${recipes.length !== 1 ? 's' : ''}${recipes.length ? ': ' + recipes.map(r => r.name).join(', ') : ''}
+      </div>
+      <div style="display:flex;justify-content:space-between;border-top:1px solid #f1f3f4;padding-top:12px;gap:8px">
+        <div style="text-align:center;flex:1">
+          <div style="font-size:10px;color:#adb5bd;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">Costo</div>
+          <div style="font-size:14px;font-weight:700;color:#212529">${totalCost > 0 ? '$'+Math.round(totalCost).toLocaleString('es-CL') : '—'}</div>
+        </div>
+        <div style="width:1px;background:#f1f3f4"></div>
+        <div style="text-align:center;flex:1">
+          <div style="font-size:10px;color:#adb5bd;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">Venta</div>
+          <div style="font-size:14px;font-weight:700;color:#212529">${promo.sellingPrice > 0 ? '$'+Math.round(promo.sellingPrice).toLocaleString('es-CL') : '—'}</div>
+        </div>
+        <div style="width:1px;background:#f1f3f4"></div>
+        <div style="text-align:center;flex:1">
+          <div style="font-size:10px;color:#adb5bd;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">Margen</div>
+          <div style="font-size:14px;font-weight:700;color:${mColor}">${margin !== null ? Math.round(margin)+'%' : '—'}</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function margenOpenPromoModal(id) {
+  const promo = id ? margenPromos.find(p => p.id === id) : null;
+  document.getElementById('marg-promo-id').value          = id || '';
+  document.getElementById('marg-promo-title').textContent = promo ? 'Editar promo' : 'Nueva promo';
+  document.getElementById('marg-promo-name').value        = promo?.name || '';
+  document.getElementById('marg-promo-price').value       = promo?.sellingPrice || '';
+  document.getElementById('marg-promo-msg').textContent   = '';
+
+  const restSel = document.getElementById('marg-promo-rest');
+  restSel.innerHTML = '<option value="">— Seleccionar local —</option>' +
+    restaurants.map(r => `<option value="${r.id}"${promo?.restaurantId === r.id ? ' selected' : ''}>${r.name}</option>`).join('');
+
+  const selectedIds  = promo?.recipes || [];
+  const recipeList   = document.getElementById('marg-promo-recipes');
+  const sortedRecipes = [...margenRecipes].sort((a, b) => a.name.localeCompare(b.name, 'es'));
+  recipeList.innerHTML = sortedRecipes.length === 0
+    ? '<div style="color:#888;font-size:13px;padding:8px 0">No hay recetas disponibles</div>'
+    : sortedRecipes.map(r => `
+        <label style="display:flex;align-items:center;gap:8px;padding:7px 0;cursor:pointer;font-size:13px;color:#212529;border-bottom:1px solid #f8f9fa">
+          <input type="checkbox" value="${r.id}" ${selectedIds.includes(r.id) ? 'checked' : ''}
+            onchange="margenPromoUpdatePreview()"
+            style="width:15px;height:15px;accent-color:#ff5023;flex-shrink:0">
+          <span>${r.name}${r.restaurantName ? ` <span style="color:#aaa;font-size:11px">(${r.restaurantName})</span>` : ''}</span>
+        </label>`).join('');
+
+  margenPromoUpdatePreview();
+  document.getElementById('marg-promo-modal').style.display = 'flex';
+}
+
+function margenPromoUpdatePreview() {
+  const selectedIds = [...document.querySelectorAll('#marg-promo-recipes input[type=checkbox]:checked')].map(cb => cb.value);
+  const recipes     = selectedIds.map(id => margenRecipes.find(r => r.id === id)).filter(Boolean);
+  const totalCost   = recipes.reduce((sum, r) => sum + calcRecipeCost(r), 0);
+  const selling     = Number(document.getElementById('marg-promo-price').value) || 0;
+  const sellingNet  = selling > 0 ? selling / 1.19 : 0;
+  const margin      = sellingNet > 0 ? ((sellingNet - totalCost) / sellingNet * 100) : null;
+  const mColor      = margin === null ? '#888' : margin >= 60 ? '#16a34a' : margin >= 40 ? '#d97706' : '#dc2626';
+  document.getElementById('marg-promo-preview').innerHTML =
+    `Costo total: <strong>$${Math.round(totalCost).toLocaleString('es-CL')}</strong>` +
+    (margin !== null ? `&nbsp;&nbsp;·&nbsp;&nbsp;Margen: <strong style="color:${mColor}">${Math.round(margin)}%</strong>` : '');
+}
+
+async function margenSavePromo() {
+  const id     = document.getElementById('marg-promo-id').value;
+  const name   = document.getElementById('marg-promo-name').value.trim();
+  const btn    = document.getElementById('marg-promo-save-btn');
+  const msg    = document.getElementById('marg-promo-msg');
+  if (!name) { alert('Ingresá un nombre para la promo'); return; }
+  const restSel        = document.getElementById('marg-promo-rest');
+  const restaurantId   = restSel.value;
+  const restaurantName = restSel.options[restSel.selectedIndex]?.text.replace('— Seleccionar local —','') || '';
+  const sellingPrice   = Number(document.getElementById('marg-promo-price').value) || 0;
+  const recipes        = [...document.querySelectorAll('#marg-promo-recipes input[type=checkbox]:checked')].map(cb => cb.value);
+  btn.disabled = true; btn.textContent = 'Guardando...'; msg.textContent = '';
+  try {
+    let res, data;
+    if (id) {
+      res  = await apiFetch(`/api/promos/${id}`, { method: 'PUT', body: JSON.stringify({ name, restaurantId, restaurantName, sellingPrice, recipes }) });
+      data = await res.json();
+      if (data.error) throw new Error(data.error);
+      const idx = margenPromos.findIndex(p => p.id === id);
+      if (idx >= 0) margenPromos[idx] = { ...margenPromos[idx], name, restaurantId, restaurantName, sellingPrice, recipes };
+    } else {
+      res  = await apiFetch('/api/promos', { method: 'POST', body: JSON.stringify({ name, restaurantId, restaurantName, sellingPrice, recipes }) });
+      data = await res.json();
+      if (data.error) throw new Error(data.error);
+      margenPromos.push({ id: data.id, name, restaurantId, restaurantName, sellingPrice, recipes });
+    }
+    document.getElementById('marg-promo-modal').style.display = 'none';
+    renderMargenPromos();
+  } catch(e) {
+    msg.style.color = '#dc2626'; msg.textContent = e.message;
+  } finally {
+    btn.disabled = false; btn.textContent = 'Guardar';
+  }
+}
+
+async function margenDeletePromo(id, name) {
+  if (!confirm(`¿Eliminar la promo "${name}"?`)) return;
+  try {
+    const res = await apiFetch(`/api/promos/${id}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    margenPromos = margenPromos.filter(p => p.id !== id);
+    renderMargenPromos();
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
 // ── Márgenes: Formulario crear/editar receta ───────────────
 let margenFormIngCounter = 0;
 
@@ -7596,6 +7773,7 @@ async function margenDeleteRecipe(id, name) {
       <button class="inv-tab active" id="mtab-recetas"       onclick="switchMargenTab('recetas')">Recetas</button>
       <button class="inv-tab"        id="mtab-preparaciones" onclick="switchMargenTab('preparaciones')">Preparaciones</button>
       <button class="inv-tab"        id="mtab-costos"        onclick="switchMargenTab('costos')">Costos de ingredientes</button>
+      <button class="inv-tab"        id="mtab-promos"        onclick="switchMargenTab('promos')">Promos</button>
     </div>
   </div>
   <div class="inv-main" style="max-width:none">
@@ -7607,6 +7785,54 @@ async function margenDeleteRecipe(id, name) {
     </div>
     <div id="marg-preparaciones" style="display:none"></div>
     <div id="marg-costos"        style="display:none"></div>
+    <div id="marg-promos"        style="display:none"></div>
+  </div>
+</div>
+
+<!-- modal formulario promo -->
+<div id="marg-promo-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1060;align-items:center;justify-content:center;padding:20px" onclick="if(event.target===this)this.style.display='none'">
+  <div style="background:#fff;border-radius:16px;width:100%;max-width:560px;max-height:92vh;overflow-y:auto;display:flex;flex-direction:column">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:20px 24px;border-bottom:1px solid #e9ecef;flex-shrink:0">
+      <div id="marg-promo-title" style="font-size:18px;font-weight:700;color:#212529">Nueva promo</div>
+      <button onclick="document.getElementById('marg-promo-modal').style.display='none'" style="background:none;border:none;color:#6c757d;font-size:20px;cursor:pointer;width:32px;height:32px;border-radius:6px">✕</button>
+    </div>
+    <div style="padding:24px;flex:1">
+      <input type="hidden" id="marg-promo-id">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+        <div>
+          <div class="field-label">Nombre de la promo</div>
+          <input id="marg-promo-name" class="inv-input" placeholder="Ej: Happy Hour">
+        </div>
+        <div>
+          <div class="field-label">Local</div>
+          <select id="marg-promo-rest" class="inv-input">
+            <option value="">— Seleccionar local —</option>
+          </select>
+        </div>
+      </div>
+      <div style="margin-bottom:20px">
+        <div class="field-label">Precio de venta ($)</div>
+        <div style="display:flex;align-items:center;border:1px solid #dee2e6;border-radius:8px;overflow:hidden;background:#fff">
+          <span style="padding:0 10px;color:#888;font-size:13px;background:#f8f9fa;border-right:1px solid #dee2e6">$</span>
+          <input type="number" id="marg-promo-price" min="0" placeholder="0" oninput="margenPromoUpdatePreview()"
+            style="border:none;outline:none;padding:8px 10px;font-size:14px;width:100%;color:#212529">
+        </div>
+      </div>
+      <div style="margin-bottom:16px">
+        <div class="field-label" style="margin-bottom:8px">Recetas incluidas</div>
+        <div id="marg-promo-recipes" style="max-height:240px;overflow-y:auto;border:1px solid #dee2e6;border-radius:8px;padding:4px 12px"></div>
+      </div>
+      <div id="marg-promo-preview" style="padding:12px 14px;background:#f8f9fa;border-radius:8px;font-size:13px;color:#495057;border:1px solid #e9ecef;margin-bottom:8px">
+        Costo total: <strong>$0</strong>
+      </div>
+      <div id="marg-promo-msg" style="font-size:12px;min-height:16px;color:#dc2626"></div>
+    </div>
+    <div style="padding:16px 24px;border-top:1px solid #e9ecef;display:flex;justify-content:flex-end;gap:10px;flex-shrink:0">
+      <button onclick="document.getElementById('marg-promo-modal').style.display='none'"
+        style="padding:9px 20px;border:1px solid #dee2e6;border-radius:8px;background:#fff;color:#495057;font-size:14px;cursor:pointer">Cancelar</button>
+      <button id="marg-promo-save-btn" onclick="margenSavePromo()"
+        style="padding:9px 20px;background:#ff5023;border:none;border-radius:8px;color:#fff;font-size:14px;font-weight:600;cursor:pointer">Guardar</button>
+    </div>
   </div>
 </div>
 
