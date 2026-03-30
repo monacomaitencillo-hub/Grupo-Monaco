@@ -2030,6 +2030,7 @@ app.post('/api/recipes/import', requireAuth, async (req, res) => {
       ingredients: r.ingredients || [],
       rendimientoAgua: Number(r.rendimientoAgua) || 0,
       rendimientoAire: Number(r.rendimientoAire) || 0,
+      porciones: Math.max(1, parseInt(r.porciones) || 1),
       updatedAt: admin.firestore.FieldValue.serverTimestamp()
     };
     if (docId) {
@@ -2049,13 +2050,14 @@ app.post('/api/recipes/import', requireAuth, async (req, res) => {
 app.put('/api/recipes/:id', requireAuth, async (req, res) => {
   if (!await isEditor(req.uid)) return res.status(403).json({ error: 'Sin permisos' });
   const update = {};
-  const { sellingPrice, ingredients, name, esPromedio, rendimientoAgua, rendimientoAire } = req.body;
+  const { sellingPrice, ingredients, name, esPromedio, rendimientoAgua, rendimientoAire, porciones } = req.body;
   if (sellingPrice     !== undefined) update.sellingPrice     = Number(sellingPrice) || 0;
   if (ingredients      !== undefined) update.ingredients      = ingredients;
   if (name             !== undefined) update.name             = name;
   if (esPromedio       !== undefined) update.esPromedio       = esPromedio === true;
   if (rendimientoAgua  !== undefined) update.rendimientoAgua  = Number(rendimientoAgua)  || 0;
   if (rendimientoAire  !== undefined) update.rendimientoAire  = Number(rendimientoAire)  || 0;
+  if (porciones        !== undefined) update.porciones        = Math.max(1, parseInt(porciones) || 1);
   update.updatedAt = admin.firestore.FieldValue.serverTimestamp();
   await db.collection('recipes').doc(req.params.id).update(update);
   res.json({ ok: true });
@@ -2075,7 +2077,7 @@ app.get('/api/preparations', requireAuth, async (req, res) => {
 
 app.post('/api/preparations', requireAuth, async (req, res) => {
   if (!await isEditor(req.uid)) return res.status(403).json({ error: 'Sin permisos' });
-  const { name, ingredients, esGDD, esPromedio, category, unit, restaurantIds, restaurantSections, rendimientoAgua, rendimientoAire } = req.body;
+  const { name, ingredients, esGDD, esPromedio, category, unit, restaurantIds, restaurantSections, rendimientoAgua, rendimientoAire, porciones } = req.body;
   if (!name) return res.status(400).json({ error: 'Nombre requerido' });
   const ref = await db.collection('preparations').add({
     name, ingredients: ingredients || [],
@@ -2087,6 +2089,7 @@ app.post('/api/preparations', requireAuth, async (req, res) => {
     restaurantSections: restaurantSections || {},
     rendimientoAgua: Number(rendimientoAgua) || 0,
     rendimientoAire: Number(rendimientoAire) || 0,
+    porciones: Math.max(1, parseInt(porciones) || 1),
     createdAt: admin.firestore.FieldValue.serverTimestamp()
   });
   res.json({ id: ref.id });
@@ -2094,7 +2097,7 @@ app.post('/api/preparations', requireAuth, async (req, res) => {
 
 app.put('/api/preparations/:id', requireAuth, async (req, res) => {
   if (!await isEditor(req.uid)) return res.status(403).json({ error: 'Sin permisos' });
-  const { name, ingredients, esGDD, esPromedio, category, unit, restaurantIds, restaurantSections, rendimientoAgua, rendimientoAire } = req.body;
+  const { name, ingredients, esGDD, esPromedio, category, unit, restaurantIds, restaurantSections, rendimientoAgua, rendimientoAire, porciones } = req.body;
   const update = { updatedAt: admin.firestore.FieldValue.serverTimestamp() };
   if (name               !== undefined) update.name               = name;
   if (ingredients        !== undefined) update.ingredients        = ingredients;
@@ -2106,6 +2109,7 @@ app.put('/api/preparations/:id', requireAuth, async (req, res) => {
   if (restaurantSections !== undefined) update.restaurantSections = restaurantSections;
   if (rendimientoAgua    !== undefined) update.rendimientoAgua    = Number(rendimientoAgua)  || 0;
   if (rendimientoAire    !== undefined) update.rendimientoAire    = Number(rendimientoAire)  || 0;
+  if (porciones          !== undefined) update.porciones          = Math.max(1, parseInt(porciones) || 1);
   await db.collection('preparations').doc(req.params.id).update(update);
   res.json({ ok: true });
 });

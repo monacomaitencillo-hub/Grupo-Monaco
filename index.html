@@ -6282,6 +6282,9 @@ function calcPrepCost(prep) {
   const aire = prep?.rendimientoAire || 0;
   if (agua > 0) cost = cost / (1 + agua / 100);
   if (aire > 0) cost = cost / (1 + aire / 100);
+  // Dividir por porciones (costo por porción)
+  const porciones = prep?.porciones > 1 ? prep.porciones : 1;
+  if (porciones > 1) cost = cost / porciones;
   return cost;
 }
 
@@ -6498,9 +6501,11 @@ function margenListHTML(recipes) {
 function margenCardHTML(r, cols) {
   let totalCost = 0;
   (r.ingredients || []).forEach(item => { totalCost += calcItemCost(item); });
+  const porciones      = r.porciones > 1 ? r.porciones : 1;
+  const costoPorcion   = porciones > 1 ? totalCost / porciones : totalCost;
   const selling    = r.sellingPrice || 0;
   const sellingNet = selling / 1.19;
-  const margin     = selling > 0 ? ((sellingNet - totalCost) / sellingNet * 100) : null;
+  const margin     = selling > 0 ? ((sellingNet - costoPorcion) / sellingNet * 100) : null;
   const mColor   = margin === null ? '#888' : margin >= 60 ? '#16a34a' : margin >= 40 ? '#ca8a04' : '#dc2626';
   const ingCount = (r.ingredients || []).filter(i => i.quantity > 0).length;
 
@@ -6543,8 +6548,8 @@ function margenCardHTML(r, cols) {
       </div>
       <div onclick="margenOpenRecipe('${r.id}')" style="cursor:pointer;display:flex;justify-content:space-between;border-top:1px solid #f1f3f4;padding-top:10px;gap:4px">
         <div style="text-align:center;flex:1;min-width:0">
-          <div style="font-size:${labelSz};color:#adb5bd;text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px">Costo</div>
-          <div style="font-size:${valSz};font-weight:700;color:#212529;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${totalCost > 0 ? '$'+Math.round(totalCost).toLocaleString('es-CL') : '—'}</div>
+          <div style="font-size:${labelSz};color:#adb5bd;text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px">${porciones > 1 ? 'Costo/p' : 'Costo'}</div>
+          <div style="font-size:${valSz};font-weight:700;color:#212529;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${costoPorcion > 0 ? '$'+Math.round(costoPorcion).toLocaleString('es-CL')+(porciones > 1 ? '/p' : '') : '—'}</div>
         </div>
         <div style="width:1px;background:#f1f3f4;flex-shrink:0"></div>
         <div style="text-align:center;flex:1;min-width:0">
@@ -6594,9 +6599,11 @@ function margenOpenRecipe(id) {
     </tr>`;
   }).join('');
 
+  const porciones      = r.porciones > 1 ? r.porciones : 1;
+  const costoPorcion   = porciones > 1 ? totalCost / porciones : totalCost;
   const selling    = r.sellingPrice || 0;
   const sellingNet = selling / 1.19;
-  const marginAbs  = selling > 0 ? sellingNet - totalCost : null;
+  const marginAbs  = selling > 0 ? sellingNet - costoPorcion : null;
   const marginPct  = selling > 0 ? (marginAbs / sellingNet * 100) : null;
   const mColor     = marginPct === null ? '#888' : marginPct >= 60 ? '#16a34a' : marginPct >= 40 ? '#ca8a04' : '#dc2626';
 
@@ -6618,10 +6625,15 @@ function margenOpenRecipe(id) {
       </table>
     </div>
     <div style="padding:16px 20px;background:#f8f9fa;border-top:2px solid #e9ecef">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:${porciones > 1 ? '6px' : '10px'}">
         <span style="font-size:13px;color:#495057;font-weight:500">Costo total ingredientes</span>
         <span style="font-size:15px;font-weight:700;color:#212529">${totalCost > 0 ? '$'+Math.round(totalCost).toLocaleString('es-CL') : '—'}</span>
       </div>
+      ${porciones > 1 ? `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;color:#16a34a">
+        <span style="font-size:13px;font-weight:500">÷ ${porciones} porciones</span>
+        <span style="font-size:15px;font-weight:700">$${Math.round(costoPorcion).toLocaleString('es-CL')}/porción</span>
+      </div>` : ''}
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:${marginPct!==null?'10px':'0'}">
         <span style="font-size:13px;color:#495057;font-weight:500">Precio de venta (bruto c/IVA)</span>
         <div style="display:flex;align-items:center;gap:8px">
@@ -6945,6 +6957,7 @@ function margenOpenPrepModal(id) {
     margenAddIngRow(null, true);
   }
   document.getElementById('marg-form-promedio').checked = prep?.esPromedio === true;
+  document.getElementById('marg-form-porciones').value  = prep?.porciones > 1 ? prep.porciones : '';
 
   margenSetRendimientos(prep?.rendimientoAgua, prep?.rendimientoAire);
   document.getElementById('marg-form-modal').style.display = 'flex';
@@ -7076,6 +7089,7 @@ function margenOpenFormModal(id) {
     margenAddIngRow(null, false);
   }
   document.getElementById('marg-form-promedio').checked = recipe?.esPromedio === true;
+  document.getElementById('marg-form-porciones').value  = recipe?.porciones > 1 ? recipe.porciones : '';
 
   margenSetRendimientos(recipe?.rendimientoAgua, recipe?.rendimientoAire);
   document.getElementById('marg-form-modal').style.display = 'flex';
@@ -7227,15 +7241,20 @@ function margenUpdateFormTotal() {
   const costoConAgua = agua > 0 ? costoBase / (1 + agua / 100) : costoBase;
   const costoFinal   = aire > 0 ? costoConAgua / (1 + aire / 100) : costoConAgua;
 
+  const porcionesVal = parseInt(document.getElementById('marg-form-porciones')?.value) || 1;
+  const porciones    = porcionesVal > 1 ? porcionesVal : 1;
+  const costoPorcion = porciones > 1 ? costoFinal / porciones : costoFinal;
+
   const el = document.getElementById('marg-form-total');
   if (!el) return;
 
-  if (agua > 0 || aire > 0) {
+  if (agua > 0 || aire > 0 || porciones > 1) {
     let html = `<div style="display:flex;flex-direction:column;gap:4px">`;
     html += `<div style="display:flex;justify-content:space-between"><span>Costo ingredientes:</span><span>$${Math.round(costoBase).toLocaleString('es-CL')}</span></div>`;
     if (agua > 0) html += `<div style="display:flex;justify-content:space-between;color:#0369a1"><span>💧 ÷ Agua (+${agua}%):</span><span>$${Math.round(costoConAgua).toLocaleString('es-CL')}</span></div>`;
     if (aire > 0) html += `<div style="display:flex;justify-content:space-between;color:#7c3aed"><span>💨 ÷ Aire (+${aire}%):</span><span>$${Math.round(costoFinal).toLocaleString('es-CL')}</span></div>`;
-    html += `<div style="display:flex;justify-content:space-between;font-weight:700;color:#212529;border-top:1px solid #dee2e6;padding-top:4px;margin-top:2px"><span>Costo final:</span><span>$${Math.round(costoFinal).toLocaleString('es-CL')}</span></div>`;
+    if (porciones > 1) html += `<div style="display:flex;justify-content:space-between;color:#16a34a"><span>÷ ${porciones} porciones:</span><span style="font-weight:700">$${Math.round(costoPorcion).toLocaleString('es-CL')}/porción</span></div>`;
+    else html += `<div style="display:flex;justify-content:space-between;font-weight:700;color:#212529;border-top:1px solid #dee2e6;padding-top:4px;margin-top:2px"><span>Costo final:</span><span>$${Math.round(costoFinal).toLocaleString('es-CL')}</span></div>`;
     html += `</div>`;
     el.innerHTML = html;
   } else {
@@ -7277,6 +7296,7 @@ async function margenSaveForm() {
   });
 
   const esPromedio = document.getElementById('marg-form-promedio')?.checked === true;
+  const porciones  = parseInt(document.getElementById('marg-form-porciones')?.value) || 1;
   msg.style.color = '#888'; msg.textContent = 'Guardando...';
 
   // ── Guardar preparación ──
@@ -7295,16 +7315,16 @@ async function margenSaveForm() {
     try {
       let res, data;
       if (id) {
-        res  = await apiFetch(`/api/preparations/${id}`, { method: 'PUT', body: JSON.stringify({ name, category, unit, ingredients, esGDD, esPromedio, restaurantIds, restaurantSections, rendimientoAgua: rendAgua, rendimientoAire: rendAire }) });
+        res  = await apiFetch(`/api/preparations/${id}`, { method: 'PUT', body: JSON.stringify({ name, category, unit, ingredients, esGDD, esPromedio, restaurantIds, restaurantSections, rendimientoAgua: rendAgua, rendimientoAire: rendAire, porciones }) });
         data = await res.json();
         if (data.error) throw new Error(data.error);
         const idx2 = margenPreparations.findIndex(p => p.id === id);
-        if (idx2 >= 0) margenPreparations[idx2] = { ...margenPreparations[idx2], name, category, unit, ingredients, esGDD, esPromedio, restaurantIds, restaurantSections, rendimientoAgua: rendAgua, rendimientoAire: rendAire };
+        if (idx2 >= 0) margenPreparations[idx2] = { ...margenPreparations[idx2], name, category, unit, ingredients, esGDD, esPromedio, restaurantIds, restaurantSections, rendimientoAgua: rendAgua, rendimientoAire: rendAire, porciones };
       } else {
-        res  = await apiFetch('/api/preparations', { method: 'POST', body: JSON.stringify({ name, category, unit, ingredients, esGDD, esPromedio, restaurantIds, restaurantSections, rendimientoAgua: rendAgua, rendimientoAire: rendAire }) });
+        res  = await apiFetch('/api/preparations', { method: 'POST', body: JSON.stringify({ name, category, unit, ingredients, esGDD, esPromedio, restaurantIds, restaurantSections, rendimientoAgua: rendAgua, rendimientoAire: rendAire, porciones }) });
         data = await res.json();
         if (data.error) throw new Error(data.error);
-        margenPreparations.push({ id: data.id, name, category, unit, ingredients, esGDD, esPromedio, restaurantIds, restaurantSections, rendimientoAgua: rendAgua, rendimientoAire: rendAire });
+        margenPreparations.push({ id: data.id, name, category, unit, ingredients, esGDD, esPromedio, restaurantIds, restaurantSections, rendimientoAgua: rendAgua, rendimientoAire: rendAire, porciones });
       }
       margenCloseFormModal();
       renderMargenPreparaciones();
@@ -7324,14 +7344,14 @@ async function margenSaveForm() {
   try {
     if (id) {
       // Update existing
-      const res  = await apiFetch(`/api/recipes/${id}`, { method: 'PUT', body: JSON.stringify({ name, sellingPrice: price, ingredients, esPromedio, rendimientoAgua: rendAgua, rendimientoAire: rendAire }) });
+      const res  = await apiFetch(`/api/recipes/${id}`, { method: 'PUT', body: JSON.stringify({ name, sellingPrice: price, ingredients, esPromedio, rendimientoAgua: rendAgua, rendimientoAire: rendAire, porciones }) });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
     } else {
       // Create new via import endpoint (handles upsert by name+rest)
       const res  = await apiFetch('/api/recipes/import', {
         method: 'POST',
-        body: JSON.stringify({ recipes: [{ name, restaurantId: restId, restaurantName: restName, sellingPrice: price, ingredients, rendimientoAgua: rendAgua, rendimientoAire: rendAire }] })
+        body: JSON.stringify({ recipes: [{ name, restaurantId: restId, restaurantName: restName, sellingPrice: price, ingredients, rendimientoAgua: rendAgua, rendimientoAire: rendAire, porciones }] })
       });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
@@ -7513,6 +7533,12 @@ async function margenDeleteRecipe(id, name) {
         <div id="marg-form-ing-rows" style="display:flex;flex-direction:column;gap:10px"></div>
         <div id="marg-form-total" style="margin-top:10px;padding:12px 14px;background:#f8f9fa;border-radius:8px;font-size:13px;color:#495057;border:1px solid #e9ecef">
           Costo total: <strong>$0</strong>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:8px">
+          <label style="font-size:13px;color:#495057;font-weight:500">Porciones que rinde:</label>
+          <input type="number" id="marg-form-porciones" min="1" step="1" placeholder="1"
+            oninput="margenUpdateFormTotal()"
+            style="width:80px;padding:6px 10px;border:1px solid #dee2e6;border-radius:7px;font-size:13px;color:#212529">
         </div>
       </div>
 
