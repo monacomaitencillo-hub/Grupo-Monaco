@@ -6236,7 +6236,10 @@ async function initMargenesModule() {
     document.getElementById(`mtab-${t}`).classList.toggle('active', t === 'recetas');
     document.getElementById(`marg-${t}`).style.display = t === 'recetas' ? '' : 'none';
   });
-  document.getElementById('marg-recetas').innerHTML = '<div style="color:#555;font-size:13px;padding:20px">Cargando...</div>';
+  const toolbar = document.getElementById('marg-recetas-toolbar');
+  if (toolbar) toolbar.dataset.built = '';
+  const content = document.getElementById('marg-recetas-content');
+  if (content) content.innerHTML = '<div style="color:#555;font-size:13px;padding:20px">Cargando...</div>';
   await loadMargenData();
   renderMargenRecetas();
 }
