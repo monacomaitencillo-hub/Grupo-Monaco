@@ -6377,7 +6377,7 @@ function renderMargenRecetas() {
         <div style="display:flex;align-items:center;border:1px solid #dee2e6;border-radius:8px;overflow:hidden;background:#fff">
           <span style="padding:0 10px;color:#adb5bd;font-size:13px">&#128269;</span>
           <input type="text" id="marg-search-input" placeholder="Buscar receta..."
-            oninput="margenFilterSearch=this.value;renderMargenRecetasContent()"
+            oninput="clearTimeout(this._t);this._t=setTimeout(()=>{margenFilterSearch=this.value;renderMargenRecetasContent()},300)"
             style="border:none;outline:none;padding:6px 10px 6px 0;font-size:13px;width:160px;color:#212529">
         </div>
         <select id="marg-filter-rest" class="prod-filter-sel" onchange="margenFilterRest=this.value;renderMargenRecetasContent()">
