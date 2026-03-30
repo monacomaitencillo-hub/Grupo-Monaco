@@ -872,15 +872,17 @@ app.get('/api/inv/products/:id/prices', requireAuth, async (req, res) => {
 // Divisores de impuesto por tipo (Chile)
 const TAX_DIVISORS = {
   alimento:        1.19,   // IVA 19%
+  carne:           1.24,   // IVA 19% + imp. carne 5%
   cerveza:         1.395,  // IVA 19% + ILA 20.5%
   vino_licor:      1.505,  // IVA 19% + ILA 31.5%
   beb_azucarada:   1.37,   // IVA 19% + IABA 18%
   beb_sin_azucar:  1.29,   // IVA 19% + IABA 10%
   sin_impuesto:    1.00
 };
-// Tasas de ILA/IABA (sin IVA) — para cálculo de tragos por cc
+// Tasas adicionales (sin IVA) — incluidas en costo, IVA excluido
 const ILA_RATES = {
   alimento:        0,
+  carne:           0.05,   // 5%
   cerveza:         0.205,  // 20.5%
   vino_licor:      0.315,  // 31.5%
   beb_azucarada:   0.18,   // 18%

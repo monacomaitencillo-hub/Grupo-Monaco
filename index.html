@@ -3393,6 +3393,7 @@ function openModalProducto(id) {
           <div class="field-label">Tipo de impuesto</div>
           <select id="mprod-impuesto" class="inv-input">
             <option value="alimento"       ${(p?.tipoImpuesto||'alimento')==='alimento'?'selected':''}>Alimento (IVA 19%)</option>
+            <option value="carne"          ${p?.tipoImpuesto==='carne'?'selected':''}>Carne (IVA+imp.carne 24%)</option>
             <option value="cerveza"        ${p?.tipoImpuesto==='cerveza'?'selected':''}>Cerveza (IVA+ILA 39.5%)</option>
             <option value="vino_licor"     ${p?.tipoImpuesto==='vino_licor'?'selected':''}>Vino / Licor (IVA+ILA 50.5%)</option>
             <option value="beb_azucarada"  ${p?.tipoImpuesto==='beb_azucarada'?'selected':''}>Bebida azucarada (IVA+IABA 37%)</option>
@@ -3528,8 +3529,8 @@ function openModalProducto(id) {
   }
 }
 
-const PP_DIVISORS  = { alimento:1.19, cerveza:1.395, vino_licor:1.505, beb_azucarada:1.37, beb_sin_azucar:1.29, sin_impuesto:1.00 };
-const PP_ILA_RATES = { alimento:0, cerveza:0.205, vino_licor:0.315, beb_azucarada:0.18, beb_sin_azucar:0.10, sin_impuesto:0 };
+const PP_DIVISORS  = { alimento:1.19, carne:1.24, cerveza:1.395, vino_licor:1.505, beb_azucarada:1.37, beb_sin_azucar:1.29, sin_impuesto:1.00 };
+const PP_ILA_RATES = { alimento:0, carne:0.05, cerveza:0.205, vino_licor:0.315, beb_azucarada:0.18, beb_sin_azucar:0.10, sin_impuesto:0 };
 
 function ppGetTipoImpuesto() {
   return document.getElementById('mprod-impuesto')?.value || 'alimento';
@@ -3587,7 +3588,7 @@ function ppRenderList() {
   }
   const sorted = [...priceHistoryData].sort((a, b) => b.mes.localeCompare(a.mes));
 
-  const tipoLabels = { alimento:'Alimento', cerveza:'Cerveza', vino_licor:'Vino/Licor', beb_azucarada:'Beb. azucarada', beb_sin_azucar:'Beb. s/azúcar', sin_impuesto:'Sin impuesto' };
+  const tipoLabels = { alimento:'Alimento', carne:'Carne', cerveza:'Cerveza', vino_licor:'Vino/Licor', beb_azucarada:'Beb. azucarada', beb_sin_azucar:'Beb. s/azúcar', sin_impuesto:'Sin impuesto' };
 
   el.innerHTML = sorted.map(p => {
     const hasDetail = p.precioBruto != null;
