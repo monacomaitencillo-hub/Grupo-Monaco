@@ -7,8 +7,10 @@ const fs             = require('fs');
 const os             = require('os');
 const path           = require('path');
 const { randomUUID } = require('crypto');
+const Anthropic      = require('@anthropic-ai/sdk');
 
 const ANTHROPIC_API_KEY = (process.env.ANTHROPIC_API_KEY || '').trim();
+const anthropic = new Anthropic({ apiKey: ANTHROPIC_API_KEY });
 const upload = multer({
   storage: multer.diskStorage({
     destination: (req, file, cb) => cb(null, os.tmpdir()),
@@ -2286,6 +2288,211 @@ app.delete('/api/config/units/:value', requireAuth, async (req, res) => {
   const updated = list.filter(u => u.value !== req.params.value);
   await UNITS_DOC().set({ list: updated });
   res.json({ ok: true, units: updated });
+});
+
+// ── Agente IA ─────────────────────────────────────────────────────────────────
+function agentCalcPrepCost(prep, preparations, ingredients) {
+  if (!prep) return 0;
+  const items = (prep.ingredients || []).filter(i => i.quantity > 0);
+  let cost = 0;
+  items.forEach(item => {
+    if (item.type === 'preparation') {
+      const sub = preparations.find(p => p.id === item.preparationId || p.name === item.name);
+      cost += agentCalcPrepCost(sub, preparations, ingredients) * (item.quantity || 0);
+    } else {
+      const prod = ingredients.find(p => p.id === item.productId || p.name === item.name);
+      cost += (prod?.costPerUnit || 0) * (item.quantity || 0);
+    }
+  });
+  if (prep.esPromedio && items.length > 1) cost = cost / items.length;
+  const agua = prep.rendimientoAgua || 0;
+  const aire = prep.rendimientoAire || 0;
+  if (agua > 0) cost = cost / (1 + agua / 100);
+  if (aire > 0) cost = cost / (1 + aire / 100);
+  const porciones = prep.porciones > 1 ? prep.porciones : 1;
+  return porciones > 1 ? cost / porciones : cost;
+}
+
+function agentCalcRecipeCost(recipe, preparations, ingredients) {
+  const items = (recipe.ingredients || []).filter(i => i.quantity > 0);
+  let cost = 0;
+  items.forEach(item => {
+    if (item.type === 'preparation') {
+      const prep = preparations.find(p => p.id === item.preparationId || p.name === item.name);
+      cost += agentCalcPrepCost(prep, preparations, ingredients) * (item.quantity || 0);
+    } else {
+      const prod = ingredients.find(p => p.id === item.productId || p.name === item.name);
+      cost += (prod?.costPerUnit || 0) * (item.quantity || 0);
+    }
+  });
+  if (recipe.esPromedio && items.length > 1) cost = cost / items.length;
+  const agua = recipe.rendimientoAgua || 0;
+  const aire = recipe.rendimientoAire || 0;
+  if (agua > 0) cost = cost / (1 + agua / 100);
+  if (aire > 0) cost = cost / (1 + aire / 100);
+  const porciones = recipe.porciones > 1 ? recipe.porciones : 1;
+  return porciones > 1 ? cost / porciones : cost;
+}
+
+const AGENT_TOOLS = [
+  {
+    name: 'get_restaurants',
+    description: 'Devuelve la lista de restaurantes/locales disponibles.',
+    input_schema: { type: 'object', properties: {} }
+  },
+  {
+    name: 'get_recipes',
+    description: 'Devuelve recetas con costo y margen calculado. Filtra opcionalmente por nombre de restaurante.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        restaurantName: { type: 'string', description: 'Nombre del local (opcional). Ej: "Daily Grind"' }
+      }
+    }
+  },
+  {
+    name: 'get_promos',
+    description: 'Devuelve promos con costo total y margen. Filtra opcionalmente por nombre de restaurante.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        restaurantName: { type: 'string', description: 'Nombre del local (opcional)' }
+      }
+    }
+  },
+  {
+    name: 'get_ingredients',
+    description: 'Devuelve ingredientes con su costo por unidad actual.',
+    input_schema: { type: 'object', properties: {} }
+  }
+];
+
+async function executeAgentTool(toolName, toolInput) {
+  if (toolName === 'get_restaurants') {
+    const snap = await db.collection('restaurants').get();
+    return snap.docs.map(d => ({ id: d.id, name: d.data().name }));
+  }
+
+  if (toolName === 'get_ingredients') {
+    const snap = await db.collection('products').get();
+    return snap.docs.map(d => ({
+      name: d.data().name, unit: d.data().unit || '',
+      costPerUnit: d.data().costPerUnit || 0, category: d.data().category || ''
+    }));
+  }
+
+  if (toolName === 'get_recipes') {
+    const [rSnap, pSnap, iSnap] = await Promise.all([
+      db.collection('recipes').get(),
+      db.collection('preparations').get(),
+      db.collection('products').get()
+    ]);
+    const preparations = pSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const ingredients  = iSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    let recipes = rSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    if (toolInput.restaurantName) {
+      const q = toolInput.restaurantName.toLowerCase();
+      recipes = recipes.filter(r => (r.restaurantName || '').toLowerCase().includes(q));
+    }
+    return recipes.map(r => {
+      const cost       = agentCalcRecipeCost(r, preparations, ingredients);
+      const selling    = r.sellingPrice || 0;
+      const sellingNet = selling > 0 ? selling / 1.19 : 0;
+      const margin     = sellingNet > 0 ? ((sellingNet - cost) / sellingNet * 100) : null;
+      return {
+        nombre: r.name, local: r.restaurantName || '—', categoria: r.category || '—',
+        costo: Math.round(cost), precioVenta: selling,
+        margen: margin !== null ? Math.round(margin) + '%' : 'sin precio',
+        porciones: r.porciones || 1,
+        ingredientes: (r.ingredients || []).filter(i => i.quantity > 0).length
+      };
+    }).sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
+  }
+
+  if (toolName === 'get_promos') {
+    const [promoSnap, recipeSnap, prepSnap, ingSnap] = await Promise.all([
+      db.collection('promos').get(),
+      db.collection('recipes').get(),
+      db.collection('preparations').get(),
+      db.collection('products').get()
+    ]);
+    const recipes      = recipeSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const preparations = prepSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const ingredients  = ingSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    let promos = promoSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    if (toolInput.restaurantName) {
+      const q = toolInput.restaurantName.toLowerCase();
+      promos = promos.filter(p => (p.restaurantName || '').toLowerCase().includes(q));
+    }
+    return promos.map(p => {
+      const recipeObjs = (p.recipes || []).map(id => recipes.find(r => r.id === id)).filter(Boolean);
+      const cost       = recipeObjs.reduce((s, r) => s + agentCalcRecipeCost(r, preparations, ingredients), 0);
+      const selling    = p.sellingPrice || 0;
+      const sellingNet = selling > 0 ? selling / 1.19 : 0;
+      const margin     = sellingNet > 0 ? ((sellingNet - cost) / sellingNet * 100) : null;
+      return {
+        nombre: p.name, local: p.restaurantName || '—',
+        recetas: recipeObjs.map(r => r.name),
+        costo: Math.round(cost), precioVenta: selling,
+        margen: margin !== null ? Math.round(margin) + '%' : 'sin precio'
+      };
+    });
+  }
+
+  return { error: 'Tool no encontrada' };
+}
+
+app.post('/api/agent', requireAuth, async (req, res) => {
+  if (!ANTHROPIC_API_KEY) return res.status(500).json({ error: 'API key no configurada' });
+  const { message, history = [] } = req.body;
+  if (!message) return res.status(400).json({ error: 'Mensaje requerido' });
+
+  const system = `Eres un asistente experto en análisis de costos y márgenes para restaurantes del grupo Monaco (Chile).
+Tenés acceso a datos reales de recetas, ingredientes, preparaciones y promos de los locales.
+Los locales incluyen: Daily Grind, Fuente Zapallar, y otros del grupo.
+Los precios están en pesos chilenos (CLP). El IVA en Chile es 19% — los precios de venta son brutos (con IVA).
+El margen se calcula como: (precioVenta/1.19 - costo) / (precioVenta/1.19) × 100.
+Cuando necesites datos, usá las herramientas disponibles. Respondé siempre en español, con números concretos y recomendaciones útiles.`;
+
+  const messages = [...history, { role: 'user', content: message }];
+
+  try {
+    let response = await anthropic.messages.create({
+      model: 'claude-opus-4-6', max_tokens: 2048,
+      system, tools: AGENT_TOOLS, messages,
+      thinking: { type: 'adaptive' }
+    });
+
+    while (response.stop_reason === 'tool_use') {
+      const toolBlocks = response.content.filter(b => b.type === 'tool_use');
+      messages.push({ role: 'assistant', content: response.content });
+      const results = [];
+      for (const tool of toolBlocks) {
+        const result = await executeAgentTool(tool.name, tool.input);
+        results.push({ type: 'tool_result', tool_use_id: tool.id, content: JSON.stringify(result) });
+      }
+      messages.push({ role: 'user', content: results });
+      response = await anthropic.messages.create({
+        model: 'claude-opus-4-6', max_tokens: 2048,
+        system, tools: AGENT_TOOLS, messages,
+        thinking: { type: 'adaptive' }
+      });
+    }
+
+    const text = response.content.find(b => b.type === 'text')?.text || '';
+    messages.push({ role: 'assistant', content: response.content });
+    // Strip non-serializable thinking blocks from history
+    const cleanHistory = messages.map(m => ({
+      role: m.role,
+      content: Array.isArray(m.content)
+        ? m.content.filter(b => b.type !== 'thinking').map(b => b.type === 'text' ? { type: 'text', text: b.text } : b)
+        : m.content
+    }));
+    res.json({ response: text, history: cleanHistory });
+  } catch (e) {
+    console.error('Agent error:', e);
+    res.status(500).json({ error: e.message });
+  }
 });
 
 module.exports = app;
