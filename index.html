@@ -6304,10 +6304,17 @@ let margenFilterMargen = ''; // '' | 'sin_precio' | 'bajo' | 'normal' | 'bueno'
 let margenFilterCat    = '';
 let margenCols         = 3;
 let margenView         = 'grid'; // 'grid' | 'list'
+let cartaFilterRest    = '';
+let cartaFilterSearch  = '';
+let cartaFilterType    = ''; // '' | 'receta' | 'promo'
+let cartaFilterCat     = '';
+let cartaFilterMargen  = '';
+let cartaCols          = 3;
+let cartaView          = 'grid';
 
 async function initMargenesModule() {
   margenTabActive = 'recetas';
-  ['recetas','preparaciones','costos','promos'].forEach(t => {
+  ['recetas','preparaciones','costos','promos','carta'].forEach(t => {
     document.getElementById(`mtab-${t}`).classList.toggle('active', t === 'recetas');
     document.getElementById(`marg-${t}`).style.display = t === 'recetas' ? '' : 'none';
   });
@@ -6334,7 +6341,7 @@ async function loadMargenData() {
 
 function switchMargenTab(tab) {
   margenTabActive = tab;
-  ['recetas','preparaciones','costos','promos'].forEach(t => {
+  ['recetas','preparaciones','costos','promos','carta'].forEach(t => {
     document.getElementById(`mtab-${t}`).classList.toggle('active', t === tab);
     document.getElementById(`marg-${t}`).style.display = t === tab ? '' : 'none';
   });
@@ -6342,6 +6349,7 @@ function switchMargenTab(tab) {
   if (tab === 'preparaciones') renderMargenPreparaciones();
   if (tab === 'costos')        renderMargenCostos();
   if (tab === 'promos')        renderMargenPromos();
+  if (tab === 'carta')         renderMargenCarta();
 }
 
 // Calcula el costo total de una preparación (solo ingredientes)
@@ -7371,6 +7379,195 @@ async function margenDeletePromo(id, name) {
   } catch(e) { alert('Error: ' + e.message); }
 }
 
+// ── Márgenes: Carta ────────────────────────────────────────
+function getCartaItems() {
+  const items = [];
+  margenRecipes.forEach(r => {
+    const cost       = calcRecipeCost(r);
+    const sellingNet = r.sellingPrice > 0 ? r.sellingPrice / 1.19 : 0;
+    const margin     = sellingNet > 0 ? (sellingNet - cost) / sellingNet * 100 : null;
+    items.push({ type:'receta', id:r.id, name:r.name, restaurantName:r.restaurantName||'', restaurantId:r.restaurantId||'', category:r.category||'', cost, sellingPrice:r.sellingPrice||0, margin, _raw:r });
+  });
+  margenPromos.forEach(p => {
+    const recipes    = (p.recipes||[]).map(id => margenRecipes.find(r => r.id === id)).filter(Boolean);
+    const cost       = recipes.reduce((s, r) => s + calcRecipeCost(r), 0);
+    const sellingNet = p.sellingPrice > 0 ? p.sellingPrice / 1.19 : 0;
+    const margin     = sellingNet > 0 ? (sellingNet - cost) / sellingNet * 100 : null;
+    items.push({ type:'promo', id:p.id, name:p.name, restaurantName:p.restaurantName||'', restaurantId:p.restaurantId||'', category:'', cost, sellingPrice:p.sellingPrice||0, margin, _raw:p });
+  });
+  return items;
+}
+
+function renderMargenCarta() {
+  const toolbar = document.getElementById('marg-carta-toolbar');
+  if (toolbar && !toolbar.dataset.built) {
+    toolbar.dataset.built = '1';
+    const restOpts = restaurants.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
+    toolbar.innerHTML = `
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;width:100%">
+        <select id="carta-filter-rest" class="inv-input" style="min-width:180px;max-width:240px"
+          onchange="cartaFilterRest=this.value;renderMargenCartaContent()">
+          <option value="">— Seleccionar local —</option>${restOpts}
+        </select>
+        <input id="carta-search" class="inv-input" placeholder="Buscar..." style="min-width:160px;max-width:220px"
+          oninput="clearTimeout(this._t);this._t=setTimeout(()=>{cartaFilterSearch=this.value;renderMargenCartaContent()},280)">
+        <div style="display:flex;gap:4px;flex-wrap:wrap">
+          ${['','receta','promo'].map(v => `<button id="carta-type-${v||'all'}" onclick="cartaFilterType='${v}';cartaUpdateTypeBtns();renderMargenCartaContent()"
+            style="padding:5px 12px;border-radius:7px;border:1px solid #dee2e6;font-size:12px;font-weight:600;cursor:pointer;background:${v===''?'#212529':'#fff'};color:${v===''?'#fff':'#6c757d'}">
+            ${v===''?'Todo':v==='receta'?'Recetas':'Promos'}</button>`).join('')}
+        </div>
+        <div style="display:flex;gap:4px;flex-wrap:wrap">
+          ${[['','Todas'],['Comida','Comida'],['Barra','Barra'],['Postres','Postres'],['Cafetería','Cafetería']].map(([v,l]) =>
+            `<button id="carta-cat-${v||'all'}" onclick="cartaFilterCat='${v}';cartaUpdateCatBtns();renderMargenCartaContent()"
+              style="padding:5px 12px;border-radius:7px;border:1px solid #dee2e6;font-size:12px;font-weight:600;cursor:pointer;background:${v===''?'#212529':'#fff'};color:${v===''?'#fff':'#6c757d'}">${l}</button>`).join('')}
+        </div>
+        <div style="display:flex;gap:4px;flex-wrap:wrap">
+          ${[['','Todos'],['sin_precio','Sin precio'],['bajo','Bajo <40%'],['normal','Normal 40-60%'],['bueno','Bueno >60%']].map(([v,l]) =>
+            `<button id="carta-mg-${v||'all'}" onclick="cartaFilterMargen='${v}';cartaUpdateMargenBtns();renderMargenCartaContent()"
+              style="padding:5px 12px;border-radius:7px;border:1px solid #dee2e6;font-size:12px;font-weight:600;cursor:pointer;background:${v===''?'#212529':'#fff'};color:${v===''?'#fff':'#6c757d'}">${l}</button>`).join('')}
+        </div>
+        <div style="display:flex;gap:4px;margin-left:auto">
+          ${[['list','☰'],['grid3','▦'],['grid4','⊞'],['grid6','⋮⋮']].map(([v,ic]) =>
+            `<button id="carta-view-${v}" onclick="cartaSetView('${v}')"
+              style="width:32px;height:32px;border-radius:7px;border:1px solid #dee2e6;font-size:14px;cursor:pointer;background:${v==='grid3'?'#212529':'#fff'};color:${v==='grid3'?'#fff':'#6c757d'}">${ic}</button>`).join('')}
+        </div>
+      </div>`;
+  }
+  renderMargenCartaContent();
+}
+
+function cartaUpdateTypeBtns() {
+  ['all','receta','promo'].forEach(v => {
+    const btn = document.getElementById('carta-type-' + v);
+    if (!btn) return;
+    const active = v === (cartaFilterType || 'all');
+    btn.style.background = active ? '#212529' : '#fff';
+    btn.style.color      = active ? '#fff' : '#6c757d';
+  });
+}
+function cartaUpdateCatBtns() {
+  ['all','Comida','Barra','Postres','Cafetería'].forEach(v => {
+    const btn = document.getElementById('carta-cat-' + (v === 'all' ? 'all' : v));
+    if (!btn) return;
+    const active = (cartaFilterCat || '') === (v === 'all' ? '' : v);
+    btn.style.background = active ? '#212529' : '#fff';
+    btn.style.color      = active ? '#fff' : '#6c757d';
+  });
+}
+function cartaUpdateMargenBtns() {
+  ['all','sin_precio','bajo','normal','bueno'].forEach(v => {
+    const btn = document.getElementById('carta-mg-' + (v === 'all' ? 'all' : v));
+    if (!btn) return;
+    const active = (cartaFilterMargen || '') === (v === 'all' ? '' : v);
+    btn.style.background = active ? '#212529' : '#fff';
+    btn.style.color      = active ? '#fff' : '#6c757d';
+  });
+}
+function cartaSetView(v) {
+  if (v === 'list') { cartaView = 'list'; cartaCols = 3; }
+  else { cartaView = 'grid'; cartaCols = v === 'grid3' ? 3 : v === 'grid4' ? 4 : 6; }
+  ['list','grid3','grid4','grid6'].forEach(vv => {
+    const btn = document.getElementById('carta-view-' + vv);
+    if (!btn) return;
+    const active = vv === v;
+    btn.style.background = active ? '#212529' : '#fff';
+    btn.style.color      = active ? '#fff' : '#6c757d';
+  });
+  renderMargenCartaContent();
+}
+
+function renderMargenCartaContent() {
+  const content = document.getElementById('marg-carta-content');
+  if (!content) return;
+  let items = getCartaItems();
+
+  if (cartaFilterRest)   items = items.filter(i => i.restaurantId === cartaFilterRest || i.restaurantName === restaurants.find(r => r.id === cartaFilterRest)?.name);
+  if (cartaFilterSearch) { const q = cartaFilterSearch.toLowerCase(); items = items.filter(i => i.name.toLowerCase().includes(q)); }
+  if (cartaFilterType)   items = items.filter(i => i.type === cartaFilterType);
+  if (cartaFilterCat)    items = items.filter(i => i.category === cartaFilterCat);
+  if (cartaFilterMargen === 'sin_precio') items = items.filter(i => !i.sellingPrice);
+  else if (cartaFilterMargen === 'bajo')  items = items.filter(i => i.margin !== null && i.margin < 40);
+  else if (cartaFilterMargen === 'normal')items = items.filter(i => i.margin !== null && i.margin >= 40 && i.margin <= 60);
+  else if (cartaFilterMargen === 'bueno') items = items.filter(i => i.margin !== null && i.margin > 60);
+
+  if (!items.length) {
+    content.innerHTML = `<div style="text-align:center;padding:60px 20px;color:#888">
+      <div style="font-size:40px;margin-bottom:12px">🔍</div>
+      <div style="font-size:15px;font-weight:600">${!cartaFilterRest ? 'Seleccioná un local para comenzar' : 'Sin resultados'}</div>
+    </div>`;
+    return;
+  }
+
+  items.sort((a, b) => a.name.localeCompare(b.name, 'es'));
+
+  if (cartaView === 'list') {
+    content.innerHTML = `<table class="inv-table" style="margin-top:16px">
+      <thead><tr>
+        <th>Nombre</th><th>Tipo</th><th>Categoría</th><th>Costo</th><th>Venta</th><th>Margen</th>
+      </tr></thead>
+      <tbody>${items.map(i => {
+        const mColor = i.margin === null ? '#888' : i.margin >= 60 ? '#16a34a' : i.margin >= 40 ? '#d97706' : '#dc2626';
+        const typeBadge = i.type === 'promo'
+          ? `<span style="background:#fff7ed;border:1px solid #fed7aa;border-radius:4px;padding:1px 7px;font-size:11px;color:#ea580c;font-weight:600">PROMO</span>`
+          : `<span style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:4px;padding:1px 7px;font-size:11px;color:#16a34a;font-weight:600">RECETA</span>`;
+        const catBadge = i.category
+          ? `<span style="background:#f1f3f4;border-radius:4px;padding:1px 7px;font-size:11px;color:#495057">${i.category}</span>` : '—';
+        return `<tr>
+          <td style="font-weight:600;color:#212529">${i.name}<br><span style="font-size:11px;color:#adb5bd;font-weight:400">${i.restaurantName}</span></td>
+          <td>${typeBadge}</td>
+          <td>${catBadge}</td>
+          <td style="color:#495057">$${Math.round(i.cost).toLocaleString('es-CL')}</td>
+          <td style="color:#212529;font-weight:600">${i.sellingPrice > 0 ? '$'+Math.round(i.sellingPrice).toLocaleString('es-CL') : '—'}</td>
+          <td style="font-weight:700;color:${mColor}">${i.margin !== null ? Math.round(i.margin)+'%' : '—'}</td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table>`;
+    return;
+  }
+
+  const colClass = `marg-grid marg-grid-${cartaCols}`;
+  content.innerHTML = `<div class="${colClass}" style="margin-top:16px">${items.map(i => cartaCardHTML(i)).join('')}</div>`;
+}
+
+function cartaCardHTML(item) {
+  const mColor = item.margin === null ? '#888' : item.margin >= 60 ? '#16a34a' : item.margin >= 40 ? '#d97706' : '#dc2626';
+  const typeBadge = item.type === 'promo'
+    ? `<span style="font-size:11px;background:#fff7ed;border:1px solid #fed7aa;border-radius:4px;padding:1px 7px;color:#ea580c;font-weight:600">PROMO</span>`
+    : `<span style="font-size:11px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:4px;padding:1px 7px;color:#16a34a;font-weight:600">RECETA</span>`;
+  const catColor = item.category ? margenCatColor(item.category) : null;
+  const catBadge = catColor
+    ? `<span style="font-size:11px;background:${catColor}22;border-radius:4px;padding:1px 7px;color:${catColor};font-weight:600">${item.category}</span>`
+    : '';
+  const subLine = item.type === 'promo'
+    ? `<div style="font-size:11px;color:#adb5bd;margin-top:2px">${(item._raw.recipes||[]).length} receta${(item._raw.recipes||[]).length!==1?'s':''}</div>`
+    : '';
+  return `
+    <div style="background:#fff;border:1px solid #e9ecef;border-radius:14px;padding:18px;transition:box-shadow .18s,transform .18s"
+      onmouseover="this.style.boxShadow='0 6px 24px rgba(0,0,0,.09)';this.style.transform='translateY(-2px)'"
+      onmouseout="this.style.boxShadow='';this.style.transform=''">
+      <div style="display:flex;gap:5px;margin-bottom:8px;flex-wrap:wrap">${typeBadge}${catBadge}</div>
+      <div style="font-size:14px;font-weight:700;color:#212529;line-height:1.3;margin-bottom:2px">${item.name}</div>
+      <div style="font-size:12px;color:#adb5bd;margin-bottom:2px">${item.restaurantName}</div>
+      ${subLine}
+      <div style="display:flex;justify-content:space-between;border-top:1px solid #f1f3f4;padding-top:10px;margin-top:10px;gap:6px">
+        <div style="text-align:center;flex:1">
+          <div style="font-size:10px;color:#adb5bd;text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px">Costo</div>
+          <div style="font-size:13px;font-weight:700;color:#212529">$${Math.round(item.cost).toLocaleString('es-CL')}</div>
+        </div>
+        <div style="width:1px;background:#f1f3f4"></div>
+        <div style="text-align:center;flex:1">
+          <div style="font-size:10px;color:#adb5bd;text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px">Venta</div>
+          <div style="font-size:13px;font-weight:700;color:#212529">${item.sellingPrice > 0 ? '$'+Math.round(item.sellingPrice).toLocaleString('es-CL') : '—'}</div>
+        </div>
+        <div style="width:1px;background:#f1f3f4"></div>
+        <div style="text-align:center;flex:1">
+          <div style="font-size:10px;color:#adb5bd;text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px">Margen</div>
+          <div style="font-size:13px;font-weight:700;color:${mColor}">${item.margin !== null ? Math.round(item.margin)+'%' : '—'}</div>
+        </div>
+      </div>
+    </div>`;
+}
+
 // ── Márgenes: Formulario crear/editar receta ───────────────
 let margenFormIngCounter = 0;
 
@@ -7799,6 +7996,7 @@ async function margenDeleteRecipe(id, name) {
       <button class="inv-tab"        id="mtab-preparaciones" onclick="switchMargenTab('preparaciones')">Preparaciones</button>
       <button class="inv-tab"        id="mtab-costos"        onclick="switchMargenTab('costos')">Costos de ingredientes</button>
       <button class="inv-tab"        id="mtab-promos"        onclick="switchMargenTab('promos')">Promos</button>
+      <button class="inv-tab"        id="mtab-carta"         onclick="switchMargenTab('carta')">Carta</button>
     </div>
   </div>
   <div class="inv-main" style="max-width:none">
@@ -7811,6 +8009,10 @@ async function margenDeleteRecipe(id, name) {
     <div id="marg-preparaciones" style="display:none"></div>
     <div id="marg-costos"        style="display:none"></div>
     <div id="marg-promos"        style="display:none"></div>
+    <div id="marg-carta"         style="display:none">
+      <div class="inv-toolbar" style="flex-wrap:wrap;gap:10px;margin-bottom:0" id="marg-carta-toolbar"></div>
+      <div id="marg-carta-content"></div>
+    </div>
   </div>
 </div>
 
