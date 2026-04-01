@@ -6688,7 +6688,7 @@ function margenListHTML(recipes) {
       <td style="padding:10px 14px;font-size:12px;color:#6c757d">${restNames}</td>
       <td style="padding:10px 14px;font-size:13px;color:#212529;text-align:right">${costoPorcion > 0 ? '$'+Math.round(costoPorcion).toLocaleString('es-CL')+(porciones > 1 ? '/p' : '') : '—'}</td>
       <td style="padding:10px 14px;font-size:13px;color:#212529;text-align:right">${ventaText}</td>
-      <td style="padding:10px 14px;text-align:center;display:flex;flex-wrap:wrap;gap:3px;justify-content:center">${margenCellHTML}</td>
+      <td style="padding:10px 14px;text-align:center"><div style="display:flex;flex-wrap:wrap;gap:3px;justify-content:center">${margenCellHTML}</div></td>
       <td style="padding:10px 14px;font-size:13px;color:#6c757d;text-align:center">${ingCount}</td>
       <td style="padding:10px 14px;text-align:right" onclick="event.stopPropagation()">
         <div style="display:flex;gap:6px;justify-content:flex-end">
