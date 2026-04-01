@@ -7094,7 +7094,7 @@ function margenOpenPrepModal(id) {
 
   // Ocultar campos que no aplican a preparaciones
   document.getElementById('marg-form-rest').closest('div').style.display   = 'none';
-  document.getElementById('marg-form-price').closest('div').style.display  = 'none';
+  document.getElementById('marg-form-price-wrap').style.display  = 'none';
   document.getElementById('marg-form-cat-wrap').style.display              = 'none';
   document.getElementById('marg-form-add-prep-btn').style.display          = 'none';
   document.getElementById('marg-form-prep-extras').style.display           = '';
@@ -7634,7 +7634,7 @@ function margenOpenFormModal(id) {
 
   // Mostrar campos de receta
   document.getElementById('marg-form-rest').closest('div').style.display   = '';
-  document.getElementById('marg-form-price').closest('div').style.display  = '';
+  document.getElementById('marg-form-price-wrap').style.display  = '';
   document.getElementById('marg-form-add-prep-btn').style.display          = '';
   document.getElementById('marg-form-prep-extras').style.display           = 'none';
 
@@ -7669,7 +7669,7 @@ function margenCloseFormModal() {
   document.getElementById('marg-form-modal').style.display = 'none';
   // Restaurar campos visibles para próxima apertura
   document.getElementById('marg-form-rest').closest('div').style.display  = '';
-  document.getElementById('marg-form-price').closest('div').style.display = '';
+  document.getElementById('marg-form-price-wrap').style.display = '';
   document.getElementById('marg-form-cat-wrap').style.display = '';
   document.getElementById('marg-form-add-prep-btn').style.display         = '';
 }
@@ -8162,7 +8162,7 @@ async function margenDeleteRecipe(id, name) {
         </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
-        <div>
+        <div id="marg-form-price-wrap">
           <div class="field-label">Precio de venta ($)</div>
           <div style="display:flex;align-items:center;border:1px solid #dee2e6;border-radius:8px;overflow:hidden;background:#fff">
             <span style="padding:0 10px;color:#888;font-size:13px;background:#f8f9fa;border-right:1px solid #dee2e6">$</span>
