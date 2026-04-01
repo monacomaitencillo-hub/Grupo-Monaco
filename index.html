@@ -6394,11 +6394,13 @@ function calcPrepCost(prep) {
     }
   });
   if (prep?.esPromedio && items.length > 1) cost = cost / items.length;
-  // Aplicar rendimientos propios de la preparación
+  // Aplicar rendimientos y merma propios de la preparación
   const agua = prep?.rendimientoAgua || 0;
   const aire = prep?.rendimientoAire || 0;
+  const merma = prep?.merma || 0;
   if (agua > 0) cost = cost / (1 + agua / 100);
   if (aire > 0) cost = cost / (1 + aire / 100);
+  if (merma > 0 && merma < 100) cost = cost / (1 - merma / 100);
   // Dividir por porciones (costo por porción)
   const porciones = prep?.porciones > 1 ? prep.porciones : 1;
   if (porciones > 1) cost = cost / porciones;
@@ -6433,17 +6435,19 @@ function margenToggleRendimientoField(tipo) {
 
 function margenGetRendimientos() {
   const enabled = document.getElementById('marg-rend-enabled')?.checked;
-  if (!enabled) return { agua: 0, aire: 0 };
-  const agua = document.getElementById('marg-rend-agua-chk')?.checked
+  const agua = enabled && document.getElementById('marg-rend-agua-chk')?.checked
     ? (parseFloat(document.getElementById('marg-rend-agua')?.value) || 0) : 0;
-  const aire = document.getElementById('marg-rend-aire-chk')?.checked
+  const aire = enabled && document.getElementById('marg-rend-aire-chk')?.checked
     ? (parseFloat(document.getElementById('marg-rend-aire')?.value) || 0) : 0;
-  return { agua, aire };
+  const mermaEnabled = document.getElementById('marg-merma-enabled')?.checked;
+  const merma = mermaEnabled ? (parseFloat(document.getElementById('marg-merma-pct')?.value) || 0) : 0;
+  return { agua, aire, merma };
 }
 
-function margenSetRendimientos(rendimientoAgua, rendimientoAire) {
+function margenSetRendimientos(rendimientoAgua, rendimientoAire, merma) {
   const agua = Number(rendimientoAgua) || 0;
   const aire = Number(rendimientoAire) || 0;
+  const mermaVal = Number(merma) || 0;
   const hasAny = agua > 0 || aire > 0;
   const enabledChk = document.getElementById('marg-rend-enabled');
   if (enabledChk) enabledChk.checked = hasAny;
@@ -6454,10 +6458,24 @@ function margenSetRendimientos(rendimientoAgua, rendimientoAire) {
     const chk  = document.getElementById(`marg-rend-${t}-chk`);
     const wrap = document.getElementById(`marg-rend-${t}-wrap`);
     const inp  = document.getElementById(`marg-rend-${t}`);
-    if (chk)  chk.checked            = val > 0;
-    if (wrap) wrap.style.display     = val > 0 ? '' : 'none';
-    if (inp)  inp.value              = val > 0 ? val : '';
+    if (chk)  chk.checked        = val > 0;
+    if (wrap) wrap.style.display = val > 0 ? '' : 'none';
+    if (inp)  inp.value          = val > 0 ? val : '';
   });
+  const mermaChk = document.getElementById('marg-merma-enabled');
+  const mermaFields = document.getElementById('marg-merma-fields');
+  const mermaInp = document.getElementById('marg-merma-pct');
+  if (mermaChk) mermaChk.checked = mermaVal > 0;
+  if (mermaFields) mermaFields.style.display = mermaVal > 0 ? '' : 'none';
+  if (mermaInp) mermaInp.value = mermaVal > 0 ? mermaVal : '';
+}
+
+function margenToggleMerma() {
+  const chk = document.getElementById('marg-merma-enabled');
+  const fields = document.getElementById('marg-merma-fields');
+  if (fields) fields.style.display = chk?.checked ? '' : 'none';
+  if (!chk?.checked) { const inp = document.getElementById('marg-merma-pct'); if (inp) inp.value = ''; }
+  margenUpdateFormTotal();
 }
 
 // Calcula el costo de un item de receta (puede ser ingrediente o preparación)
@@ -7114,7 +7132,7 @@ function margenOpenPrepModal(id) {
   document.getElementById('marg-form-promedio').checked = prep?.esPromedio === true;
   document.getElementById('marg-form-porciones').value  = prep?.porciones > 1 ? prep.porciones : '';
 
-  margenSetRendimientos(prep?.rendimientoAgua, prep?.rendimientoAire);
+  margenSetRendimientos(prep?.rendimientoAgua, prep?.rendimientoAire, prep?.merma);
   document.getElementById('marg-form-modal').style.display = 'flex';
   document.getElementById('marg-form-name').focus();
   setTimeout(margenUpdateFormTotal, 30);
@@ -7217,8 +7235,10 @@ function calcRecipeCost(recipe) {
   if (recipe.esPromedio && items.length > 1) totalCost = totalCost / items.length;
   const agua = recipe.rendimientoAgua || 0;
   const aire = recipe.rendimientoAire || 0;
+  const merma = recipe.merma || 0;
   if (agua > 0) totalCost = totalCost / (1 + agua / 100);
   if (aire > 0) totalCost = totalCost / (1 + aire / 100);
+  if (merma > 0 && merma < 100) totalCost = totalCost / (1 - merma / 100);
   const porciones = recipe.porciones > 1 ? recipe.porciones : 1;
   return porciones > 1 ? totalCost / porciones : totalCost;
 }
@@ -7639,7 +7659,7 @@ function margenOpenFormModal(id) {
   document.getElementById('marg-form-cat').value        = recipe?.categoria || '';
   document.getElementById('marg-form-cat-wrap').style.display = '';
 
-  margenSetRendimientos(recipe?.rendimientoAgua, recipe?.rendimientoAire);
+  margenSetRendimientos(recipe?.rendimientoAgua, recipe?.rendimientoAire, recipe?.merma);
   document.getElementById('marg-form-modal').style.display = 'flex';
   document.getElementById('marg-form-name').focus();
   setTimeout(margenUpdateFormTotal, 30);
@@ -7786,9 +7806,10 @@ function margenUpdateFormTotal() {
   const esPromedio = document.getElementById('marg-form-promedio')?.checked;
   if (esPromedio && rowCount > 1) costoBase = costoBase / rowCount;
 
-  const { agua, aire } = margenGetRendimientos();
+  const { agua, aire, merma } = margenGetRendimientos();
   const costoConAgua = agua > 0 ? costoBase / (1 + agua / 100) : costoBase;
-  const costoFinal   = aire > 0 ? costoConAgua / (1 + aire / 100) : costoConAgua;
+  const costoConAire = aire > 0 ? costoConAgua / (1 + aire / 100) : costoConAgua;
+  const costoFinal   = merma > 0 ? costoConAire / (1 - merma / 100) : costoConAire;
 
   const porcionesVal = parseInt(document.getElementById('marg-form-porciones')?.value) || 1;
   const porciones    = porcionesVal > 1 ? porcionesVal : 1;
@@ -7797,11 +7818,12 @@ function margenUpdateFormTotal() {
   const el = document.getElementById('marg-form-total');
   if (!el) return;
 
-  if (agua > 0 || aire > 0 || porciones > 1) {
+  if (agua > 0 || aire > 0 || merma > 0 || porciones > 1) {
     let html = `<div style="display:flex;flex-direction:column;gap:4px">`;
     html += `<div style="display:flex;justify-content:space-between"><span>Costo ingredientes:</span><span>$${Math.round(costoBase).toLocaleString('es-CL')}</span></div>`;
     if (agua > 0) html += `<div style="display:flex;justify-content:space-between;color:#0369a1"><span>💧 ÷ Agua (+${agua}%):</span><span>$${Math.round(costoConAgua).toLocaleString('es-CL')}</span></div>`;
-    if (aire > 0) html += `<div style="display:flex;justify-content:space-between;color:#7c3aed"><span>💨 ÷ Aire (+${aire}%):</span><span>$${Math.round(costoFinal).toLocaleString('es-CL')}</span></div>`;
+    if (aire > 0) html += `<div style="display:flex;justify-content:space-between;color:#7c3aed"><span>💨 ÷ Aire (+${aire}%):</span><span>$${Math.round(costoConAire).toLocaleString('es-CL')}</span></div>`;
+    if (merma > 0) html += `<div style="display:flex;justify-content:space-between;color:#dc2626"><span>🗑 Merma (${merma}%):</span><span>$${Math.round(costoFinal).toLocaleString('es-CL')}</span></div>`;
     if (porciones > 1) html += `<div style="display:flex;justify-content:space-between;color:#16a34a"><span>÷ ${porciones} porciones:</span><span style="font-weight:700">$${Math.round(costoPorcion).toLocaleString('es-CL')}/porción</span></div>`;
     else html += `<div style="display:flex;justify-content:space-between;font-weight:700;color:#212529;border-top:1px solid #dee2e6;padding-top:4px;margin-top:2px"><span>Costo final:</span><span>$${Math.round(costoFinal).toLocaleString('es-CL')}</span></div>`;
     html += `</div>`;
@@ -7860,20 +7882,20 @@ async function margenSaveForm() {
       const secs = [...wrap.querySelectorAll('input:checked')].map(i => i.value);
       if (secs.length) restaurantSections[rId] = secs;
     });
-    const { agua: rendAgua, aire: rendAire } = margenGetRendimientos();
+    const { agua: rendAgua, aire: rendAire, merma: mermaVal } = margenGetRendimientos();
     try {
       let res, data;
       if (id) {
-        res  = await apiFetch(`/api/preparations/${id}`, { method: 'PUT', body: JSON.stringify({ name, category, unit, ingredients, esGDD, esPromedio, restaurantIds, restaurantSections, rendimientoAgua: rendAgua, rendimientoAire: rendAire, porciones }) });
+        res  = await apiFetch(`/api/preparations/${id}`, { method: 'PUT', body: JSON.stringify({ name, category, unit, ingredients, esGDD, esPromedio, restaurantIds, restaurantSections, rendimientoAgua: rendAgua, rendimientoAire: rendAire, merma: mermaVal, porciones }) });
         data = await res.json();
         if (data.error) throw new Error(data.error);
         const idx2 = margenPreparations.findIndex(p => p.id === id);
-        if (idx2 >= 0) margenPreparations[idx2] = { ...margenPreparations[idx2], name, category, unit, ingredients, esGDD, esPromedio, restaurantIds, restaurantSections, rendimientoAgua: rendAgua, rendimientoAire: rendAire, porciones };
+        if (idx2 >= 0) margenPreparations[idx2] = { ...margenPreparations[idx2], name, category, unit, ingredients, esGDD, esPromedio, restaurantIds, restaurantSections, rendimientoAgua: rendAgua, rendimientoAire: rendAire, merma: mermaVal, porciones };
       } else {
-        res  = await apiFetch('/api/preparations', { method: 'POST', body: JSON.stringify({ name, category, unit, ingredients, esGDD, esPromedio, restaurantIds, restaurantSections, rendimientoAgua: rendAgua, rendimientoAire: rendAire, porciones }) });
+        res  = await apiFetch('/api/preparations', { method: 'POST', body: JSON.stringify({ name, category, unit, ingredients, esGDD, esPromedio, restaurantIds, restaurantSections, rendimientoAgua: rendAgua, rendimientoAire: rendAire, merma: mermaVal, porciones }) });
         data = await res.json();
         if (data.error) throw new Error(data.error);
-        margenPreparations.push({ id: data.id, name, category, unit, ingredients, esGDD, esPromedio, restaurantIds, restaurantSections, rendimientoAgua: rendAgua, rendimientoAire: rendAire, porciones });
+        margenPreparations.push({ id: data.id, name, category, unit, ingredients, esGDD, esPromedio, restaurantIds, restaurantSections, rendimientoAgua: rendAgua, rendimientoAire: rendAire, merma: mermaVal, porciones });
       }
       margenCloseFormModal();
       renderMargenPreparaciones();
@@ -7890,11 +7912,11 @@ async function margenSaveForm() {
   if (!restId) { msg.style.color='#dc2626'; msg.textContent='Selecciona el local.'; return; }
 
   const categoria = document.getElementById('marg-form-cat')?.value || '';
-  const { agua: rendAgua, aire: rendAire } = margenGetRendimientos();
+  const { agua: rendAgua, aire: rendAire, merma: mermaVal } = margenGetRendimientos();
   try {
     if (id) {
       // Update existing
-      const res  = await apiFetch(`/api/recipes/${id}`, { method: 'PUT', body: JSON.stringify({ name, sellingPrice: price, ingredients, esPromedio, rendimientoAgua: rendAgua, rendimientoAire: rendAire, porciones, categoria }) });
+      const res  = await apiFetch(`/api/recipes/${id}`, { method: 'PUT', body: JSON.stringify({ name, sellingPrice: price, ingredients, esPromedio, rendimientoAgua: rendAgua, rendimientoAire: rendAire, merma: mermaVal, porciones, categoria }) });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
     } else {
@@ -8211,6 +8233,24 @@ async function margenDeleteRecipe(id, name) {
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Merma -->
+      <div style="margin-bottom:16px">
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;color:#212529;user-select:none">
+          <input type="checkbox" id="marg-merma-enabled" onchange="margenToggleMerma()" style="width:16px;height:16px;accent-color:#ff5023">
+          <span style="font-weight:600">Tiene merma</span>
+        </label>
+        <div id="marg-merma-fields" style="display:none;margin-top:12px;background:#fff0f0;border:1px solid #fca5a5;border-radius:10px;padding:14px">
+          <div style="font-size:12px;color:#6c757d;margin-bottom:8px">% del producto que se pierde o descarta (ej: huesos, grasa, cáscara)</div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <input type="number" id="marg-merma-pct" min="0" max="99" step="0.1" placeholder="0"
+              style="width:80px;padding:6px 8px;border:1px solid #dee2e6;border-radius:6px;font-size:13px;color:#212529"
+              oninput="margenUpdateFormTotal()">
+            <span style="font-size:13px;color:#495057">%</span>
+            <span style="font-size:12px;color:#dc2626">→ aumenta el costo por unidad utilizable</span>
           </div>
         </div>
       </div>
