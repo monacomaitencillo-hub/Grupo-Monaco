@@ -6332,6 +6332,14 @@ let margenFilterMargen = ''; // '' | 'sin_precio' | 'bajo' | 'normal' | 'bueno'
 let margenFilterCat    = '';
 let margenCols         = 3;
 let margenView         = 'grid'; // 'grid' | 'list'
+let margenSortCol      = '';     // 'name'|'local'|'costo'|'venta'|'margen'|'ing'
+let margenSortDir      = 1;      // 1=asc, -1=desc
+
+function margenListSort(col) {
+  if (margenSortCol === col) { margenSortDir *= -1; }
+  else { margenSortCol = col; margenSortDir = 1; }
+  renderMargenRecetasContent();
+}
 let cartaFilterRest    = '';
 let cartaFilterSearch  = '';
 let cartaFilterType    = ''; // '' | 'receta' | 'promo'
@@ -6590,6 +6598,30 @@ function renderMargenRecetasContent() {
     });
   }
 
+  // Ordenar si hay columna activa
+  if (margenSortCol) {
+    filtered = [...filtered].sort((a, b) => {
+      let va, vb;
+      if (margenSortCol === 'name')   { va = (a.name||'').toLowerCase(); vb = (b.name||'').toLowerCase(); }
+      else if (margenSortCol === 'local') { va = (a.restaurantName||'').toLowerCase(); vb = (b.restaurantName||'').toLowerCase(); }
+      else if (margenSortCol === 'ing')   { va = (a.ingredients||[]).filter(i=>i.quantity>0).length; vb = (b.ingredients||[]).filter(i=>i.quantity>0).length; }
+      else {
+        const calc = r => {
+          let c = 0; (r.ingredients||[]).forEach(i => { c += calcItemCost(i); });
+          const p = r.porciones > 1 ? r.porciones : 1;
+          return p > 1 ? c / p : c;
+        };
+        if (margenSortCol === 'costo')  { va = calc(a); vb = calc(b); }
+        else if (margenSortCol === 'venta')  { va = a.sellingPrice||0; vb = b.sellingPrice||0; }
+        else if (margenSortCol === 'margen') {
+          const m = r => { const s = r.sellingPrice||0; if (!s) return -Infinity; const c = calc(r); return (s/1.19 - c)/(s/1.19)*100; };
+          va = m(a); vb = m(b);
+        }
+      }
+      return va < vb ? -margenSortDir : va > vb ? margenSortDir : 0;
+    });
+  }
+
   if (filtered.length === 0) {
     content.innerHTML = `<div style="text-align:center;padding:60px 20px;color:#888">
       <div style="font-size:40px;margin-bottom:12px">&#128208;</div>
@@ -6643,16 +6675,20 @@ function margenListHTML(recipes) {
       </td>
     </tr>`;
   }).join('');
+  const thBase = 'padding:10px 14px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;cursor:pointer;user-select:none;white-space:nowrap';
+  const thClick = col => `margenListSort('${col}')`;
+  const arrow = col => margenSortCol === col ? (margenSortDir === 1 ? ' ↑' : ' ↓') : '';
+  const thColor = col => margenSortCol === col ? '#212529' : '#6c757d';
   return `<div style="overflow-x:auto">
     <table style="width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden;border:1px solid #e9ecef">
       <thead>
         <tr style="background:#f8f9fa;border-bottom:2px solid #e9ecef">
-          <th style="padding:10px 14px;text-align:left;font-size:11px;color:#6c757d;font-weight:600;text-transform:uppercase;letter-spacing:.4px">Receta</th>
-          <th style="padding:10px 14px;text-align:left;font-size:11px;color:#6c757d;font-weight:600;text-transform:uppercase;letter-spacing:.4px">Local</th>
-          <th style="padding:10px 14px;text-align:right;font-size:11px;color:#6c757d;font-weight:600;text-transform:uppercase;letter-spacing:.4px">Costo</th>
-          <th style="padding:10px 14px;text-align:right;font-size:11px;color:#6c757d;font-weight:600;text-transform:uppercase;letter-spacing:.4px">Venta</th>
-          <th style="padding:10px 14px;text-align:center;font-size:11px;color:#6c757d;font-weight:600;text-transform:uppercase;letter-spacing:.4px">Margen</th>
-          <th style="padding:10px 14px;text-align:center;font-size:11px;color:#6c757d;font-weight:600;text-transform:uppercase;letter-spacing:.4px">Ing.</th>
+          <th style="${thBase};text-align:left;color:${thColor('name')}"    onclick="${thClick('name')}">Receta${arrow('name')}</th>
+          <th style="${thBase};text-align:left;color:${thColor('local')}"   onclick="${thClick('local')}">Local${arrow('local')}</th>
+          <th style="${thBase};text-align:right;color:${thColor('costo')}"  onclick="${thClick('costo')}">Costo${arrow('costo')}</th>
+          <th style="${thBase};text-align:right;color:${thColor('venta')}"  onclick="${thClick('venta')}">Venta${arrow('venta')}</th>
+          <th style="${thBase};text-align:center;color:${thColor('margen')}" onclick="${thClick('margen')}">Margen${arrow('margen')}</th>
+          <th style="${thBase};text-align:center;color:${thColor('ing')}"   onclick="${thClick('ing')}">Ing.${arrow('ing')}</th>
           <th style="padding:10px 14px"></th>
         </tr>
       </thead>
