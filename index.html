@@ -1577,6 +1577,7 @@ async function initDashboard() {
 
 // ── Tabs ───────────────────────────────────────────────────
 function renderTabs() {
+  document.getElementById('rest-tabs').style.display = currentView === 'individual' ? 'flex' : 'none';
   document.getElementById('rest-tabs').innerHTML = fudoRestaurants.map(r => `
     <div class="rest-tab ${activeRestIds.includes(r.id) ? 'active' : ''}" onclick="toggleRestaurant('${r.id}')">
       <div class="dot"></div>
@@ -1680,6 +1681,14 @@ function setView(view) {
   document.getElementById('vbtn-resumen').classList.toggle('active',    view === 'resumen');
   document.getElementById('content').style.display         = view === 'individual' ? 'block' : 'none';
   document.getElementById('resumen-content').style.display = view === 'resumen'    ? 'block' : 'none';
+  if (view === 'individual') {
+    // Al entrar a individual, seleccionar solo el primer restaurante por defecto
+    if (fudoRestaurants.length) {
+      activeRestId  = fudoRestaurants[0].id;
+      activeRestIds = [activeRestId];
+    }
+  }
+  renderTabs();
   if (view === 'resumen') loadResumen();
   else loadSummary();
 }
