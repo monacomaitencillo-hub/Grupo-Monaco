@@ -688,6 +688,53 @@ app.get('/api/admin/fudo-test/:restaurantId', requireAuth, async (req, res) => {
   }
 });
 
+// ── Admin: diagnóstico detallado para un día específico ───
+// GET /api/admin/day-check/:restaurantId?date=2026-03-15
+app.get('/api/admin/day-check/:restaurantId', requireAuth, async (req, res) => {
+  if (!await isAdmin(req.uid)) return res.status(403).json({ error: 'Solo administradores' });
+  try {
+    const { restaurantId } = req.params;
+    const date = req.query.date || getTodayChile();
+    const nextDay = new Date(new Date(date + 'T00:00:00Z').getTime() + 86400000).toISOString().substring(0, 10);
+    const dateFilter = `filter%5BcreatedAt%5D=${encodeURIComponent(`gte.${date}T03:00:00,lte.${nextDay}T02:59:59`)}`;
+
+    const auth = await getFudoToken(restaurantId);
+    let allSales = [], page = 1, keepGoing = true;
+    while (keepGoing) {
+      const data = await fetchFudoPage(auth,
+        `${FUDO_API}/sales?${dateFilter}&page%5Bsize%5D=250&page%5Bnumber%5D=${page}`
+      );
+      const batch = data.data || [];
+      allSales = allSales.concat(batch);
+      keepGoing = batch.length === 250;
+      page++;
+    }
+
+    // Agrupar por saleState
+    const byState = {};
+    let totalAll = 0;
+    allSales.forEach(s => {
+      const state = s.attributes?.saleState || 'UNKNOWN';
+      if (!byState[state]) byState[state] = { count: 0, total: 0 };
+      byState[state].count++;
+      byState[state].total += s.attributes?.total || 0;
+      totalAll += s.attributes?.total || 0;
+    });
+
+    // Caché en Firestore para ese día
+    const cached = await db.collection('sales_cache').doc(restaurantId).collection('days').doc(date).get();
+    const cachedData = cached.exists ? cached.data() : null;
+
+    res.json({
+      date,
+      fudo: { totalOrders: allSales.length, totalRevenue: totalAll, byState },
+      cached: cachedData ? { ordersCount: cachedData.ordersCount, total: cachedData.total, cachedAt: cachedData.cachedAt } : null
+    });
+  } catch(e) {
+    res.json({ error: e.message });
+  }
+});
+
 // ── Admin: cache management ───────────────────────────────
 app.delete('/api/admin/sales-cache/:restaurantId', requireAuth, async (req, res) => {
   if (!await isAdmin(req.uid)) return res.status(403).json({ error: 'Solo administradores' });
