@@ -2207,7 +2207,7 @@ app.post('/api/preparations', requireAuth, async (req, res) => {
 
 app.put('/api/preparations/:id', requireAuth, async (req, res) => {
   if (!await isEditor(req.uid)) return res.status(403).json({ error: 'Sin permisos' });
-  const { name, ingredients, esGDD, esPromedio, category, unit, restaurantIds, restaurantSections, rendimientoAgua, rendimientoAire, porciones } = req.body;
+  const { name, ingredients, esGDD, esPromedio, category, unit, restaurantIds, restaurantSections, rendimientoAgua, rendimientoAire, merma, porciones } = req.body;
   const update = { updatedAt: admin.firestore.FieldValue.serverTimestamp() };
   if (name               !== undefined) update.name               = name;
   if (ingredients        !== undefined) update.ingredients        = ingredients;
@@ -2219,6 +2219,7 @@ app.put('/api/preparations/:id', requireAuth, async (req, res) => {
   if (restaurantSections !== undefined) update.restaurantSections = restaurantSections;
   if (rendimientoAgua    !== undefined) update.rendimientoAgua    = Number(rendimientoAgua)  || 0;
   if (rendimientoAire    !== undefined) update.rendimientoAire    = Number(rendimientoAire)  || 0;
+  if (merma              !== undefined) update.merma              = Number(merma)            || 0;
   if (porciones          !== undefined) update.porciones          = Math.max(1, parseInt(porciones) || 1);
   await db.collection('preparations').doc(req.params.id).update(update);
   res.json({ ok: true });
