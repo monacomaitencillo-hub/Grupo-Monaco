@@ -6330,6 +6330,7 @@ let margenFilterRest   = '';
 let margenFilterSearch = '';
 let margenFilterMargen = ''; // '' | 'sin_precio' | 'bajo' | 'normal' | 'bueno'
 let margenFilterCat    = '';
+let margenFilterSubcat = '';
 let margenCols         = 3;
 let margenView         = 'grid'; // 'grid' | 'list'
 let margenSortCol      = '';     // 'name'|'local'|'costo'|'venta'|'margen'|'ing'
@@ -6531,6 +6532,16 @@ function renderMargenRecetas() {
           <option value="Postres">Postres</option>
           <option value="Cafetería">Cafetería</option>
         </select>
+        <select id="marg-filter-subcat" class="prod-filter-sel" onchange="margenFilterSubcat=this.value;renderMargenRecetasContent()">
+          <option value="">Todos los métodos</option>
+          <option value="Directo">Directo</option>
+          <option value="Cocteleado">Cocteleado</option>
+          <option value="Shot">Shot</option>
+          <option value="Batido">Batido</option>
+          <option value="Frappe">Frappe</option>
+          <option value="Caliente">Caliente</option>
+          <option value="Otro">Otro</option>
+        </select>
         <select id="marg-filter-margen" class="prod-filter-sel" onchange="margenFilterMargen=this.value;renderMargenRecetasContent()">
           <option value="">Todos los márgenes</option>
           <option value="sin_precio">Sin precio</option>
@@ -6563,11 +6574,12 @@ function renderMargenRecetas() {
 }
 
 function margenLimpiarFiltros() {
-  margenFilterRest = ''; margenFilterCat = ''; margenFilterSearch = ''; margenFilterMargen = '';
+  margenFilterRest = ''; margenFilterCat = ''; margenFilterSearch = ''; margenFilterMargen = ''; margenFilterSubcat = '';
   const s = document.getElementById('marg-search-input');   if (s) s.value = '';
   const r = document.getElementById('marg-filter-rest');    if (r) r.value = '';
   const c = document.getElementById('marg-filter-cat');     if (c) c.value = '';
   const m = document.getElementById('marg-filter-margen');  if (m) m.value = '';
+  const sc = document.getElementById('marg-filter-subcat'); if (sc) sc.value = '';
   renderMargenRecetasContent();
 }
 
@@ -6577,11 +6589,12 @@ function renderMargenRecetasContent() {
 
   // Mostrar botón limpiar si hay algún filtro activo
   const btnLimpiar = document.getElementById('marg-btn-limpiar');
-  if (btnLimpiar) btnLimpiar.style.display = (margenFilterRest || margenFilterCat || margenFilterSearch || margenFilterMargen) ? '' : 'none';
+  if (btnLimpiar) btnLimpiar.style.display = (margenFilterRest || margenFilterCat || margenFilterSearch || margenFilterMargen || margenFilterSubcat) ? '' : 'none';
 
   let filtered = margenRecipes;
   if (margenFilterRest)   filtered = filtered.filter(r => r.restaurantId === margenFilterRest || (r.restaurantIds || []).includes(margenFilterRest));
   if (margenFilterCat)    filtered = filtered.filter(r => r.categoria === margenFilterCat);
+  if (margenFilterSubcat) filtered = filtered.filter(r => r.subcategoria === margenFilterSubcat);
   if (margenFilterSearch) filtered = filtered.filter(r => (r.name || '').toLowerCase().includes(margenFilterSearch.toLowerCase()));
   if (margenFilterMargen) {
     filtered = filtered.filter(r => {
@@ -6683,7 +6696,10 @@ function margenListHTML(recipes) {
               onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background=''">
       <td style="padding:10px 14px">
         <div style="font-size:13px;font-weight:600;color:#212529">${r.name}</div>
-        ${r.categoria ? `<span style="background:${margenCatColor(r.categoria)}22;color:${margenCatColor(r.categoria)};border-radius:20px;padding:1px 7px;font-size:10px;font-weight:600">${r.categoria}</span>` : ''}
+        <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:2px">
+          ${r.categoria ? `<span style="background:${margenCatColor(r.categoria)}22;color:${margenCatColor(r.categoria)};border-radius:20px;padding:1px 7px;font-size:10px;font-weight:600">${r.categoria}</span>` : ''}
+          ${margenSubcatBadge(r.subcategoria)}
+        </div>
       </td>
       <td style="padding:10px 14px;font-size:12px;color:#6c757d">${restNames}</td>
       <td style="padding:10px 14px;font-size:13px;color:#212529;text-align:right">${costoPorcion > 0 ? '$'+Math.round(costoPorcion).toLocaleString('es-CL')+(porciones > 1 ? '/p' : '') : '—'}</td>
@@ -6726,6 +6742,11 @@ function margenCatColor(cat) {
   return cat === 'Comida' ? '#f97316' : cat === 'Barra' ? '#7c3aed' : cat === 'Postres' ? '#ec4899' : cat === 'Cafetería' ? '#d97706' : '#6c757d';
 }
 
+function margenSubcatBadge(subcat, extra) {
+  if (!subcat) return '';
+  return `<span style="background:#0e7490;color:#fff;border-radius:20px;padding:1px 7px;font-size:10px;font-weight:600;white-space:nowrap${extra ? ';' + extra : ''}">${subcat}</span>`;
+}
+
 function margenCardHTML(r, cols) {
   let totalCost = 0;
   (r.ingredients || []).forEach(item => { totalCost += calcItemCost(item); });
@@ -6760,6 +6781,7 @@ function margenCardHTML(r, cols) {
           <div style="display:flex;align-items:center;gap:5px;margin-top:3px;flex-wrap:wrap">
             <div style="font-size:${subSz};color:#6c757d;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.restaurantName || '—'}</div>
             ${r.categoria ? `<span style="background:${margenCatColor(r.categoria)}22;color:${margenCatColor(r.categoria)};border-radius:20px;padding:1px 7px;font-size:10px;font-weight:600;white-space:nowrap">${r.categoria}</span>` : ''}
+            ${margenSubcatBadge(r.subcategoria)}
           </div>
         </div>
         <div style="display:flex;align-items:center;gap:${gap};flex-shrink:0">
@@ -7155,7 +7177,8 @@ function margenOpenPrepModal(id) {
 
   // Ocultar campos que no aplican a preparaciones
   document.getElementById('marg-form-price-wrap').style.display  = 'none';
-  document.getElementById('marg-form-cat-wrap').style.display              = 'none';
+  document.getElementById('marg-form-cat-wrap').style.display    = 'none';
+  document.getElementById('marg-form-subcat-wrap').style.display = 'none';
   document.getElementById('marg-form-add-prep-btn').style.display          = 'none';
   document.getElementById('marg-form-prep-extras').style.display           = '';
   document.getElementById('marg-form-gdd').checked                         = prep?.esGDD === true;
@@ -7731,6 +7754,8 @@ function margenOpenFormModal(id) {
   document.getElementById('marg-form-porciones').value  = recipe?.porciones > 1 ? recipe.porciones : '';
   document.getElementById('marg-form-cat').value        = recipe?.categoria || '';
   document.getElementById('marg-form-cat-wrap').style.display = '';
+  document.getElementById('marg-form-subcat').value     = recipe?.subcategoria || '';
+  document.getElementById('marg-form-subcat-wrap').style.display = '';
 
   margenSetRendimientos(recipe?.rendimientoAgua, recipe?.rendimientoAire, recipe?.merma);
   document.getElementById('marg-form-modal').style.display = 'flex';
@@ -7752,6 +7777,7 @@ function margenCloseFormModal() {
   document.getElementById('marg-form-rest').closest('div').style.display  = '';
   document.getElementById('marg-form-price-wrap').style.display = '';
   document.getElementById('marg-form-cat-wrap').style.display = '';
+  document.getElementById('marg-form-subcat-wrap').style.display = '';
   document.getElementById('marg-form-add-prep-btn').style.display         = '';
 }
 
@@ -8021,15 +8047,16 @@ async function margenSaveForm() {
   const restName  = restaurants.find(r => r.id === restId)?.name || '';
   const price     = sellingPrices[restId] || 0;
 
-  const categoria = document.getElementById('marg-form-cat')?.value || '';
+  const categoria    = document.getElementById('marg-form-cat')?.value || '';
+  const subcategoria = document.getElementById('marg-form-subcat')?.value || '';
   const { agua: rendAgua, aire: rendAire, merma: mermaVal } = margenGetRendimientos();
   try {
     if (id) {
-      const res  = await apiFetch(`/api/recipes/${id}`, { method: 'PUT', body: JSON.stringify({ name, sellingPrice: price, sellingPrices, restaurantIds, restaurantId: restId, restaurantName: restName, ingredients, esPromedio, rendimientoAgua: rendAgua, rendimientoAire: rendAire, merma: mermaVal, porciones, categoria }) });
+      const res  = await apiFetch(`/api/recipes/${id}`, { method: 'PUT', body: JSON.stringify({ name, sellingPrice: price, sellingPrices, restaurantIds, restaurantId: restId, restaurantName: restName, ingredients, esPromedio, rendimientoAgua: rendAgua, rendimientoAire: rendAire, merma: mermaVal, porciones, categoria, subcategoria }) });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
     } else {
-      const res  = await apiFetch('/api/recipes/import', { method: 'POST', body: JSON.stringify({ recipes: [{ name, restaurantId: restId, restaurantName: restName, restaurantIds, sellingPrice: price, sellingPrices, ingredients, rendimientoAgua: rendAgua, rendimientoAire: rendAire, merma: mermaVal, porciones, categoria }] }) });
+      const res  = await apiFetch('/api/recipes/import', { method: 'POST', body: JSON.stringify({ recipes: [{ name, restaurantId: restId, restaurantName: restName, restaurantIds, sellingPrice: price, sellingPrices, ingredients, rendimientoAgua: rendAgua, rendimientoAire: rendAire, merma: mermaVal, porciones, categoria, subcategoria }] }) });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
     }
@@ -8247,6 +8274,19 @@ async function margenDeleteRecipe(id, name) {
             <option value="Barra">Barra</option>
             <option value="Postres">Postres</option>
             <option value="Cafetería">Cafetería</option>
+          </select>
+        </div>
+        <div id="marg-form-subcat-wrap">
+          <div class="field-label">Método / Subcategoría</div>
+          <select id="marg-form-subcat" class="inv-input">
+            <option value="">— Sin método —</option>
+            <option value="Directo">Directo</option>
+            <option value="Cocteleado">Cocteleado</option>
+            <option value="Shot">Shot</option>
+            <option value="Batido">Batido</option>
+            <option value="Frappe">Frappe</option>
+            <option value="Caliente">Caliente</option>
+            <option value="Otro">Otro</option>
           </select>
         </div>
       </div>
