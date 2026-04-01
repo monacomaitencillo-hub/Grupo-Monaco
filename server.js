@@ -2135,9 +2135,13 @@ app.post('/api/recipes/import', requireAuth, async (req, res) => {
       name: r.name,
       restaurantId: r.restaurantId || null,
       restaurantName: r.restaurantName || '',
+      restaurantIds: r.restaurantIds || (r.restaurantId ? [r.restaurantId] : []),
+      sellingPrice: r.sellingPrice || 0,
+      sellingPrices: r.sellingPrices || (r.restaurantId && r.sellingPrice ? { [r.restaurantId]: r.sellingPrice } : {}),
       ingredients: r.ingredients || [],
       rendimientoAgua: Number(r.rendimientoAgua) || 0,
       rendimientoAire: Number(r.rendimientoAire) || 0,
+      merma: Number(r.merma) || 0,
       porciones: Math.max(1, parseInt(r.porciones) || 1),
       categoria: r.categoria || '',
       updatedAt: admin.firestore.FieldValue.serverTimestamp()
@@ -2147,7 +2151,6 @@ app.post('/api/recipes/import', requireAuth, async (req, res) => {
     } else {
       const ref = db.collection('recipes').doc();
       data.createdAt = admin.firestore.FieldValue.serverTimestamp();
-      data.sellingPrice = r.sellingPrice || 0;
       batch.set(ref, data);
     }
     count++;
@@ -2159,13 +2162,18 @@ app.post('/api/recipes/import', requireAuth, async (req, res) => {
 app.put('/api/recipes/:id', requireAuth, async (req, res) => {
   if (!await isEditor(req.uid)) return res.status(403).json({ error: 'Sin permisos' });
   const update = {};
-  const { sellingPrice, ingredients, name, esPromedio, rendimientoAgua, rendimientoAire, porciones, categoria } = req.body;
+  const { sellingPrice, sellingPrices, restaurantIds, restaurantId, restaurantName, ingredients, name, esPromedio, rendimientoAgua, rendimientoAire, merma, porciones, categoria } = req.body;
   if (sellingPrice     !== undefined) update.sellingPrice     = Number(sellingPrice) || 0;
+  if (sellingPrices    !== undefined) update.sellingPrices    = sellingPrices;
+  if (restaurantIds    !== undefined) update.restaurantIds    = restaurantIds;
+  if (restaurantId     !== undefined) update.restaurantId     = restaurantId;
+  if (restaurantName   !== undefined) update.restaurantName   = restaurantName;
   if (ingredients      !== undefined) update.ingredients      = ingredients;
   if (name             !== undefined) update.name             = name;
   if (esPromedio       !== undefined) update.esPromedio       = esPromedio === true;
   if (rendimientoAgua  !== undefined) update.rendimientoAgua  = Number(rendimientoAgua)  || 0;
   if (rendimientoAire  !== undefined) update.rendimientoAire  = Number(rendimientoAire)  || 0;
+  if (merma            !== undefined) update.merma            = Number(merma)            || 0;
   if (porciones        !== undefined) update.porciones        = Math.max(1, parseInt(porciones) || 1);
   if (categoria        !== undefined) update.categoria        = categoria || '';
   update.updatedAt = admin.firestore.FieldValue.serverTimestamp();

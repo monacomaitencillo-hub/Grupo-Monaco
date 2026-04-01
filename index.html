@@ -6580,7 +6580,7 @@ function renderMargenRecetasContent() {
   if (btnLimpiar) btnLimpiar.style.display = (margenFilterRest || margenFilterCat || margenFilterSearch || margenFilterMargen) ? '' : 'none';
 
   let filtered = margenRecipes;
-  if (margenFilterRest)   filtered = filtered.filter(r => r.restaurantId === margenFilterRest);
+  if (margenFilterRest)   filtered = filtered.filter(r => r.restaurantId === margenFilterRest || (r.restaurantIds || []).includes(margenFilterRest));
   if (margenFilterCat)    filtered = filtered.filter(r => r.categoria === margenFilterCat);
   if (margenFilterSearch) filtered = filtered.filter(r => (r.name || '').toLowerCase().includes(margenFilterSearch.toLowerCase()));
   if (margenFilterMargen) {
@@ -6645,25 +6645,50 @@ function margenListHTML(recipes) {
     (r.ingredients || []).forEach(item => { totalCost += calcItemCost(item); });
     const porciones    = r.porciones > 1 ? r.porciones : 1;
     const costoPorcion = porciones > 1 ? totalCost / porciones : totalCost;
-    const selling    = r.sellingPrice || 0;
-    const sellingNet = selling / 1.19;
-    const margin     = selling > 0 ? ((sellingNet - costoPorcion) / sellingNet * 100) : null;
-    const mColor     = margin === null ? '#adb5bd' : margin >= 60 ? '#16a34a' : margin >= 40 ? '#ca8a04' : '#dc2626';
-    const ingCount   = (r.ingredients || []).filter(i => i.quantity > 0).length;
+    // Multi-local: normalizar
+    const restIds  = r.restaurantIds?.length ? r.restaurantIds : (r.restaurantId ? [r.restaurantId] : []);
+    const prices   = r.sellingPrices || (r.restaurantId && r.sellingPrice ? { [r.restaurantId]: r.sellingPrice } : {});
+    const restNames = restIds.map(rid => restaurants.find(x => x.id === rid)?.name || r.restaurantName || rid).join(', ') || r.restaurantName || '—';
+
+    // Margins por local
+    const margins = restIds.map(rid => {
+      const s = prices[rid] || 0;
+      return s > 0 ? (s / 1.19 - costoPorcion) / (s / 1.19) * 100 : null;
+    }).filter(m => m !== null);
+    const avgMargin = margins.length ? margins.reduce((a,b) => a+b, 0) / margins.length : null;
+    const mColor = avgMargin === null ? '#adb5bd' : avgMargin >= 60 ? '#16a34a' : avgMargin >= 40 ? '#ca8a04' : '#dc2626';
+
+    // Columna venta: si multi-local mostrar rango o único valor
+    const priceVals = restIds.map(rid => prices[rid] || 0).filter(p => p > 0);
+    const ventaText = priceVals.length === 0 ? '—'
+      : priceVals.length === 1 ? '$' + priceVals[0].toLocaleString('es-CL')
+      : '$' + Math.min(...priceVals).toLocaleString('es-CL') + '–' + Math.max(...priceVals).toLocaleString('es-CL');
+
+    // Margen pills: si multi-local una pill por local, sino una sola
+    const margenCellHTML = restIds.length > 1
+      ? restIds.map(rid => {
+          const s = prices[rid] || 0;
+          if (!s) return '';
+          const m = (s / 1.19 - costoPorcion) / (s / 1.19) * 100;
+          const c = m >= 60 ? '#16a34a' : m >= 40 ? '#ca8a04' : '#dc2626';
+          const rname = restaurants.find(x => x.id === rid)?.name || rid;
+          return `<span style="background:${c}18;color:${c};border:1.5px solid ${c}44;border-radius:20px;padding:1px 8px;font-size:11px;font-weight:700;white-space:nowrap" title="${rname}">${m.toFixed(1)}%</span>`;
+        }).join(' ')
+      : avgMargin !== null
+        ? `<span style="background:${mColor}18;color:${mColor};border:1.5px solid ${mColor}44;border-radius:20px;padding:2px 10px;font-size:12px;font-weight:700">${avgMargin.toFixed(1)}%</span>`
+        : '<span style="color:#adb5bd;font-size:13px">—</span>';
+
+    const ingCount = (r.ingredients || []).filter(i => i.quantity > 0).length;
     return `<tr style="border-bottom:1px solid #f1f3f4;cursor:pointer" onclick="margenOpenRecipe('${r.id}')"
               onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background=''">
       <td style="padding:10px 14px">
         <div style="font-size:13px;font-weight:600;color:#212529">${r.name}</div>
         ${r.categoria ? `<span style="background:${margenCatColor(r.categoria)}22;color:${margenCatColor(r.categoria)};border-radius:20px;padding:1px 7px;font-size:10px;font-weight:600">${r.categoria}</span>` : ''}
       </td>
-      <td style="padding:10px 14px;font-size:12px;color:#6c757d">${r.restaurantName || '—'}</td>
+      <td style="padding:10px 14px;font-size:12px;color:#6c757d">${restNames}</td>
       <td style="padding:10px 14px;font-size:13px;color:#212529;text-align:right">${costoPorcion > 0 ? '$'+Math.round(costoPorcion).toLocaleString('es-CL')+(porciones > 1 ? '/p' : '') : '—'}</td>
-      <td style="padding:10px 14px;font-size:13px;color:#212529;text-align:right">${selling > 0 ? '$'+selling.toLocaleString('es-CL') : '—'}</td>
-      <td style="padding:10px 14px;text-align:center">
-        ${margin !== null
-          ? `<span style="background:${mColor}18;color:${mColor};border:1.5px solid ${mColor}44;border-radius:20px;padding:2px 10px;font-size:12px;font-weight:700">${margin.toFixed(1)}%</span>`
-          : '<span style="color:#adb5bd;font-size:13px">—</span>'}
-      </td>
+      <td style="padding:10px 14px;font-size:13px;color:#212529;text-align:right">${ventaText}</td>
+      <td style="padding:10px 14px;text-align:center;display:flex;flex-wrap:wrap;gap:3px;justify-content:center">${margenCellHTML}</td>
       <td style="padding:10px 14px;font-size:13px;color:#6c757d;text-align:center">${ingCount}</td>
       <td style="padding:10px 14px;text-align:right" onclick="event.stopPropagation()">
         <div style="display:flex;gap:6px;justify-content:flex-end">
@@ -7129,7 +7154,6 @@ function margenOpenPrepModal(id) {
   document.getElementById('marg-form-msg').textContent     = '';
 
   // Ocultar campos que no aplican a preparaciones
-  document.getElementById('marg-form-rest').closest('div').style.display   = 'none';
   document.getElementById('marg-form-price-wrap').style.display  = 'none';
   document.getElementById('marg-form-cat-wrap').style.display              = 'none';
   document.getElementById('marg-form-add-prep-btn').style.display          = 'none';
@@ -7662,34 +7686,47 @@ let margenFormIngCounter = 0;
 function margenOpenFormModal(id) {
   const recipe = id ? margenRecipes.find(r => r.id === id) : null;
 
-  document.getElementById('marg-form-id').value              = id || '';
-  document.getElementById('marg-form-title').textContent     = recipe ? 'Editar receta' : 'Nueva receta';
-  document.getElementById('marg-form-name').value            = recipe?.name  || '';
-  document.getElementById('marg-form-price').value           = recipe?.sellingPrice || '';
-  document.getElementById('marg-form-msg').textContent       = '';
+  // Normalizar campos multi-local (compatibilidad con recetas antiguas)
+  const restIds = recipe?.restaurantIds?.length ? recipe.restaurantIds
+    : (recipe?.restaurantId ? [recipe.restaurantId] : []);
+  const prices = recipe?.sellingPrices || (recipe?.restaurantId && recipe?.sellingPrice
+    ? { [recipe.restaurantId]: recipe.sellingPrice } : {});
 
-  // Mostrar campos de receta
-  document.getElementById('marg-form-rest').closest('div').style.display   = '';
-  document.getElementById('marg-form-price-wrap').style.display  = '';
-  document.getElementById('marg-form-add-prep-btn').style.display          = '';
-  document.getElementById('marg-form-prep-extras').style.display           = 'none';
+  document.getElementById('marg-form-id').value          = id || '';
+  document.getElementById('marg-form-title').textContent = recipe ? 'Editar receta' : 'Nueva receta';
+  document.getElementById('marg-form-name').value        = recipe?.name || '';
+  document.getElementById('marg-form-msg').textContent   = '';
 
-  // Poblar selector de locales
-  const sel = document.getElementById('marg-form-rest');
-  sel.innerHTML = '<option value="">— Seleccionar local —</option>' +
-    restaurants.map(r => `<option value="${r.id}" data-name="${r.name}" ${recipe?.restaurantId===r.id?'selected':''}>${r.name}</option>`).join('');
+  document.getElementById('marg-form-price-wrap').style.display = '';
+  document.getElementById('marg-form-add-prep-btn').style.display = '';
+  document.getElementById('marg-form-prep-extras').style.display = 'none';
+
+  // Construir checkboxes de locales con precio por local
+  const rp = document.getElementById('marg-form-rest-prices');
+  rp.innerHTML = restaurants.map(r => {
+    const checked = restIds.includes(r.id);
+    const price   = prices[r.id] || '';
+    return `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border:1px solid #e9ecef;border-radius:8px;background:${checked?'#f8f9fa':'#fff'}">
+      <input type="checkbox" id="marg-rest-chk-${r.id}" value="${r.id}"
+        onchange="margenToggleRestPrice('${r.id}')"
+        style="width:15px;height:15px;accent-color:#ff5023;flex-shrink:0" ${checked ? 'checked' : ''}>
+      <label for="marg-rest-chk-${r.id}" style="font-size:13px;color:#495057;cursor:pointer;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.name}</label>
+      <div id="marg-rest-price-wrap-${r.id}" style="display:${checked?'flex':'none'};align-items:center;border:1px solid #dee2e6;border-radius:7px;overflow:hidden;background:#fff;flex-shrink:0">
+        <span style="padding:0 7px;color:#888;font-size:12px;background:#f8f9fa;border-right:1px solid #dee2e6">$</span>
+        <input type="number" id="marg-rest-price-${r.id}" value="${price}" min="0" placeholder="0"
+          style="border:none;outline:none;padding:6px 8px;font-size:13px;width:90px;color:#212529">
+      </div>
+    </div>`;
+  }).join('');
 
   // Poblar filas (ingredientes + preparaciones)
   const container = document.getElementById('marg-form-ing-rows');
   container.innerHTML = '';
   margenFormIngCounter = 0;
-
   const existingIngs = (recipe?.ingredients || []).filter(i => i.quantity > 0);
-  if (existingIngs.length > 0) {
-    existingIngs.forEach(item => margenAddIngRow(item, false));
-  } else {
-    margenAddIngRow(null, false);
-  }
+  if (existingIngs.length > 0) existingIngs.forEach(item => margenAddIngRow(item, false));
+  else margenAddIngRow(null, false);
+
   document.getElementById('marg-form-promedio').checked = recipe?.esPromedio === true;
   document.getElementById('marg-form-porciones').value  = recipe?.porciones > 1 ? recipe.porciones : '';
   document.getElementById('marg-form-cat').value        = recipe?.categoria || '';
@@ -7699,6 +7736,14 @@ function margenOpenFormModal(id) {
   document.getElementById('marg-form-modal').style.display = 'flex';
   document.getElementById('marg-form-name').focus();
   setTimeout(margenUpdateFormTotal, 30);
+}
+
+function margenToggleRestPrice(restId) {
+  const chk  = document.getElementById('marg-rest-chk-' + restId);
+  const wrap = document.getElementById('marg-rest-price-wrap-' + restId);
+  const row  = chk?.closest('div');
+  if (wrap) wrap.style.display = chk?.checked ? 'flex' : 'none';
+  if (row)  row.style.background = chk?.checked ? '#f8f9fa' : '#fff';
 }
 
 function margenCloseFormModal() {
@@ -7959,31 +8004,35 @@ async function margenSaveForm() {
   }
 
   // ── Guardar receta ──
-  const restSel  = document.getElementById('marg-form-rest');
-  const restId   = restSel.value;
-  const restName = restSel.options[restSel.selectedIndex]?.text || '';
-  const price    = Number(document.getElementById('marg-form-price').value) || 0;
+  // Recoger locales y precios
+  const restaurantIds = [];
+  const sellingPrices = {};
+  restaurants.forEach(r => {
+    const chk = document.getElementById('marg-rest-chk-' + r.id);
+    if (chk?.checked) {
+      restaurantIds.push(r.id);
+      sellingPrices[r.id] = Number(document.getElementById('marg-rest-price-' + r.id)?.value) || 0;
+    }
+  });
+  if (!restaurantIds.length) { msg.style.color='#dc2626'; msg.textContent='Selecciona al menos un local.'; return; }
 
-  if (!restId) { msg.style.color='#dc2626'; msg.textContent='Selecciona el local.'; return; }
+  // Backward compat: primer local y precio
+  const restId    = restaurantIds[0];
+  const restName  = restaurants.find(r => r.id === restId)?.name || '';
+  const price     = sellingPrices[restId] || 0;
 
   const categoria = document.getElementById('marg-form-cat')?.value || '';
   const { agua: rendAgua, aire: rendAire, merma: mermaVal } = margenGetRendimientos();
   try {
     if (id) {
-      // Update existing
-      const res  = await apiFetch(`/api/recipes/${id}`, { method: 'PUT', body: JSON.stringify({ name, sellingPrice: price, ingredients, esPromedio, rendimientoAgua: rendAgua, rendimientoAire: rendAire, merma: mermaVal, porciones, categoria }) });
+      const res  = await apiFetch(`/api/recipes/${id}`, { method: 'PUT', body: JSON.stringify({ name, sellingPrice: price, sellingPrices, restaurantIds, restaurantId: restId, restaurantName: restName, ingredients, esPromedio, rendimientoAgua: rendAgua, rendimientoAire: rendAire, merma: mermaVal, porciones, categoria }) });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
     } else {
-      // Create new via import endpoint (handles upsert by name+rest)
-      const res  = await apiFetch('/api/recipes/import', {
-        method: 'POST',
-        body: JSON.stringify({ recipes: [{ name, restaurantId: restId, restaurantName: restName, sellingPrice: price, ingredients, rendimientoAgua: rendAgua, rendimientoAire: rendAire, porciones, categoria }] })
-      });
+      const res  = await apiFetch('/api/recipes/import', { method: 'POST', body: JSON.stringify({ recipes: [{ name, restaurantId: restId, restaurantName: restName, restaurantIds, sellingPrice: price, sellingPrices, ingredients, rendimientoAgua: rendAgua, rendimientoAire: rendAire, merma: mermaVal, porciones, categoria }] }) });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
     }
-
     await loadMargenData();
     renderMargenRecetas();
     margenCloseFormModal();
@@ -8190,22 +8239,6 @@ async function margenDeleteRecipe(id, name) {
           <div class="field-label">Nombre del producto</div>
           <input id="marg-form-name" class="inv-input" placeholder="Ej: Hamburguesa Clásica">
         </div>
-        <div>
-          <div class="field-label">Local</div>
-          <select id="marg-form-rest" class="inv-input">
-            <option value="">— Seleccionar local —</option>
-          </select>
-        </div>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
-        <div id="marg-form-price-wrap">
-          <div class="field-label">Precio de venta ($)</div>
-          <div style="display:flex;align-items:center;border:1px solid #dee2e6;border-radius:8px;overflow:hidden;background:#fff">
-            <span style="padding:0 10px;color:#888;font-size:13px;background:#f8f9fa;border-right:1px solid #dee2e6">$</span>
-            <input type="number" id="marg-form-price" min="0" placeholder="0"
-              style="border:none;outline:none;padding:8px 10px;font-size:14px;width:100%;color:#212529">
-          </div>
-        </div>
         <div id="marg-form-cat-wrap">
           <div class="field-label">Categoría</div>
           <select id="marg-form-cat" class="inv-input">
@@ -8216,6 +8249,14 @@ async function margenDeleteRecipe(id, name) {
             <option value="Cafetería">Cafetería</option>
           </select>
         </div>
+      </div>
+      <!-- campos ocultos para compatibilidad -->
+      <select id="marg-form-rest" style="display:none"><option value="">—</option></select>
+      <input type="hidden" id="marg-form-price">
+      <!-- sección multi-local + precio -->
+      <div id="marg-form-price-wrap" style="margin-bottom:20px">
+        <div class="field-label" style="margin-bottom:8px">Locales y precio de venta ($)</div>
+        <div id="marg-form-rest-prices" style="display:flex;flex-direction:column;gap:6px"></div>
       </div>
       <div style="margin-bottom:12px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
