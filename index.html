@@ -7674,6 +7674,19 @@ function margenCloseFormModal() {
   document.getElementById('marg-form-add-prep-btn').style.display         = '';
 }
 
+function margenMoveIngRow(rowId, dir) {
+  const row = document.getElementById(rowId);
+  if (!row) return;
+  const container = row.parentElement;
+  if (dir === -1) {
+    const prev = row.previousElementSibling;
+    if (prev) container.insertBefore(row, prev);
+  } else {
+    const next = row.nextElementSibling;
+    if (next) container.insertBefore(next, row);
+  }
+}
+
 // prepOnly=true: solo ingredientes (para preparaciones). prepOnly=false: tipo libre para recetas
 function margenAddIngRow(existing, prepOnly) {
   const idx       = margenFormIngCounter++;
@@ -7703,6 +7716,12 @@ function margenAddIngRow(existing, prepOnly) {
           oninput="margenUpdateRowCost(${idx})"
           style="border:none;outline:none;padding:8px 8px;font-size:13px;width:70px;color:#212529">
         <span id="marg-ing-unit-${idx}" style="padding:0 8px;font-size:12px;color:#888;background:#f8f9fa;border-left:1px solid #dee2e6;white-space:nowrap;min-width:28px"></span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:2px;flex-shrink:0">
+        <button onclick="margenMoveIngRow('marg-ing-row-${idx}',-1)"
+          style="background:#f1f3f4;border:none;border-radius:5px;width:26px;height:17px;cursor:pointer;color:#6c757d;font-size:10px;line-height:1;padding:0">↑</button>
+        <button onclick="margenMoveIngRow('marg-ing-row-${idx}',1)"
+          style="background:#f1f3f4;border:none;border-radius:5px;width:26px;height:17px;cursor:pointer;color:#6c757d;font-size:10px;line-height:1;padding:0">↓</button>
       </div>
       <button onclick="document.getElementById('marg-ing-row-${idx}').remove();margenUpdateFormTotal()"
         style="flex-shrink:0;background:none;border:1px solid #fca5a5;border-radius:8px;width:32px;height:36px;color:#ef4444;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center">✕</button>
