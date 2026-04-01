@@ -108,6 +108,21 @@ function todayIsStale(dayDocs, today) {
   return (Date.now() - new Date(dayDocs[today].cachedAt).getTime()) > SALES_CACHE_TTL_TODAY;
 }
 
+// Devuelve true si ayer fue cacheado antes de que terminara el día (puede estar incompleto)
+function yesterdayIsStale(dayDocs, yesterday, today) {
+  if (!dayDocs[yesterday]) return false;
+  // Si fue cacheado antes de hoy (es decir, durante el día de ayer), puede tener datos incompletos
+  const cachedAt = new Date(dayDocs[yesterday].cachedAt);
+  const todayStart = new Date(today + 'T03:00:00Z'); // medianoche Chile = 03:00 UTC
+  return cachedAt < todayStart;
+}
+
+function getYesterdayChile(today) {
+  const d = new Date(today + 'T12:00:00Z');
+  d.setDate(d.getDate() - 1);
+  return d.toISOString().slice(0, 10);
+}
+
 // Fetch one or more specific days from Fudo using date filters.
 // Lookups (payment methods, categories, products) are fetched only once for all days.
 async function fetchDaysFromFudo(auth, days) {
@@ -134,75 +149,90 @@ async function fetchDaysFromFudo(auth, days) {
     };
   });
 
-  const result = {};
-  for (const day of days) {
-    // Chile es UTC-3: día Chile empieza 03:00 UTC y termina 02:59 UTC del día siguiente
-    const nextDay = new Date(new Date(day + 'T00:00:00Z').getTime() + 86400000).toISOString().substring(0, 10);
-    const dateFilter = `filter%5BcreatedAt%5D=${encodeURIComponent(`gte.${day}T03:00:00,lte.${nextDay}T02:59:59`)}`;
-    let allSales = [], allIncluded = [], page = 1, keepGoing = true;
-    while (keepGoing) {
-      const salesData = await fetchFudoPage(auth,
-        `${FUDO_API}/sales?${dateFilter}&page%5Bsize%5D=250&page%5Bnumber%5D=${page}&include=payments,tips,items`
-      );
-      const batch = salesData.data || [];
-      allSales    = allSales.concat(batch);
-      allIncluded = allIncluded.concat(salesData.included || []);
-      keepGoing   = batch.length === 250;
-      page++;
-    }
-    console.log(`  Fudo (${day}): ${allSales.length} ventas`);
+  // Fetch all days in a single range request instead of one per day
+  const sortedDays = [...days].sort();
+  const firstDay   = sortedDays[0];
+  const lastDay    = sortedDays[sortedDays.length - 1];
+  const dayAfterLast = new Date(new Date(lastDay + 'T00:00:00Z').getTime() + 86400000).toISOString().substring(0, 10);
+  const dateFilter = `filter%5BcreatedAt%5D=${encodeURIComponent(`gte.${firstDay}T03:00:00,lte.${dayAfterLast}T02:59:59`)}`;
 
-    const paymentLookup = {}, tipLookup = {}, itemLookup = {};
-    allIncluded.forEach(inc => {
-      if (inc.type === 'Payment') {
-        paymentLookup[inc.id] = { amount: inc.attributes.amount || 0, canceled: inc.attributes.canceled, methodId: inc.relationships?.paymentMethod?.data?.id };
-      } else if (inc.type === 'Tip') {
-        tipLookup[inc.id] = inc.attributes.amount || 0;
-      } else if (inc.type === 'Item') {
-        const prod = products[inc.relationships?.product?.data?.id];
-        itemLookup[inc.id] = {
-          name: prod?.name || inc.attributes.name || 'Producto',
-          categoryName: prod?.categoryName || 'Sin categoría',
-          quantity: inc.attributes.quantity || 1,
-          price:    inc.attributes.price    || 0,
-          canceled: inc.attributes.canceled || false
-        };
+  let allSales = [], allIncluded = [], page = 1, keepGoing = true;
+  while (keepGoing) {
+    const salesData = await fetchFudoPage(auth,
+      `${FUDO_API}/sales?${dateFilter}&page%5Bsize%5D=250&page%5Bnumber%5D=${page}&include=payments,tips,items`
+    );
+    const batch = salesData.data || [];
+    allSales    = allSales.concat(batch);
+    allIncluded = allIncluded.concat(salesData.included || []);
+    keepGoing   = batch.length === 250;
+    page++;
+  }
+  console.log(`  Fudo (${firstDay}→${lastDay}): ${allSales.length} ventas en ${days.length} días`);
+
+  const paymentLookup = {}, tipLookup = {}, itemLookup = {};
+  allIncluded.forEach(inc => {
+    if (inc.type === 'Payment') {
+      paymentLookup[inc.id] = { amount: inc.attributes.amount || 0, canceled: inc.attributes.canceled, methodId: inc.relationships?.paymentMethod?.data?.id };
+    } else if (inc.type === 'Tip') {
+      tipLookup[inc.id] = inc.attributes.amount || 0;
+    } else if (inc.type === 'Item') {
+      const prod = products[inc.relationships?.product?.data?.id];
+      itemLookup[inc.id] = {
+        name: prod?.name || inc.attributes.name || 'Producto',
+        categoryName: prod?.categoryName || 'Sin categoría',
+        quantity: inc.attributes.quantity || 1,
+        price:    inc.attributes.price    || 0,
+        canceled: inc.attributes.canceled || false
+      };
+    }
+  });
+
+  // Initialize empty data for all requested days (marks them as fetched even if no sales)
+  const daySet = new Set(days);
+  const result = {};
+  days.forEach(d => {
+    result[d] = { total: 0, tips: 0, ordersCount: 0, byPayMethod: {}, byType: {}, products: {} };
+  });
+
+  // Assign each sale to its Chile date (UTC-3)
+  allSales.forEach(sale => {
+    const createdAt = sale.attributes.createdAt;
+    if (!createdAt) return;
+    const chileDay = new Date(new Date(createdAt).getTime() - 3 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    if (!daySet.has(chileDay)) return;
+    const dayData = result[chileDay];
+
+    const amount = sale.attributes.total || 0;
+    const tips   = (sale.relationships?.tips?.data || []).reduce((s, r) => s + (tipLookup[r.id] || 0), 0);
+    (sale.relationships?.payments?.data || []).forEach(r => {
+      const pay = paymentLookup[r.id];
+      if (pay && !pay.canceled) {
+        const m = paymentMethods[pay.methodId] || 'Otro';
+        dayData.byPayMethod[m] = (dayData.byPayMethod[m] || 0) + pay.amount;
       }
     });
-
-    const dayData = { total: 0, tips: 0, ordersCount: 0, byPayMethod: {}, byType: {}, products: {} };
-    allSales.forEach(sale => {
-      // Igual que Fudo: sumar attributes.total de todas las órdenes (todos los estados)
-      const amount = sale.attributes.total || 0;
-      const tips   = (sale.relationships?.tips?.data || []).reduce((s, r) => s + (tipLookup[r.id] || 0), 0);
-      // byPayMethod: solo pagos reales completados
-      (sale.relationships?.payments?.data || []).forEach(r => {
-        const pay = paymentLookup[r.id];
-        if (pay && !pay.canceled) {
-          const m = paymentMethods[pay.methodId] || 'Otro';
-          dayData.byPayMethod[m] = (dayData.byPayMethod[m] || 0) + pay.amount;
-        }
-      });
-      dayData.total       += amount;
-      dayData.tips        += tips;
-      dayData.ordersCount += 1;
-      const stype = sale.attributes.saleType || 'OTHER';
-      if (!dayData.byType[stype]) dayData.byType[stype] = { count: 0, revenue: 0 };
-      dayData.byType[stype].count++;
-      dayData.byType[stype].revenue += amount;
-      (sale.relationships?.items?.data || []).forEach(r => {
-        const item = itemLookup[r.id];
-        if (!item || item.canceled) return;
-        if (!dayData.products[item.name]) dayData.products[item.name] = { qty: 0, revenue: 0, category: item.categoryName };
-        dayData.products[item.name].qty     += item.quantity;
-        dayData.products[item.name].revenue += item.price * item.quantity;
-      });
+    dayData.total       += amount;
+    dayData.tips        += tips;
+    dayData.ordersCount += 1;
+    const stype = sale.attributes.saleType || 'OTHER';
+    if (!dayData.byType[stype]) dayData.byType[stype] = { count: 0, revenue: 0 };
+    dayData.byType[stype].count++;
+    dayData.byType[stype].revenue += amount;
+    (sale.relationships?.items?.data || []).forEach(r => {
+      const item = itemLookup[r.id];
+      if (!item || item.canceled) return;
+      if (!dayData.products[item.name]) dayData.products[item.name] = { qty: 0, revenue: 0, category: item.categoryName };
+      dayData.products[item.name].qty     += item.quantity;
+      dayData.products[item.name].revenue += item.price * item.quantity;
     });
+  });
 
-    dayData.products = Object.entries(dayData.products)
+  // Convert products dict to array
+  days.forEach(d => {
+    result[d].products = Object.entries(result[d].products)
       .map(([name, v]) => ({ name, qty: v.qty, revenue: v.revenue, category: v.category }));
-    result[day] = dayData;
-  }
+  });
+
   return result;
 }
 
@@ -545,7 +575,8 @@ app.get('/api/summary/:restaurantId', requireAuth, async (req, res) => {
       return res.status(403).json({ error: 'Sin acceso a este local' });
     }
 
-    const today    = getTodayChile();
+    const today     = getTodayChile();
+    const yesterday = getYesterdayChile(today);
     const from     = req.query.from  || null;
     const to       = req.query.to    || null;
     const force    = req.query.force === 'true';
@@ -569,8 +600,9 @@ app.get('/api/summary/:restaurantId', requireAuth, async (req, res) => {
           console.log(`Firestore all-time hit: ${days.length} días para ${restaurantId}`);
           const assembled = assembleFromDayCache(dayDocs, days);
           summaryCache[cacheKey] = { data: assembled, cachedAt: Date.now() };
-          // Refresh hoy si no existe o está desactualizado
+          // Refresh hoy y ayer si están desactualizados
           if (!dayDocs[today] || todayIsStale(dayDocs, today)) refreshTodayInBackground(restaurantId, today);
+          if (yesterdayIsStale(dayDocs, yesterday, today)) refreshTodayInBackground(restaurantId, yesterday);
           return res.json(assembled);
         }
         // Sin cache en Firestore → fetch inicial completo desde Fudo
@@ -590,6 +622,7 @@ app.get('/api/summary/:restaurantId', requireAuth, async (req, res) => {
           const assembled = assembleFromDayCache(dayDocs, allDays);
           summaryCache[cacheKey] = { data: assembled, cachedAt: Date.now() };
           if (todayIsStale(dayDocs, today)) refreshTodayInBackground(restaurantId, today);
+          if (yesterdayIsStale(dayDocs, yesterday, today)) refreshTodayInBackground(restaurantId, yesterday);
           return res.json(assembled);
         }
 
@@ -600,6 +633,7 @@ app.get('/api/summary/:restaurantId', requireAuth, async (req, res) => {
           const assembled = assembleFromDayCache(dayDocs, allDays);
           summaryCache[cacheKey] = { data: assembled, cachedAt: Date.now() };
           refreshTodayInBackground(restaurantId, today);
+          if (yesterdayIsStale(dayDocs, yesterday, today)) refreshTodayInBackground(restaurantId, yesterday);
           return res.json(assembled);
         }
 
