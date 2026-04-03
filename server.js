@@ -993,15 +993,15 @@ app.post('/api/inv/products/:id/prices', requireAuth, async (req, res) => {
     const ccBotella        = Math.max(0, Number(capacidadCC) || 0);
     const flete            = Math.max(0, Number(fleteNeto) || 0);
 
+    const ilaRate = ILA_RATES[tipoImpuesto] || 0;
+    const ila     = netoConDto * ilaRate;
     if (ccBotella > 0) {
       // Fórmula tragos: (netoConDto + ILA) / cantidad + fleteNeto → dividir por cc
-      const ilaRate      = ILA_RATES[tipoImpuesto] || 0;
-      const ila          = netoConDto * ilaRate;
       const costoBotella = (netoConDto + ila) / cantidad + flete;
       costoUnitario      = costoBotella / ccBotella;
     } else {
-      // Fórmula normal: neto c/dto / cantidad + flete por unidad
-      costoUnitario = netoConDto / cantidad + flete;
+      // Fórmula normal: (netoConDto + imp.adicional) / cantidad + flete por unidad
+      costoUnitario = (netoConDto + ila) / cantidad + flete;
     }
 
     entry = { ...entry,
@@ -1011,7 +1011,8 @@ app.post('/api/inv/products/:id/prices', requireAuth, async (req, res) => {
       cantidadCompra: cantidad, unidadCompra: unidadCompra || '',
       tipoImpuesto: tipoImpuesto || 'alimento',
       precioNetoConDto: Math.round(netoConDto * 100) / 100,
-      ...(ccBotella > 0 ? { fleteNeto: flete, capacidadCC: ccBotella } : {}),
+      fleteNeto: flete,
+      ...(ccBotella > 0 ? { capacidadCC: ccBotella } : {}),
       precio: Math.round(costoUnitario * 100) / 100
     };
   } else if (precioBruto != null) {

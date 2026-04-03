@@ -3582,19 +3582,19 @@ function ppCalcPreview() {
   const bruto      = neto * divisor;
   const esTrago    = priceHistoryCapacidadCC > 0;
 
+  const ila = netoConDto * ilaRate;
   let unitario;
   if (esTrago) {
-    const ila          = netoConDto * ilaRate;
     const costoBotella = (netoConDto + ila) / cantidad + flete;
     unitario           = costoBotella / priceHistoryCapacidadCC;
-    document.getElementById('pp-prev-ila-col').style.display     = '';
+    document.getElementById('pp-prev-ila-col').style.display     = ilaRate > 0 ? '' : 'none';
     document.getElementById('pp-prev-botella-col').style.display = '';
     document.getElementById('pp-prev-ila').textContent     = '$' + Math.round(ila).toLocaleString('es-CL');
     document.getElementById('pp-prev-botella').textContent = '$' + Math.round(costoBotella).toLocaleString('es-CL');
     document.getElementById('pp-prev-unit-label').textContent = 'Costo/cc';
     document.getElementById('pp-prev-grid').style.gridTemplateColumns = 'repeat(4,1fr)';
   } else {
-    unitario = netoConDto / cantidad + flete;
+    unitario = (netoConDto + ila) / cantidad + flete;
     document.getElementById('pp-prev-ila-col').style.display     = 'none';
     document.getElementById('pp-prev-botella-col').style.display = 'none';
     document.getElementById('pp-prev-unit-label').textContent = 'Costo unitario';
@@ -3734,14 +3734,14 @@ function ppCalcEditPreview(id) {
   if (!prevEl || !neto) { if (prevEl) prevEl.style.display = 'none'; return; }
 
   const netoConDto = neto * (1 - dto / 100);
+  const ilaEdit    = netoConDto * (PP_ILA_RATES[tipo] || 0);
   let unitario;
   if (priceHistoryCapacidadCC > 0) {
-    const ila      = netoConDto * (PP_ILA_RATES[tipo] || 0);
-    const costoBotella = (netoConDto + ila) / cantidad + flete;
+    const costoBotella = (netoConDto + ilaEdit) / cantidad + flete;
     unitario       = costoBotella / priceHistoryCapacidadCC;
     valEl.textContent = '$' + (Math.round(unitario * 1000) / 1000).toLocaleString('es-CL', {minimumFractionDigits:0,maximumFractionDigits:3}) + '/cc';
   } else {
-    unitario = netoConDto / cantidad + flete;
+    unitario = (netoConDto + ilaEdit) / cantidad + flete;
     valEl.textContent = '$' + (Math.round(unitario * 100) / 100).toLocaleString('es-CL', {minimumFractionDigits:0,maximumFractionDigits:2});
   }
   prevEl.style.display = '';
