@@ -3424,8 +3424,8 @@ function openModalProducto(id) {
           <select id="mprod-impuesto" class="inv-input">
             <option value="alimento"       ${(p?.tipoImpuesto||'alimento')==='alimento'?'selected':''}>Alimento (IVA 19%)</option>
             <option value="carne"          ${p?.tipoImpuesto==='carne'?'selected':''}>Carne (IVA+imp.carne 24%)</option>
-            <option value="cerveza"        ${p?.tipoImpuesto==='cerveza'?'selected':''}>Cerveza (IVA+ILA 39.5%)</option>
-            <option value="vino_licor"     ${p?.tipoImpuesto==='vino_licor'?'selected':''}>Vino / Licor (IVA+ILA 50.5%)</option>
+            <option value="cerveza"        ${p?.tipoImpuesto==='cerveza'?'selected':''}>Cerveza / Vino (IVA+ILA 39.5%)</option>
+            <option value="vino_licor"     ${p?.tipoImpuesto==='vino_licor'?'selected':''}>Licor (IVA+ILA 50.5%)</option>
             <option value="beb_azucarada"  ${p?.tipoImpuesto==='beb_azucarada'?'selected':''}>Bebida azucarada (IVA+IABA 37%)</option>
             <option value="beb_sin_azucar" ${p?.tipoImpuesto==='beb_sin_azucar'?'selected':''}>Bebida sin azúcar (IVA+IABA 29%)</option>
             <option value="sin_impuesto"   ${p?.tipoImpuesto==='sin_impuesto'?'selected':''}>Sin impuesto (0%)</option>
@@ -3618,7 +3618,7 @@ function ppRenderList() {
   }
   const sorted = [...priceHistoryData].sort((a, b) => b.mes.localeCompare(a.mes));
 
-  const tipoLabels = { alimento:'Alimento', carne:'Carne', cerveza:'Cerveza', vino_licor:'Vino/Licor', beb_azucarada:'Beb. azucarada', beb_sin_azucar:'Beb. s/azúcar', sin_impuesto:'Sin impuesto' };
+  const tipoLabels = { alimento:'Alimento', carne:'Carne', cerveza:'Cerveza/Vino', vino_licor:'Licor', beb_azucarada:'Beb. azucarada', beb_sin_azucar:'Beb. s/azúcar', sin_impuesto:'Sin impuesto' };
 
   el.innerHTML = sorted.map(p => {
     const hasDetail = p.precioBruto != null;
