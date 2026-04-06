@@ -6669,7 +6669,7 @@ function margenListHTML(recipes) {
       return s > 0 ? (s / 1.19 - costoPorcion) / (s / 1.19) * 100 : null;
     }).filter(m => m !== null);
     const avgMargin = margins.length ? margins.reduce((a,b) => a+b, 0) / margins.length : null;
-    const mColor = avgMargin === null ? '#adb5bd' : avgMargin >= 60 ? '#16a34a' : avgMargin >= 40 ? '#ca8a04' : '#dc2626';
+    const mColor = margenColor(avgMargin === null ? null : avgMargin);
 
     // Columna venta: un precio por local
     const priceVals = restIds.map(rid => prices[rid] || 0).filter(p => p > 0);
@@ -6687,7 +6687,7 @@ function margenListHTML(recipes) {
           const s = prices[rid] || 0;
           if (!s) return '';
           const m = (s / 1.19 - costoPorcion) / (s / 1.19) * 100;
-          const c = m >= 60 ? '#16a34a' : m >= 40 ? '#ca8a04' : '#dc2626';
+          const c = margenColor(m);
           const rname = restaurants.find(x => x.id === rid)?.name || rid;
           return `<span style="background:${c}18;color:${c};border:1.5px solid ${c}44;border-radius:20px;padding:1px 8px;font-size:11px;font-weight:700;white-space:nowrap" title="${rname}">${m.toFixed(1)}%</span>`;
         }).join(' ')
@@ -6742,6 +6742,11 @@ function margenListHTML(recipes) {
   </div>`;
 }
 
+function margenColor(m) {
+  if (m === null || m === undefined) return '#adb5bd';
+  return m >= 80 ? '#16a34a' : m >= 70 ? '#ea580c' : m >= 60 ? '#ca8a04' : '#dc2626';
+}
+
 function margenCatColor(cat) {
   return cat === 'Comida' ? '#f97316' : cat === 'Barra' ? '#7c3aed' : cat === 'Postres' ? '#ec4899' : cat === 'Cafetería' ? '#d97706' : '#6c757d';
 }
@@ -6759,7 +6764,7 @@ function margenCardHTML(r, cols) {
   const selling    = r.sellingPrice || 0;
   const sellingNet = selling / 1.19;
   const margin     = selling > 0 ? ((sellingNet - costoPorcion) / sellingNet * 100) : null;
-  const mColor   = margin === null ? '#888' : margin >= 60 ? '#16a34a' : margin >= 40 ? '#ca8a04' : '#dc2626';
+  const mColor   = margenColor(margin);
   const ingCount = (r.ingredients || []).filter(i => i.quantity > 0).length;
 
   // Escala de tamaños según columnas
@@ -6862,7 +6867,7 @@ function margenOpenRecipe(id) {
   const sellingNet = selling / 1.19;
   const marginAbs  = selling > 0 ? sellingNet - costoPorcion : null;
   const marginPct  = selling > 0 ? (marginAbs / sellingNet * 100) : null;
-  const mColor     = marginPct === null ? '#888' : marginPct >= 60 ? '#16a34a' : marginPct >= 40 ? '#ca8a04' : '#dc2626';
+  const mColor     = margenColor(marginPct);
 
   document.getElementById('marg-modal-title').textContent = r.name;
   document.getElementById('marg-modal-sub').textContent   = r.restaurantName || '';
@@ -7359,7 +7364,7 @@ function margenPromoCardHTML(promo) {
   const totalCost  = recipes.reduce((sum, r) => sum + calcRecipeCost(r), 0);
   const sellingNet = promo.sellingPrice > 0 ? promo.sellingPrice / 1.19 : 0;
   const margin     = sellingNet > 0 ? ((sellingNet - totalCost) / sellingNet * 100) : null;
-  const mColor     = margin === null ? '#888' : margin >= 60 ? '#16a34a' : margin >= 40 ? '#d97706' : '#dc2626';
+  const mColor     = margenColor(margin);
   const safeName   = (promo.name || '').replace(/'/g, "\\'");
   return `
     <div style="background:#fff;border:1px solid #e9ecef;border-radius:14px;padding:20px;transition:box-shadow .18s,transform .18s"
@@ -7451,7 +7456,7 @@ function margenPromoUpdatePreview() {
   const selling     = Number(document.getElementById('marg-promo-price').value) || 0;
   const sellingNet  = selling > 0 ? selling / 1.19 : 0;
   const margin      = sellingNet > 0 ? ((sellingNet - totalCost) / sellingNet * 100) : null;
-  const mColor      = margin === null ? '#888' : margin >= 60 ? '#16a34a' : margin >= 40 ? '#d97706' : '#dc2626';
+  const mColor      = margenColor(margin);
   const sumPrecioVenta = recipes.reduce((s, r) => s + (Number(r.sellingPrice) || 0), 0);
   document.getElementById('marg-promo-preview').innerHTML =
     `Costo total: <strong>$${Math.round(totalCost).toLocaleString('es-CL')}</strong>` +
@@ -7641,7 +7646,7 @@ function renderMargenCartaContent() {
         <th>Nombre</th><th>Tipo</th><th>Categoría</th><th>Costo</th><th>Venta</th><th>Margen</th>
       </tr></thead>
       <tbody>${items.map(i => {
-        const mColor = i.margin === null ? '#888' : i.margin >= 60 ? '#16a34a' : i.margin >= 40 ? '#d97706' : '#dc2626';
+        const mColor = margenColor(i.margin);
         const typeBadge = i.type === 'promo'
           ? `<span style="background:#fff7ed;border:1px solid #fed7aa;border-radius:4px;padding:1px 7px;font-size:11px;color:#ea580c;font-weight:600">PROMO</span>`
           : `<span style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:4px;padding:1px 7px;font-size:11px;color:#16a34a;font-weight:600">RECETA</span>`;
@@ -7667,7 +7672,7 @@ function renderMargenCartaContent() {
 }
 
 function cartaCardHTML(item) {
-  const mColor = item.margin === null ? '#888' : item.margin >= 60 ? '#16a34a' : item.margin >= 40 ? '#d97706' : '#dc2626';
+  const mColor = margenColor(item.margin);
   const typeBadge = item.type === 'promo'
     ? `<span style="font-size:11px;background:#fff7ed;border:1px solid #fed7aa;border-radius:4px;padding:1px 7px;color:#ea580c;font-weight:600">PROMO</span>`
     : `<span style="font-size:11px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:4px;padding:1px 7px;color:#16a34a;font-weight:600">RECETA</span>`;
