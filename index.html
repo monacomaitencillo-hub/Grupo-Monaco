@@ -6671,11 +6671,15 @@ function margenListHTML(recipes) {
     const avgMargin = margins.length ? margins.reduce((a,b) => a+b, 0) / margins.length : null;
     const mColor = avgMargin === null ? '#adb5bd' : avgMargin >= 60 ? '#16a34a' : avgMargin >= 40 ? '#ca8a04' : '#dc2626';
 
-    // Columna venta: si multi-local mostrar rango o único valor
+    // Columna venta: un precio por local
     const priceVals = restIds.map(rid => prices[rid] || 0).filter(p => p > 0);
-    const ventaText = priceVals.length === 0 ? '—'
-      : priceVals.length === 1 ? '$' + priceVals[0].toLocaleString('es-CL')
-      : '$' + Math.min(...priceVals).toLocaleString('es-CL') + '–' + Math.max(...priceVals).toLocaleString('es-CL');
+    const ventaText = restIds.length <= 1
+      ? (priceVals[0] ? '$' + priceVals[0].toLocaleString('es-CL') : '—')
+      : restIds.map(rid => {
+          const s = prices[rid] || 0;
+          const rname = (restaurants.find(x => x.id === rid)?.name || rid).split(' ')[0];
+          return s > 0 ? `<span title="${rname}: $${s.toLocaleString('es-CL')}" style="white-space:nowrap">$${s.toLocaleString('es-CL')}</span>` : '';
+        }).filter(Boolean).join('<span style="color:#dee2e6;margin:0 2px">·</span>');
 
     // Margen pills: si multi-local una pill por local, sino una sola
     const margenCellHTML = restIds.length > 1
@@ -6703,7 +6707,7 @@ function margenListHTML(recipes) {
       </td>
       <td style="padding:10px 14px;font-size:12px;color:#6c757d">${restNames}</td>
       <td style="padding:10px 14px;font-size:13px;color:#212529;text-align:right">${costoPorcion > 0 ? '$'+Math.round(costoPorcion).toLocaleString('es-CL')+(porciones > 1 ? '/p' : '') : '—'}</td>
-      <td style="padding:10px 14px;font-size:13px;color:#212529;text-align:right">${ventaText}</td>
+      <td style="padding:10px 14px;font-size:12px;color:#212529;text-align:right;white-space:nowrap">${ventaText}</td>
       <td style="padding:10px 14px;text-align:center"><div style="display:flex;flex-wrap:wrap;gap:3px;justify-content:center">${margenCellHTML}</div></td>
       <td style="padding:10px 14px;font-size:13px;color:#6c757d;text-align:center">${ingCount}</td>
       <td style="padding:10px 14px;text-align:right" onclick="event.stopPropagation()">
