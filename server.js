@@ -960,6 +960,7 @@ const TAX_DIVISORS = {
   vino_licor:      1.505,  // IVA 19% + ILA 31.5%
   beb_azucarada:   1.37,   // IVA 19% + IABA 18%
   beb_sin_azucar:  1.29,   // IVA 19% + IABA 10%
+  harina:          1.31,   // IVA 19% + imp. 12%
   sin_impuesto:    1.00
 };
 // Tasas adicionales (sin IVA) — incluidas en costo, IVA excluido
@@ -970,6 +971,7 @@ const ILA_RATES = {
   vino_licor:      0.315,  // 31.5%
   beb_azucarada:   0.18,   // 18%
   beb_sin_azucar:  0.10,   // 10%
+  harina:          0.12,   // 12%
   sin_impuesto:    0
 };
 

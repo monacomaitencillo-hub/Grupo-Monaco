@@ -3428,6 +3428,7 @@ function openModalProducto(id) {
             <option value="vino_licor"     ${p?.tipoImpuesto==='vino_licor'?'selected':''}>Licor (IVA+ILA 50.5%)</option>
             <option value="beb_azucarada"  ${p?.tipoImpuesto==='beb_azucarada'?'selected':''}>Bebida azucarada (IVA+IABA 37%)</option>
             <option value="beb_sin_azucar" ${p?.tipoImpuesto==='beb_sin_azucar'?'selected':''}>Bebida sin azúcar (IVA+IABA 29%)</option>
+            <option value="harina"         ${p?.tipoImpuesto==='harina'?'selected':''}>Harina (IVA+imp. 31%)</option>
             <option value="sin_impuesto"   ${p?.tipoImpuesto==='sin_impuesto'?'selected':''}>Sin impuesto (0%)</option>
           </select>
         </div>
@@ -3559,8 +3560,8 @@ function openModalProducto(id) {
   }
 }
 
-const PP_DIVISORS  = { alimento:1.19, carne:1.24, cerveza:1.395, vino_licor:1.505, beb_azucarada:1.37, beb_sin_azucar:1.29, sin_impuesto:1.00 };
-const PP_ILA_RATES = { alimento:0, carne:0.05, cerveza:0.205, vino_licor:0.315, beb_azucarada:0.18, beb_sin_azucar:0.10, sin_impuesto:0 };
+const PP_DIVISORS  = { alimento:1.19, carne:1.24, cerveza:1.395, vino_licor:1.505, beb_azucarada:1.37, beb_sin_azucar:1.29, harina:1.31, sin_impuesto:1.00 };
+const PP_ILA_RATES = { alimento:0, carne:0.05, cerveza:0.205, vino_licor:0.315, beb_azucarada:0.18, beb_sin_azucar:0.10, harina:0.12, sin_impuesto:0 };
 
 function ppGetTipoImpuesto() {
   return document.getElementById('mprod-impuesto')?.value || 'alimento';
@@ -3618,7 +3619,7 @@ function ppRenderList() {
   }
   const sorted = [...priceHistoryData].sort((a, b) => b.mes.localeCompare(a.mes));
 
-  const tipoLabels = { alimento:'Alimento', carne:'Carne', cerveza:'Cerveza/Vino', vino_licor:'Licor', beb_azucarada:'Beb. azucarada', beb_sin_azucar:'Beb. s/azúcar', sin_impuesto:'Sin impuesto' };
+  const tipoLabels = { alimento:'Alimento', carne:'Carne', cerveza:'Cerveza/Vino', vino_licor:'Licor', beb_azucarada:'Beb. azucarada', beb_sin_azucar:'Beb. s/azúcar', harina:'Harina', sin_impuesto:'Sin impuesto' };
 
   el.innerHTML = sorted.map(p => {
     const hasDetail = p.precioBruto != null;
@@ -3632,7 +3633,7 @@ function ppRenderList() {
     <div id="pp-entry-${p.id}" style="background:#fff;border:1px solid #e9ecef;border-radius:10px;margin-bottom:8px;overflow:hidden">
       <!-- Vista resumen -->
       <div style="display:flex;align-items:center;gap:10px;padding:12px 14px">
-        <span style="width:76px;font-size:13px;color:#6c757d;font-weight:600;flex-shrink:0">${p.mes}</span>
+        <span style="width:76px;font-size:13px;color:#6c757d;font-weight:600;flex-shrink:0">${p.mes || '—'}</span>
         <div style="flex:1;min-width:0">
           <div style="font-size:14px;font-weight:700;color:#212529">
             Costo unitario: <span style="color:#16a34a">$${(p.precio||0).toLocaleString('es-CL',{minimumFractionDigits:0,maximumFractionDigits:2})}</span>
