@@ -6334,6 +6334,8 @@ let margenFilterCat    = '';
 let margenFilterSubcat = '';
 let margenCols         = 3;
 let margenView         = 'grid'; // 'grid' | 'list'
+let margenPrepView     = 'grid'; // 'grid' | 'list'
+let margenPrepSearch   = '';
 let margenSortCol      = '';     // 'name'|'local'|'costo'|'venta'|'margen'|'ing'
 let margenSortDir      = 1;      // 1=asc, -1=desc
 
@@ -6358,6 +6360,8 @@ async function initMargenesModule() {
   });
   const toolbar = document.getElementById('marg-recetas-toolbar');
   if (toolbar) toolbar.dataset.built = '';
+  const prepEl = document.getElementById('marg-preparaciones');
+  if (prepEl) prepEl.dataset.built = '';
   const content = document.getElementById('marg-recetas-content');
   if (content) content.innerHTML = '<div style="color:#555;font-size:13px;padding:20px">Cargando...</div>';
   await loadMargenData();
@@ -7071,27 +7075,116 @@ function margenExportarExcel() {
 // ── Márgenes: Preparaciones ───────────────────────────────
 function renderMargenPreparaciones() {
   const el = document.getElementById('marg-preparaciones');
+  if (!el) return;
 
-  el.innerHTML = `
-    <div class="inv-toolbar" style="flex-wrap:wrap;gap:10px">
-      <h2 style="margin:0">Preparaciones</h2>
-      <div style="display:flex;gap:8px;align-items:center;margin-left:auto">
-        <button class="btn-new" onclick="margenOpenPrepModal(null)" style="padding:7px 14px;font-size:13px">+ Nueva preparación</button>
+  // Toolbar: construir una sola vez
+  if (!el.dataset.built) {
+    el.dataset.built = '1';
+    el.innerHTML = `
+      <div class="inv-toolbar" style="flex-wrap:wrap;gap:10px;margin-bottom:4px" id="marg-prep-toolbar">
+        <h2 style="margin:0">Preparaciones</h2>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-left:auto">
+          <div style="display:flex;align-items:center;border:1px solid #dee2e6;border-radius:8px;overflow:hidden;background:#fff">
+            <span style="padding:0 10px;color:#adb5bd;font-size:13px">&#128269;</span>
+            <input type="text" id="marg-prep-search" placeholder="Buscar preparación..."
+              oninput="clearTimeout(this._t);this._t=setTimeout(()=>{margenPrepSearch=this.value;renderMargenPrepContent()},300)"
+              style="border:none;outline:none;padding:6px 10px 6px 0;font-size:13px;width:160px;color:#212529">
+          </div>
+          <div style="display:flex;border:1px solid #dee2e6;border-radius:8px;overflow:hidden">
+            <button id="marg-prep-view-list" onclick="margenPrepView='list';margenUpdatePrepViewBtns();renderMargenPrepContent()"
+              style="padding:6px 10px;font-size:13px;font-weight:600;border:none;border-right:1px solid #dee2e6;cursor:pointer;background:#fff;color:#6c757d" title="Vista lista">&#9776;</button>
+            <button id="marg-prep-view-grid" onclick="margenPrepView='grid';margenUpdatePrepViewBtns();renderMargenPrepContent()"
+              style="padding:6px 12px;font-size:12px;font-weight:600;border:none;cursor:pointer;background:#212529;color:#fff" title="Vista grilla">&#9638;</button>
+          </div>
+          <button class="btn-new" onclick="margenOpenPrepModal(null)" style="padding:7px 14px;font-size:13px">+ Nueva preparación</button>
+        </div>
       </div>
-    </div>
-    <p style="font-size:13px;color:#6c757d;margin:-4px 0 20px">
-      Las preparaciones son sub-recetas hechas de ingredientes. Podés usarlas dentro de las recetas.
-    </p>
-    ${margenPreparations.length === 0
-      ? `<div style="text-align:center;padding:60px 20px;color:#888">
-           <div style="font-size:40px;margin-bottom:12px">🥣</div>
-           <div style="font-size:15px;font-weight:600;margin-bottom:6px">Sin preparaciones aún</div>
-           <div style="font-size:13px;color:#aaa">Creá una preparación para usarla como componente en tus recetas.</div>
-         </div>`
-      : `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:16px;padding:4px 0 24px">
-           ${margenPreparations.map(p => margenPrepCardHTML(p)).join('')}
-         </div>`
-    }`;
+      <p style="font-size:13px;color:#6c757d;margin:0 0 20px">
+        Las preparaciones son sub-recetas hechas de ingredientes. Podés usarlas dentro de las recetas.
+      </p>
+      <div id="marg-prep-content"></div>`;
+    margenUpdatePrepViewBtns();
+  }
+  renderMargenPrepContent();
+}
+
+function margenUpdatePrepViewBtns() {
+  const btnList = document.getElementById('marg-prep-view-list');
+  const btnGrid = document.getElementById('marg-prep-view-grid');
+  if (!btnList || !btnGrid) return;
+  if (margenPrepView === 'list') {
+    btnList.style.background = '#212529'; btnList.style.color = '#fff';
+    btnGrid.style.background = '#fff';    btnGrid.style.color = '#6c757d';
+  } else {
+    btnGrid.style.background = '#212529'; btnGrid.style.color = '#fff';
+    btnList.style.background = '#fff';    btnList.style.color = '#6c757d';
+  }
+}
+
+function renderMargenPrepContent() {
+  const content = document.getElementById('marg-prep-content');
+  if (!content) return;
+
+  let filtered = margenPreparations;
+  if (margenPrepSearch) filtered = filtered.filter(p => (p.name||'').toLowerCase().includes(margenPrepSearch.toLowerCase()));
+
+  if (filtered.length === 0) {
+    content.innerHTML = `<div style="text-align:center;padding:60px 20px;color:#888">
+      <div style="font-size:40px;margin-bottom:12px">🥣</div>
+      <div style="font-size:15px;font-weight:600;margin-bottom:6px">${margenPrepSearch ? 'Sin resultados' : 'Sin preparaciones aún'}</div>
+      <div style="font-size:13px;color:#aaa">${margenPrepSearch ? 'Probá con otro nombre.' : 'Creá una preparación para usarla como componente en tus recetas.'}</div>
+    </div>`;
+    return;
+  }
+
+  if (margenPrepView === 'list') {
+    content.innerHTML = margenPrepListHTML(filtered);
+  } else {
+    content.innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:16px;padding:4px 0 24px">
+      ${filtered.map(p => margenPrepCardHTML(p)).join('')}
+    </div>`;
+  }
+}
+
+function margenPrepListHTML(preps) {
+  const rows = preps.map(p => {
+    const cost     = calcPrepCost(p);
+    const ingCount = (p.ingredients || []).filter(i => i.quantity > 0).length;
+    return `<tr style="border-bottom:1px solid #f1f3f4;cursor:pointer" onclick="margenOpenPrepDetail('${p.id}')"
+              onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background=''">
+      <td style="padding:10px 14px">
+        <div style="font-size:13px;font-weight:600;color:#212529">${p.name}</div>
+        <div style="display:flex;gap:4px;margin-top:2px">
+          <span style="font-size:10px;color:#7c3aed;background:#ede9fe;border-radius:4px;padding:1px 7px;font-weight:600">PREPARACIÓN</span>
+          ${(p.rendimientoAgua > 0 || p.rendimientoAire > 0) ? `<span style="font-size:10px;color:#0369a1;background:#e0f2fe;border-radius:4px;padding:1px 7px;font-weight:600">⟳ rend.</span>` : ''}
+        </div>
+      </td>
+      <td style="padding:10px 14px;font-size:13px;color:#212529;font-weight:600;text-align:right">${cost > 0 ? '$'+Math.round(cost).toLocaleString('es-CL') : '—'}</td>
+      <td style="padding:10px 14px;font-size:13px;color:#6c757d;text-align:center">${ingCount}</td>
+      <td style="padding:10px 14px;text-align:right" onclick="event.stopPropagation()">
+        <div style="display:flex;gap:6px;justify-content:flex-end">
+          <button onclick="margenOpenPrepModal('${p.id}')"
+            style="background:#f1f3f4;border:none;border-radius:7px;width:28px;height:28px;cursor:pointer;color:#495057;font-size:13px;display:flex;align-items:center;justify-content:center">✎</button>
+          <button onclick="margenDeletePrep('${p.id}','${p.name.replace(/'/g,"\\'")}')"
+            style="background:#fff0f0;border:1px solid #fca5a5;border-radius:7px;width:28px;height:28px;cursor:pointer;color:#ef4444;font-size:13px;display:flex;align-items:center;justify-content:center">✕</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+
+  return `<div style="overflow-x:auto;padding-bottom:24px">
+    <table style="width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden;border:1px solid #e9ecef">
+      <thead>
+        <tr style="background:#f8f9fa;border-bottom:2px solid #e9ecef">
+          <th style="padding:10px 14px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:#6c757d;text-align:left">Preparación</th>
+          <th style="padding:10px 14px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:#6c757d;text-align:right">Costo</th>
+          <th style="padding:10px 14px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:#6c757d;text-align:center">Ing.</th>
+          <th style="padding:10px 14px"></th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+  </div>`;
 }
 
 function margenPrepCardHTML(p) {
