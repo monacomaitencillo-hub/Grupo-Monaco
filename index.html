@@ -7245,6 +7245,22 @@ function margenOpenPrepDetail(id) {
     </tr>`;
   }).join('');
 
+  const prepCost = calcPrepCost(p);
+  const history  = (p.costHistory || []).slice().sort((a,b) => b.mes.localeCompare(a.mes));
+  const mesMes   = new Date().toISOString().slice(0,7); // YYYY-MM
+  const mesLabel = new Date().toLocaleString('es-CL', {month:'long',year:'numeric'});
+
+  const histHTML = history.length
+    ? history.map(h => {
+        const [y,m] = h.mes.split('-');
+        const label = new Date(Number(y), Number(m)-1, 1).toLocaleString('es-CL',{month:'long',year:'numeric'});
+        return `<tr style="border-bottom:1px solid #f1f3f4">
+          <td style="padding:8px 16px;font-size:13px;color:#495057;text-transform:capitalize">${label}</td>
+          <td style="padding:8px 16px;font-size:13px;font-weight:600;color:#212529;text-align:right">$${Math.round(h.costo).toLocaleString('es-CL')}</td>
+        </tr>`;
+      }).join('')
+    : `<tr><td colspan="2" style="padding:14px 16px;color:#adb5bd;font-size:13px">Sin registros aún</td></tr>`;
+
   document.getElementById('marg-modal-title').textContent = p.name;
   document.getElementById('marg-modal-sub').textContent   = 'Preparación';
   document.getElementById('marg-modal-id').value          = id;
@@ -7262,12 +7278,68 @@ function margenOpenPrepDetail(id) {
         <tbody>${rowsHtml || '<tr><td colspan="4" style="padding:20px 16px;color:#aaa;font-size:13px">Sin ingredientes</td></tr>'}</tbody>
       </table>
     </div>
-    <div style="padding:16px 20px;background:#f8f9fa;border-top:2px solid #e9ecef;display:flex;justify-content:space-between;align-items:center">
-      <span style="font-size:14px;font-weight:600;color:#495057">Costo total</span>
-      <span style="font-size:16px;font-weight:800;color:#212529">${totalCost > 0 ? '$'+Math.round(totalCost).toLocaleString('es-CL') : '—'}</span>
+    <div style="padding:16px 20px;background:#f8f9fa;border-top:2px solid #e9ecef;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+      <div>
+        <span style="font-size:14px;font-weight:600;color:#495057">Costo total</span>
+        <span style="font-size:16px;font-weight:800;color:#212529;margin-left:16px">${prepCost > 0 ? '$'+Math.round(prepCost).toLocaleString('es-CL') : '—'}</span>
+      </div>
+      <button id="prep-snapshot-btn" onclick="margenSavePrepCostSnapshot('${id}')"
+        style="background:#ff5023;color:#fff;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap">
+        Registrar costo ${mesLabel}
+      </button>
+    </div>
+    <div style="padding:16px 20px 4px">
+      <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:#6c757d;margin-bottom:8px">Historial de costos</div>
+      <table style="width:100%;border-collapse:collapse;border:1px solid #e9ecef;border-radius:8px;overflow:hidden">
+        <thead>
+          <tr style="background:#f8f9fa;border-bottom:1px solid #e9ecef">
+            <th style="padding:8px 16px;text-align:left;font-size:11px;color:#6c757d;font-weight:600;text-transform:uppercase">Mes</th>
+            <th style="padding:8px 16px;text-align:right;font-size:11px;color:#6c757d;font-weight:600;text-transform:uppercase">Costo</th>
+          </tr>
+        </thead>
+        <tbody id="prep-cost-history-rows">${histHTML}</tbody>
+      </table>
     </div>`;
 
   document.getElementById('marg-modal').style.display = 'flex';
+}
+
+async function margenSavePrepCostSnapshot(id) {
+  const p = margenPreparations.find(x => x.id === id);
+  if (!p) return;
+  const costo = calcPrepCost(p);
+  if (!(costo > 0)) { alert('Esta preparación no tiene costo calculado.'); return; }
+  const mes = new Date().toISOString().slice(0,7);
+  const btn = document.getElementById('prep-snapshot-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Guardando...'; }
+  try {
+    const res  = await apiFetch(`/api/preparations/${id}/cost-snapshot`, { method:'POST', body: JSON.stringify({ mes, costo }) });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    // actualizar local
+    if (!p.costHistory) p.costHistory = [];
+    const idx = p.costHistory.findIndex(h => h.mes === mes);
+    if (idx >= 0) p.costHistory[idx].costo = costo;
+    else { p.costHistory.push({ mes, costo }); p.costHistory.sort((a,b) => b.mes.localeCompare(a.mes)); }
+    // re-render tabla historial
+    const tbody = document.getElementById('prep-cost-history-rows');
+    if (tbody) {
+      tbody.innerHTML = p.costHistory.map(h => {
+        const [y,m] = h.mes.split('-');
+        const label = new Date(Number(y), Number(m)-1, 1).toLocaleString('es-CL',{month:'long',year:'numeric'});
+        return `<tr style="border-bottom:1px solid #f1f3f4">
+          <td style="padding:8px 16px;font-size:13px;color:#495057;text-transform:capitalize">${label}</td>
+          <td style="padding:8px 16px;font-size:13px;font-weight:600;color:#212529;text-align:right">$${Math.round(h.costo).toLocaleString('es-CL')}</td>
+        </tr>`;
+      }).join('');
+    }
+    if (btn) { btn.textContent = '¡Guardado!'; setTimeout(() => { if (btn) btn.textContent = 'Registrar costo ' + new Date().toLocaleString('es-CL',{month:'long',year:'numeric'}); }, 1500); }
+  } catch(e) {
+    alert('Error al guardar: ' + e.message);
+    if (btn) btn.textContent = 'Registrar costo ' + new Date().toLocaleString('es-CL',{month:'long',year:'numeric'});
+  } finally {
+    if (btn) btn.disabled = false;
+  }
 }
 
 // Modal preparación (crear/editar) — reutiliza el modal de formulario de receta

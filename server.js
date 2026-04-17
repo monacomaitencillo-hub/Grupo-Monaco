@@ -2242,6 +2242,25 @@ app.put('/api/preparations/:id', requireAuth, async (req, res) => {
   res.json({ ok: true });
 });
 
+app.post('/api/preparations/:id/cost-snapshot', requireAuth, async (req, res) => {
+  if (!await isEditor(req.uid)) return res.status(403).json({ error: 'Sin permisos' });
+  const { mes, costo } = req.body; // mes = 'YYYY-MM', costo = number
+  if (!mes || costo === undefined) return res.status(400).json({ error: 'Faltan datos' });
+  const ref = db.collection('preparations').doc(req.params.id);
+  const doc = await ref.get();
+  if (!doc.exists) return res.status(404).json({ error: 'No encontrado' });
+  const history = doc.data().costHistory || [];
+  const idx = history.findIndex(h => h.mes === mes);
+  if (idx >= 0) {
+    history[idx] = { mes, costo: Number(costo) };
+  } else {
+    history.push({ mes, costo: Number(costo) });
+    history.sort((a, b) => b.mes.localeCompare(a.mes));
+  }
+  await ref.update({ costHistory: history, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+  res.json({ ok: true, history });
+});
+
 // Helper: chequea uso de cualquier ID (ingrediente o preparación)
 async function checkUsage(id, { isPrep = false } = {}) {
   const usage = [];
