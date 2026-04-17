@@ -7319,6 +7319,7 @@ function margenOpenPrepModal(id) {
   }
   document.getElementById('marg-form-promedio').checked = prep?.esPromedio === true;
   document.getElementById('marg-form-porciones').value  = prep?.porciones > 1 ? prep.porciones : '';
+  document.getElementById('marg-form-comentario').value = prep?.comentario || '';
 
   margenSetRendimientos(prep?.rendimientoAgua, prep?.rendimientoAire, prep?.merma);
   document.getElementById('marg-form-modal').style.display = 'flex';
@@ -7508,6 +7509,7 @@ function margenOpenPromoModal(id) {
   document.getElementById('marg-promo-title').textContent = promo ? 'Editar promo' : 'Nueva promo';
   document.getElementById('marg-promo-name').value        = promo?.name || '';
   document.getElementById('marg-promo-price').value       = promo?.sellingPrice || '';
+  document.getElementById('marg-promo-comentario').value  = promo?.comentario || '';
   document.getElementById('marg-promo-msg').textContent   = '';
   document.getElementById('marg-promo-search').value      = '';
 
@@ -7580,20 +7582,21 @@ async function margenSavePromo() {
   const restaurantName = restSel.options[restSel.selectedIndex]?.text.replace('— Seleccionar local —','') || '';
   const sellingPrice   = Number(document.getElementById('marg-promo-price').value) || 0;
   const recipes        = [...document.querySelectorAll('#marg-promo-recipes input[type=checkbox]:checked')].map(cb => cb.value);
+  const comentario     = document.getElementById('marg-promo-comentario').value.trim();
   btn.disabled = true; btn.textContent = 'Guardando...'; msg.textContent = '';
   try {
     let res, data;
     if (id) {
-      res  = await apiFetch(`/api/promos/${id}`, { method: 'PUT', body: JSON.stringify({ name, restaurantId, restaurantName, sellingPrice, recipes }) });
+      res  = await apiFetch(`/api/promos/${id}`, { method: 'PUT', body: JSON.stringify({ name, restaurantId, restaurantName, sellingPrice, recipes, comentario }) });
       data = await res.json();
       if (data.error) throw new Error(data.error);
       const idx = margenPromos.findIndex(p => p.id === id);
-      if (idx >= 0) margenPromos[idx] = { ...margenPromos[idx], name, restaurantId, restaurantName, sellingPrice, recipes };
+      if (idx >= 0) margenPromos[idx] = { ...margenPromos[idx], name, restaurantId, restaurantName, sellingPrice, recipes, comentario };
     } else {
-      res  = await apiFetch('/api/promos', { method: 'POST', body: JSON.stringify({ name, restaurantId, restaurantName, sellingPrice, recipes }) });
+      res  = await apiFetch('/api/promos', { method: 'POST', body: JSON.stringify({ name, restaurantId, restaurantName, sellingPrice, recipes, comentario }) });
       data = await res.json();
       if (data.error) throw new Error(data.error);
-      margenPromos.push({ id: data.id, name, restaurantId, restaurantName, sellingPrice, recipes });
+      margenPromos.push({ id: data.id, name, restaurantId, restaurantName, sellingPrice, recipes, comentario });
     }
     document.getElementById('marg-promo-modal').style.display = 'none';
     renderMargenPromos();
@@ -7861,6 +7864,7 @@ function margenOpenFormModal(id) {
   document.getElementById('marg-form-cat-wrap').style.display = '';
   document.getElementById('marg-form-subcat').value     = recipe?.subcategoria || '';
   document.getElementById('marg-form-subcat-wrap').style.display = '';
+  document.getElementById('marg-form-comentario').value = recipe?.comentario || '';
 
   margenSetRendimientos(recipe?.rendimientoAgua, recipe?.rendimientoAire, recipe?.merma);
   document.getElementById('marg-form-modal').style.display = 'flex';
@@ -8101,6 +8105,8 @@ async function margenSaveForm() {
   const porciones  = parseInt(document.getElementById('marg-form-porciones')?.value) || 1;
   msg.style.color = '#888'; msg.textContent = 'Guardando...';
 
+  const comentario = document.getElementById('marg-form-comentario')?.value.trim() || '';
+
   // ── Guardar preparación ──
   if (isPrep) {
     const esGDD    = document.getElementById('marg-form-gdd')?.checked === true;
@@ -8117,16 +8123,16 @@ async function margenSaveForm() {
     try {
       let res, data;
       if (id) {
-        res  = await apiFetch(`/api/preparations/${id}`, { method: 'PUT', body: JSON.stringify({ name, category, unit, ingredients, esGDD, esPromedio, restaurantIds, restaurantSections, rendimientoAgua: rendAgua, rendimientoAire: rendAire, merma: mermaVal, porciones }) });
+        res  = await apiFetch(`/api/preparations/${id}`, { method: 'PUT', body: JSON.stringify({ name, category, unit, ingredients, esGDD, esPromedio, restaurantIds, restaurantSections, rendimientoAgua: rendAgua, rendimientoAire: rendAire, merma: mermaVal, porciones, comentario }) });
         data = await res.json();
         if (data.error) throw new Error(data.error);
         const idx2 = margenPreparations.findIndex(p => p.id === id);
-        if (idx2 >= 0) margenPreparations[idx2] = { ...margenPreparations[idx2], name, category, unit, ingredients, esGDD, esPromedio, restaurantIds, restaurantSections, rendimientoAgua: rendAgua, rendimientoAire: rendAire, merma: mermaVal, porciones };
+        if (idx2 >= 0) margenPreparations[idx2] = { ...margenPreparations[idx2], name, category, unit, ingredients, esGDD, esPromedio, restaurantIds, restaurantSections, rendimientoAgua: rendAgua, rendimientoAire: rendAire, merma: mermaVal, porciones, comentario };
       } else {
-        res  = await apiFetch('/api/preparations', { method: 'POST', body: JSON.stringify({ name, category, unit, ingredients, esGDD, esPromedio, restaurantIds, restaurantSections, rendimientoAgua: rendAgua, rendimientoAire: rendAire, merma: mermaVal, porciones }) });
+        res  = await apiFetch('/api/preparations', { method: 'POST', body: JSON.stringify({ name, category, unit, ingredients, esGDD, esPromedio, restaurantIds, restaurantSections, rendimientoAgua: rendAgua, rendimientoAire: rendAire, merma: mermaVal, porciones, comentario }) });
         data = await res.json();
         if (data.error) throw new Error(data.error);
-        margenPreparations.push({ id: data.id, name, category, unit, ingredients, esGDD, esPromedio, restaurantIds, restaurantSections, rendimientoAgua: rendAgua, rendimientoAire: rendAire, merma: mermaVal, porciones });
+        margenPreparations.push({ id: data.id, name, category, unit, ingredients, esGDD, esPromedio, restaurantIds, restaurantSections, rendimientoAgua: rendAgua, rendimientoAire: rendAire, merma: mermaVal, porciones, comentario });
       }
       margenCloseFormModal();
       renderMargenPreparaciones();
@@ -8157,11 +8163,11 @@ async function margenSaveForm() {
   const { agua: rendAgua, aire: rendAire, merma: mermaVal } = margenGetRendimientos();
   try {
     if (id) {
-      const res  = await apiFetch(`/api/recipes/${id}`, { method: 'PUT', body: JSON.stringify({ name, sellingPrice: price, sellingPrices, restaurantIds, restaurantId: restId, restaurantName: restName, ingredients, esPromedio, rendimientoAgua: rendAgua, rendimientoAire: rendAire, merma: mermaVal, porciones, categoria, subcategoria }) });
+      const res  = await apiFetch(`/api/recipes/${id}`, { method: 'PUT', body: JSON.stringify({ name, sellingPrice: price, sellingPrices, restaurantIds, restaurantId: restId, restaurantName: restName, ingredients, esPromedio, rendimientoAgua: rendAgua, rendimientoAire: rendAire, merma: mermaVal, porciones, categoria, subcategoria, comentario }) });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
     } else {
-      const res  = await apiFetch('/api/recipes/import', { method: 'POST', body: JSON.stringify({ recipes: [{ name, restaurantId: restId, restaurantName: restName, restaurantIds, sellingPrice: price, sellingPrices, ingredients, rendimientoAgua: rendAgua, rendimientoAire: rendAire, merma: mermaVal, porciones, categoria, subcategoria }] }) });
+      const res  = await apiFetch('/api/recipes/import', { method: 'POST', body: JSON.stringify({ recipes: [{ name, restaurantId: restId, restaurantName: restName, restaurantIds, sellingPrice: price, sellingPrices, ingredients, rendimientoAgua: rendAgua, rendimientoAire: rendAire, merma: mermaVal, porciones, categoria, subcategoria, comentario }] }) });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
     }
@@ -8346,7 +8352,12 @@ async function margenDeleteRecipe(id, name) {
       <div id="marg-promo-preview" style="padding:12px 14px;background:#f8f9fa;border-radius:8px;font-size:13px;color:#495057;border:1px solid #e9ecef;margin-bottom:8px">
         Costo total: <strong>$0</strong>
       </div>
-      <div id="marg-promo-msg" style="font-size:12px;min-height:16px;color:#dc2626"></div>
+      <div style="margin-top:10px">
+        <div class="field-label">Notas / Comentario</div>
+        <textarea id="marg-promo-comentario" rows="2" placeholder="Ej: Válido de lunes a jueves..."
+          style="width:100%;padding:10px 12px;border:1px solid #dee2e6;border-radius:8px;font-size:13px;color:#212529;resize:vertical;outline:none;font-family:inherit"></textarea>
+      </div>
+      <div id="marg-promo-msg" style="font-size:12px;min-height:16px;color:#dc2626;margin-top:6px"></div>
     </div>
     <div style="padding:16px 24px;border-top:1px solid #e9ecef;display:flex;justify-content:flex-end;gap:10px;flex-shrink:0">
       <button onclick="document.getElementById('marg-promo-modal').style.display='none'"
@@ -8513,6 +8524,11 @@ async function margenDeleteRecipe(id, name) {
           <input type="checkbox" id="marg-form-gdd" style="width:16px;height:16px;accent-color:#ff5023">
           Viene por Guía de Despacho (GDD)
         </label>
+      </div>
+      <div style="margin-bottom:16px">
+        <div class="field-label">Notas / Comentario</div>
+        <textarea id="marg-form-comentario" rows="3" placeholder="Ej: Preparar con 24h de anticipación, refrigerar..."
+          style="width:100%;padding:10px 12px;border:1px solid #dee2e6;border-radius:8px;font-size:13px;color:#212529;resize:vertical;outline:none;font-family:inherit"></textarea>
       </div>
       <div id="marg-form-msg" style="font-size:13px;min-height:18px;margin-bottom:4px"></div>
       <div style="display:flex;gap:10px">
