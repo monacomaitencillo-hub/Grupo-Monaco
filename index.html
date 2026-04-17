@@ -6538,6 +6538,11 @@ function renderMargenRecetas() {
           <option value="Comida">Comida</option>
           <option value="Entradas">Entradas</option>
           <option value="Platos de la Casa">Platos de la Casa</option>
+          <option value="Comidas Preparadas">Comidas Preparadas</option>
+          <option value="Pizzas">Pizzas</option>
+          <option value="Hamburguesas">Hamburguesas</option>
+          <option value="Churrascos">Churrascos</option>
+          <option value="Lomitos">Lomitos</option>
           <option value="Barra">Barra</option>
           <option value="Postres">Postres</option>
           <option value="Dulces">Dulces</option>
@@ -6761,7 +6766,19 @@ function margenColor(m) {
 }
 
 function margenCatColor(cat) {
-  return cat === 'Comida' ? '#f97316' : cat === 'Entradas' ? '#16a34a' : cat === 'Platos de la Casa' ? '#0369a1' : cat === 'Barra' ? '#7c3aed' : cat === 'Postres' ? '#ec4899' : cat === 'Dulces' ? '#db2777' : cat === 'Cafetería' ? '#d97706' : '#6c757d';
+  return cat === 'Comida' ? '#f97316'
+    : cat === 'Entradas' ? '#16a34a'
+    : cat === 'Platos de la Casa' ? '#0369a1'
+    : cat === 'Comidas Preparadas' ? '#0891b2'
+    : cat === 'Pizzas' ? '#dc2626'
+    : cat === 'Hamburguesas' ? '#b45309'
+    : cat === 'Churrascos' ? '#92400e'
+    : cat === 'Lomitos' ? '#78350f'
+    : cat === 'Barra' ? '#7c3aed'
+    : cat === 'Postres' ? '#ec4899'
+    : cat === 'Dulces' ? '#db2777'
+    : cat === 'Cafetería' ? '#d97706'
+    : '#6c757d';
 }
 
 function margenSubcatBadge(subcat, extra) {
@@ -7754,7 +7771,7 @@ function renderMargenCarta() {
             ${v===''?'Todo':v==='receta'?'Recetas':'Promos'}</button>`).join('')}
         </div>
         <div style="display:flex;gap:4px;flex-wrap:wrap">
-          ${[['','Todas'],['Comida','Comida'],['Entradas','Entradas'],['Platos de la Casa','Platos de la Casa'],['Barra','Barra'],['Postres','Postres'],['Dulces','Dulces'],['Cafetería','Cafetería']].map(([v,l]) =>
+          ${[['','Todas'],['Comida','Comida'],['Entradas','Entradas'],['Platos de la Casa','Platos de la Casa'],['Comidas Preparadas','Comidas Preparadas'],['Pizzas','Pizzas'],['Hamburguesas','Hamburguesas'],['Churrascos','Churrascos'],['Lomitos','Lomitos'],['Barra','Barra'],['Postres','Postres'],['Dulces','Dulces'],['Cafetería','Cafetería']].map(([v,l]) =>
             `<button id="carta-cat-${v||'all'}" onclick="cartaFilterCat='${v}';cartaUpdateCatBtns();renderMargenCartaContent()"
               style="padding:5px 12px;border-radius:7px;border:1px solid #dee2e6;font-size:12px;font-weight:600;cursor:pointer;background:${v===''?'#212529':'#fff'};color:${v===''?'#fff':'#6c757d'}">${l}</button>`).join('')}
         </div>
@@ -7783,7 +7800,7 @@ function cartaUpdateTypeBtns() {
   });
 }
 function cartaUpdateCatBtns() {
-  ['all','Comida','Entradas','Platos de la Casa','Barra','Postres','Dulces','Cafetería'].forEach(v => {
+  ['all','Comida','Entradas','Platos de la Casa','Comidas Preparadas','Pizzas','Hamburguesas','Churrascos','Lomitos','Barra','Postres','Dulces','Cafetería'].forEach(v => {
     const btn = document.getElementById('carta-cat-' + (v === 'all' ? 'all' : v));
     if (!btn) return;
     const active = (cartaFilterCat || '') === (v === 'all' ? '' : v);
@@ -8487,6 +8504,11 @@ async function margenDeleteRecipe(id, name) {
             <option value="Comida">Comida</option>
             <option value="Entradas">Entradas</option>
             <option value="Platos de la Casa">Platos de la Casa</option>
+            <option value="Comidas Preparadas">Comidas Preparadas</option>
+            <option value="Pizzas">Pizzas</option>
+            <option value="Hamburguesas">Hamburguesas</option>
+            <option value="Churrascos">Churrascos</option>
+            <option value="Lomitos">Lomitos</option>
             <option value="Barra">Barra</option>
             <option value="Postres">Postres</option>
             <option value="Dulces">Dulces</option>
