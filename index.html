@@ -6336,6 +6336,7 @@ let margenCols         = 3;
 let margenView         = 'grid'; // 'grid' | 'list'
 let margenPrepView     = 'grid'; // 'grid' | 'list'
 let margenPrepSearch   = '';
+let margenPromoFilterRest = '';
 let margenSortCol      = '';     // 'name'|'local'|'costo'|'venta'|'margen'|'ing'
 let margenSortDir      = 1;      // 1=asc, -1=desc
 
@@ -6362,6 +6363,8 @@ async function initMargenesModule() {
   if (toolbar) toolbar.dataset.built = '';
   const prepEl = document.getElementById('marg-preparaciones');
   if (prepEl) prepEl.dataset.built = '';
+  const promosEl = document.getElementById('marg-promos');
+  if (promosEl) promosEl.dataset.built = '';
   const content = document.getElementById('marg-recetas-content');
   if (content) content.innerHTML = '<div style="color:#555;font-size:13px;padding:20px">Cargando...</div>';
   await loadMargenData();
@@ -7506,26 +7509,46 @@ function calcRecipeCost(recipe) {
 
 function renderMargenPromos() {
   const el = document.getElementById('marg-promos');
-  el.innerHTML = `
-    <div class="inv-toolbar" style="flex-wrap:wrap;gap:10px">
-      <h2 style="margin:0">Promos</h2>
-      <div style="display:flex;gap:8px;align-items:center;margin-left:auto">
-        <button class="btn-new" onclick="margenOpenPromoModal(null)" style="padding:7px 14px;font-size:13px">+ Nueva promo</button>
+  if (!el.dataset.built) {
+    el.dataset.built = '1';
+    const restOpts = restaurants.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
+    el.innerHTML = `
+      <div class="inv-toolbar" style="flex-wrap:wrap;gap:10px">
+        <h2 style="margin:0">Promos</h2>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-left:auto">
+          <select id="marg-promo-filter-rest" onchange="margenPromoFilterRest=this.value;renderMargenPromosContent()"
+            style="border:1px solid #dee2e6;border-radius:8px;padding:6px 10px;font-size:13px;background:#fff;color:#495057;cursor:pointer">
+            <option value="">Todos los locales</option>
+            ${restOpts}
+          </select>
+          <button class="btn-new" onclick="margenOpenPromoModal(null)" style="padding:7px 14px;font-size:13px">+ Nueva promo</button>
+        </div>
       </div>
-    </div>
-    <p style="font-size:13px;color:#6c757d;margin:-4px 0 20px">
-      Agrupá recetas en una promo, asignale un precio de venta y calculá el margen.
-    </p>
-    ${margenPromos.length === 0
-      ? `<div style="text-align:center;padding:60px 20px;color:#888">
-           <div style="font-size:40px;margin-bottom:12px">🎉</div>
-           <div style="font-size:15px;font-weight:600;margin-bottom:6px">Sin promos aún</div>
-           <div style="font-size:13px;color:#aaa">Creá una promo para combinar recetas con un precio especial.</div>
-         </div>`
-      : `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;padding:4px 0 24px">
-           ${margenPromos.map(p => margenPromoCardHTML(p)).join('')}
-         </div>`
-    }`;
+      <p style="font-size:13px;color:#6c757d;margin:-4px 0 20px">
+        Agrupá recetas en una promo, asignale un precio de venta y calculá el margen.
+      </p>
+      <div id="marg-promos-content"></div>`;
+  }
+  renderMargenPromosContent();
+}
+
+function renderMargenPromosContent() {
+  const filtered = margenPromoFilterRest
+    ? margenPromos.filter(p => p.restaurantId === margenPromoFilterRest)
+    : margenPromos;
+  const content = document.getElementById('marg-promos-content');
+  if (!content) return;
+  if (filtered.length === 0) {
+    content.innerHTML = `<div style="text-align:center;padding:60px 20px;color:#888">
+      <div style="font-size:40px;margin-bottom:12px">🎉</div>
+      <div style="font-size:15px;font-weight:600;margin-bottom:6px">${margenPromoFilterRest ? 'Sin promos para este local' : 'Sin promos aún'}</div>
+      <div style="font-size:13px;color:#aaa">Creá una promo para combinar recetas con un precio especial.</div>
+    </div>`;
+  } else {
+    content.innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;padding:4px 0 24px">
+      ${filtered.map(p => margenPromoCardHTML(p)).join('')}
+    </div>`;
+  }
 }
 
 function margenPromoCardHTML(promo) {
@@ -7671,7 +7694,7 @@ async function margenSavePromo() {
       margenPromos.push({ id: data.id, name, restaurantId, restaurantName, sellingPrice, recipes, comentario });
     }
     document.getElementById('marg-promo-modal').style.display = 'none';
-    renderMargenPromos();
+    renderMargenPromosContent();
   } catch(e) {
     msg.style.color = '#dc2626'; msg.textContent = e.message;
   } finally {
@@ -7686,7 +7709,7 @@ async function margenDeletePromo(id, name) {
     const data = await res.json();
     if (data.error) throw new Error(data.error);
     margenPromos = margenPromos.filter(p => p.id !== id);
-    renderMargenPromos();
+    renderMargenPromosContent();
   } catch(e) { alert('Error: ' + e.message); }
 }
 
