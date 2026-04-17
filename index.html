@@ -6611,7 +6611,7 @@ function renderMargenRecetasContent() {
 
   let filtered = margenRecipes;
   if (margenFilterRest)   filtered = filtered.filter(r => r.restaurantId === margenFilterRest || (r.restaurantIds || []).includes(margenFilterRest));
-  if (margenFilterCat)    filtered = filtered.filter(r => r.categoria === margenFilterCat);
+  if (margenFilterCat)    filtered = filtered.filter(r => r.category === margenFilterCat);
   if (margenFilterSubcat) filtered = filtered.filter(r => r.subcategoria === margenFilterSubcat);
   if (margenFilterSearch) filtered = filtered.filter(r => (r.name || '').toLowerCase().includes(margenFilterSearch.toLowerCase()));
   if (margenFilterMargen) {
@@ -6719,7 +6719,7 @@ function margenListHTML(recipes) {
       <td style="padding:10px 14px">
         <div style="font-size:13px;font-weight:600;color:#212529">${r.name}</div>
         <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:2px">
-          ${r.categoria ? `<span style="background:${margenCatColor(r.categoria)}22;color:${margenCatColor(r.categoria)};border-radius:20px;padding:1px 7px;font-size:10px;font-weight:600">${r.categoria}</span>` : ''}
+          ${r.category ? `<span style="background:${margenCatColor(r.category)}22;color:${margenCatColor(r.category)};border-radius:20px;padding:1px 7px;font-size:10px;font-weight:600">${r.category}</span>` : ''}
           ${margenSubcatBadge(r.subcategoria)}
         </div>
       </td>
@@ -6819,7 +6819,7 @@ function margenCardHTML(r, cols) {
           <div style="font-size:${titleSz};font-weight:700;color:#212529;line-height:1.3;word-break:break-word">${r.name}</div>
           <div style="display:flex;align-items:center;gap:5px;margin-top:3px;flex-wrap:wrap">
             <div style="font-size:${subSz};color:#6c757d;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.restaurantName || '—'}</div>
-            ${r.categoria ? `<span style="background:${margenCatColor(r.categoria)}22;color:${margenCatColor(r.categoria)};border-radius:20px;padding:1px 7px;font-size:10px;font-weight:600;white-space:nowrap">${r.categoria}</span>` : ''}
+            ${r.category ? `<span style="background:${margenCatColor(r.category)}22;color:${margenCatColor(r.category)};border-radius:20px;padding:1px 7px;font-size:10px;font-weight:600;white-space:nowrap">${r.category}</span>` : ''}
             ${margenSubcatBadge(r.subcategoria)}
           </div>
         </div>
