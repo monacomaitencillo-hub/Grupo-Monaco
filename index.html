@@ -6536,8 +6536,10 @@ function renderMargenRecetas() {
         <select id="marg-filter-cat" class="prod-filter-sel" onchange="margenFilterCat=this.value;renderMargenRecetasContent()">
           <option value="">Todas las categorías</option>
           <option value="Comida">Comida</option>
+          <option value="Entradas">Entradas</option>
           <option value="Barra">Barra</option>
           <option value="Postres">Postres</option>
+          <option value="Dulces">Dulces</option>
           <option value="Cafetería">Cafetería</option>
         </select>
         <select id="marg-filter-subcat" class="prod-filter-sel" onchange="margenFilterSubcat=this.value;renderMargenRecetasContent()">
@@ -6758,7 +6760,7 @@ function margenColor(m) {
 }
 
 function margenCatColor(cat) {
-  return cat === 'Comida' ? '#f97316' : cat === 'Barra' ? '#7c3aed' : cat === 'Postres' ? '#ec4899' : cat === 'Cafetería' ? '#d97706' : '#6c757d';
+  return cat === 'Comida' ? '#f97316' : cat === 'Entradas' ? '#16a34a' : cat === 'Barra' ? '#7c3aed' : cat === 'Postres' ? '#ec4899' : cat === 'Dulces' ? '#db2777' : cat === 'Cafetería' ? '#d97706' : '#6c757d';
 }
 
 function margenSubcatBadge(subcat, extra) {
@@ -7751,7 +7753,7 @@ function renderMargenCarta() {
             ${v===''?'Todo':v==='receta'?'Recetas':'Promos'}</button>`).join('')}
         </div>
         <div style="display:flex;gap:4px;flex-wrap:wrap">
-          ${[['','Todas'],['Comida','Comida'],['Barra','Barra'],['Postres','Postres'],['Cafetería','Cafetería']].map(([v,l]) =>
+          ${[['','Todas'],['Comida','Comida'],['Entradas','Entradas'],['Barra','Barra'],['Postres','Postres'],['Dulces','Dulces'],['Cafetería','Cafetería']].map(([v,l]) =>
             `<button id="carta-cat-${v||'all'}" onclick="cartaFilterCat='${v}';cartaUpdateCatBtns();renderMargenCartaContent()"
               style="padding:5px 12px;border-radius:7px;border:1px solid #dee2e6;font-size:12px;font-weight:600;cursor:pointer;background:${v===''?'#212529':'#fff'};color:${v===''?'#fff':'#6c757d'}">${l}</button>`).join('')}
         </div>
@@ -7780,7 +7782,7 @@ function cartaUpdateTypeBtns() {
   });
 }
 function cartaUpdateCatBtns() {
-  ['all','Comida','Barra','Postres','Cafetería'].forEach(v => {
+  ['all','Comida','Entradas','Barra','Postres','Dulces','Cafetería'].forEach(v => {
     const btn = document.getElementById('carta-cat-' + (v === 'all' ? 'all' : v));
     if (!btn) return;
     const active = (cartaFilterCat || '') === (v === 'all' ? '' : v);
@@ -8482,8 +8484,10 @@ async function margenDeleteRecipe(id, name) {
           <select id="marg-form-cat" class="inv-input">
             <option value="">— Sin categoría —</option>
             <option value="Comida">Comida</option>
+            <option value="Entradas">Entradas</option>
             <option value="Barra">Barra</option>
             <option value="Postres">Postres</option>
+            <option value="Dulces">Dulces</option>
             <option value="Cafetería">Cafetería</option>
           </select>
         </div>
