@@ -2146,7 +2146,7 @@ app.post('/api/recipes/import', requireAuth, async (req, res) => {
       rendimientoAire: Number(r.rendimientoAire) || 0,
       merma: Number(r.merma) || 0,
       porciones: Math.max(1, parseInt(r.porciones) || 1),
-      categoria: r.categoria || '',
+      category: r.category || r.categoria || '',
       subcategoria: r.subcategoria || '',
       comentario: r.comentario || '',
       updatedAt: admin.firestore.FieldValue.serverTimestamp()
@@ -2167,7 +2167,7 @@ app.post('/api/recipes/import', requireAuth, async (req, res) => {
 app.put('/api/recipes/:id', requireAuth, async (req, res) => {
   if (!await isEditor(req.uid)) return res.status(403).json({ error: 'Sin permisos' });
   const update = {};
-  const { sellingPrice, sellingPrices, restaurantIds, restaurantId, restaurantName, ingredients, name, esPromedio, rendimientoAgua, rendimientoAire, merma, porciones, categoria, subcategoria, comentario } = req.body;
+  const { sellingPrice, sellingPrices, restaurantIds, restaurantId, restaurantName, ingredients, name, esPromedio, rendimientoAgua, rendimientoAire, merma, porciones, category, categoria, subcategoria, comentario } = req.body;
   if (sellingPrice     !== undefined) update.sellingPrice     = Number(sellingPrice) || 0;
   if (sellingPrices    !== undefined) update.sellingPrices    = sellingPrices;
   if (restaurantIds    !== undefined) update.restaurantIds    = restaurantIds;
@@ -2180,7 +2180,8 @@ app.put('/api/recipes/:id', requireAuth, async (req, res) => {
   if (rendimientoAire  !== undefined) update.rendimientoAire  = Number(rendimientoAire)  || 0;
   if (merma            !== undefined) update.merma            = Number(merma)            || 0;
   if (porciones        !== undefined) update.porciones        = Math.max(1, parseInt(porciones) || 1);
-  if (categoria        !== undefined) update.categoria        = categoria || '';
+  const catVal = category !== undefined ? category : categoria;
+  if (catVal           !== undefined) { update.category = catVal || ''; update.categoria = admin.firestore.FieldValue.delete(); }
   if (subcategoria     !== undefined) update.subcategoria     = subcategoria || '';
   if (comentario       !== undefined) update.comentario       = comentario   || '';
   update.updatedAt = admin.firestore.FieldValue.serverTimestamp();

@@ -6613,7 +6613,7 @@ function renderMargenRecetasContent() {
 
   let filtered = margenRecipes;
   if (margenFilterRest)   filtered = filtered.filter(r => r.restaurantId === margenFilterRest || (r.restaurantIds || []).includes(margenFilterRest));
-  if (margenFilterCat)    filtered = filtered.filter(r => r.category === margenFilterCat);
+  if (margenFilterCat)    filtered = filtered.filter(r => (r.category || r.categoria) === margenFilterCat);
   if (margenFilterSubcat) filtered = filtered.filter(r => r.subcategoria === margenFilterSubcat);
   if (margenFilterSearch) filtered = filtered.filter(r => (r.name || '').toLowerCase().includes(margenFilterSearch.toLowerCase()));
   if (margenFilterMargen) {
@@ -6721,7 +6721,7 @@ function margenListHTML(recipes) {
       <td style="padding:10px 14px">
         <div style="font-size:13px;font-weight:600;color:#212529">${r.name}</div>
         <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:2px">
-          ${r.category ? `<span style="background:${margenCatColor(r.category)}22;color:${margenCatColor(r.category)};border-radius:20px;padding:1px 7px;font-size:10px;font-weight:600">${r.category}</span>` : ''}
+          ${(r.category||r.categoria) ? `<span style="background:${margenCatColor(r.category||r.categoria)}22;color:${margenCatColor(r.category||r.categoria)};border-radius:20px;padding:1px 7px;font-size:10px;font-weight:600">${r.category||r.categoria}</span>` : ''}
           ${margenSubcatBadge(r.subcategoria)}
         </div>
       </td>
@@ -8277,16 +8277,16 @@ async function margenSaveForm() {
   const restName  = restaurants.find(r => r.id === restId)?.name || '';
   const price     = sellingPrices[restId] || 0;
 
-  const categoria    = document.getElementById('marg-form-cat')?.value || '';
+  const category     = document.getElementById('marg-form-cat')?.value || '';
   const subcategoria = document.getElementById('marg-form-subcat')?.value || '';
   const { agua: rendAgua, aire: rendAire, merma: mermaVal } = margenGetRendimientos();
   try {
     if (id) {
-      const res  = await apiFetch(`/api/recipes/${id}`, { method: 'PUT', body: JSON.stringify({ name, sellingPrice: price, sellingPrices, restaurantIds, restaurantId: restId, restaurantName: restName, ingredients, esPromedio, rendimientoAgua: rendAgua, rendimientoAire: rendAire, merma: mermaVal, porciones, categoria, subcategoria, comentario }) });
+      const res  = await apiFetch(`/api/recipes/${id}`, { method: 'PUT', body: JSON.stringify({ name, sellingPrice: price, sellingPrices, restaurantIds, restaurantId: restId, restaurantName: restName, ingredients, esPromedio, rendimientoAgua: rendAgua, rendimientoAire: rendAire, merma: mermaVal, porciones, category, subcategoria, comentario }) });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
     } else {
-      const res  = await apiFetch('/api/recipes/import', { method: 'POST', body: JSON.stringify({ recipes: [{ name, restaurantId: restId, restaurantName: restName, restaurantIds, sellingPrice: price, sellingPrices, ingredients, rendimientoAgua: rendAgua, rendimientoAire: rendAire, merma: mermaVal, porciones, categoria, subcategoria, comentario }] }) });
+      const res  = await apiFetch('/api/recipes/import', { method: 'POST', body: JSON.stringify({ recipes: [{ name, restaurantId: restId, restaurantName: restName, restaurantIds, sellingPrice: price, sellingPrices, ingredients, rendimientoAgua: rendAgua, rendimientoAire: rendAire, merma: mermaVal, porciones, category, subcategoria, comentario }] }) });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
     }
