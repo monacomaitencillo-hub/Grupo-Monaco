@@ -1975,13 +1975,15 @@ app.post('/api/gdd/scan', requireAuth, upload.single('file'), async (req, res) =
       ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: b64 } }
       : { type: 'image',    source: { type: 'base64', media_type: mime,               data: b64 } };
 
-    // Cargar lista de productos exacta para que Claude haga matching (solo los marcados como GDD)
-    const prodSnap = await db.collection('products').get();
-    const productNames = prodSnap.docs
-      .map(d => d.data())
-      .filter(p => p.esGDD === true && p.name)
-      .map(p => p.name)
-      .sort();
+    // Cargar lista de productos y preparaciones marcados como GDD para que Claude haga matching
+    const [prodSnap, prepSnap] = await Promise.all([
+      db.collection('products').get(),
+      db.collection('preparations').get()
+    ]);
+    const productNames = [
+      ...prodSnap.docs.map(d => d.data()).filter(p => p.esGDD === true && p.name).map(p => p.name),
+      ...prepSnap.docs.map(d => d.data()).filter(p => p.esGDD === true && p.name).map(p => p.name)
+    ].sort();
     const productList  = productNames.join('\n');
 
     const prompt = `Eres un asistente que extrae datos de guías de despacho chilenas.
