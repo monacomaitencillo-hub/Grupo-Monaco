@@ -1998,8 +1998,9 @@ LISTA DE PRODUCTOS (usa EXACTAMENTE estos nombres, incluyendo la unidad entre pa
 ${productList}
 
 IMPORTANTE:
-- Para cada producto de la guía, busca el nombre más parecido en la LISTA DE PRODUCTOS y usa ese nombre EXACTO (con la unidad entre paréntesis si la tiene, tal como aparece en la lista).
-- Si no encuentras un match claro en la lista, usa el nombre tal como aparece en la guía.
+- Para cada producto de la guía, primero busca una coincidencia EXACTA en la LISTA DE PRODUCTOS (ignorando mayúsculas/minúsculas). Si existe un match exacto, úsalo siempre.
+- Solo si no hay match exacto, busca el nombre más parecido. Cuando hay productos similares (ej: "Rallado" vs "Barra"), elige el que coincida en TODOS los descriptores del texto original.
+- Si no encuentras ningún match claro, usa el nombre tal como aparece en la guía.
 - Incluye TODOS los productos de la tabla, tengan o no cantidad.
 - Si la cantidad está vacía/no marcada, ponla como null.
 - Sé preciso con las cantidades manuscritas (números escritos a mano).
