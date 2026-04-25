@@ -2093,15 +2093,17 @@ app.get('/api/gdd/records', requireAuth, async (req, res) => {
 });
 
 app.get('/api/gdd/export-data', requireAuth, async (req, res) => {
-  const [gddSnap, prodSnap, priceSnap, restSnap] = await Promise.all([
+  const [gddSnap, prodSnap, prepSnap, priceSnap, restSnap] = await Promise.all([
     db.collection('gdd_records').orderBy('createdAt', 'desc').get(),
     db.collection('products').get(),
+    db.collection('preparations').get(),
     db.collection('product_price_history').get(),
     db.collection('restaurants').get()
   ]);
   res.json({
     records:      gddSnap.docs.map(d  => ({ id: d.id,  ...d.data()  })),
     products:     prodSnap.docs.map(d => ({ id: d.id,  ...d.data()  })),
+    preparations: prepSnap.docs.map(d => ({ id: d.id,  ...d.data()  })),
     priceHistory: priceSnap.docs.map(d=> ({ id: d.id,  ...d.data()  })),
     restaurants:  restSnap.docs.map(d => ({ id: d.id,  ...d.data()  }))
   });

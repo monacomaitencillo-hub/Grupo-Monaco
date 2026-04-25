@@ -6083,14 +6083,15 @@ async function gddExportExcel() {
   btn.textContent = 'Generando...'; btn.disabled = true;
   try {
     const res  = await apiFetch('/api/gdd/export-data');
-    const { records, products, priceHistory, restaurants } = await res.json();
+    const { records, products, preparations, priceHistory, restaurants } = await res.json();
 
     // Normaliza string para comparación flexible
     const norm = s => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
 
-    // Índice nombre normalizado → productId
+    // Índice nombre normalizado → productId (products + preparations)
     const prodByName = {};
     products.forEach(p => { prodByName[norm(p.name)] = p.id; });
+    (preparations || []).forEach(p => { prodByName[norm(p.name)] = p.id; });
 
     // Por productId: lista de {mes, precio} ordenada desc para buscar el más cercano
     const prodPrices = {}; // productId → [{mes, precio}] sorted desc by mes
@@ -6100,12 +6101,15 @@ async function gddExportExcel() {
     });
     Object.values(prodPrices).forEach(arr => arr.sort((a, b) => b.mes.localeCompare(a.mes)));
 
-    // Obtener precio: solo mes exacto, si no hay → 0
+    // Obtener precio: mes exacto; si no hay, usar el último precio conocido anterior (carry-forward)
     function getPrecio(productId, targetMes) {
       const entries = prodPrices[productId];
       if (!entries?.length) return 0;
       const exact = entries.find(e => e.mes === targetMes);
-      return exact ? exact.precio : 0;
+      if (exact) return exact.precio;
+      // carry-forward: precio más reciente anterior al mes buscado
+      const prior = entries.find(e => e.mes < targetMes);
+      return prior ? prior.precio : 0;
     }
 
     // Índice restaurantId → nombre
