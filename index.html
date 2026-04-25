@@ -6341,8 +6341,9 @@ let margenFilterCat    = '';
 let margenFilterSubcat = '';
 let margenCols         = 3;
 let margenView         = 'grid'; // 'grid' | 'list'
-let margenPrepView     = 'grid'; // 'grid' | 'list'
-let margenPrepSearch   = '';
+let margenPrepView      = 'grid'; // 'grid' | 'list'
+let margenPrepSearch    = '';
+let margenPrepFilterGDD = false;
 let margenPromoFilterRest = '';
 let margenSortCol      = '';     // 'name'|'local'|'costo'|'venta'|'margen'|'ing'
 let margenSortDir      = 1;      // 1=asc, -1=desc
@@ -7130,6 +7131,8 @@ function renderMargenPreparaciones() {
               oninput="clearTimeout(this._t);this._t=setTimeout(()=>{margenPrepSearch=this.value;renderMargenPrepContent()},300)"
               style="border:none;outline:none;padding:6px 10px 6px 0;font-size:13px;width:160px;color:#212529">
           </div>
+          <button id="marg-prep-gdd-btn" onclick="margenPrepFilterGDD=!margenPrepFilterGDD;this.style.background=margenPrepFilterGDD?'#ff5023':'#fff';this.style.color=margenPrepFilterGDD?'#fff':'#6c757d';renderMargenPrepContent()"
+            style="padding:6px 12px;font-size:12px;font-weight:600;border:1px solid #dee2e6;border-radius:8px;cursor:pointer;background:#fff;color:#6c757d">GDD</button>
           <div style="display:flex;border:1px solid #dee2e6;border-radius:8px;overflow:hidden">
             <button id="marg-prep-view-list" onclick="margenPrepView='list';margenUpdatePrepViewBtns();renderMargenPrepContent()"
               style="padding:6px 10px;font-size:13px;font-weight:600;border:none;border-right:1px solid #dee2e6;cursor:pointer;background:#fff;color:#6c757d" title="Vista lista">&#9776;</button>
@@ -7166,7 +7169,8 @@ function renderMargenPrepContent() {
   if (!content) return;
 
   let filtered = margenPreparations;
-  if (margenPrepSearch) filtered = filtered.filter(p => (p.name||'').toLowerCase().includes(margenPrepSearch.toLowerCase()));
+  if (margenPrepSearch)    filtered = filtered.filter(p => (p.name||'').toLowerCase().includes(margenPrepSearch.toLowerCase()));
+  if (margenPrepFilterGDD) filtered = filtered.filter(p => p.esGDD === true);
 
   if (filtered.length === 0) {
     content.innerHTML = `<div style="text-align:center;padding:60px 20px;color:#888">
