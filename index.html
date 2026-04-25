@@ -7399,7 +7399,7 @@ function margenOpenPrepModal(id) {
   document.getElementById('marg-form-add-prep-btn').style.display          = 'none';
   document.getElementById('marg-form-prep-extras').style.display           = '';
   document.getElementById('marg-form-gdd').checked                         = prep?.esGDD === true;
-  document.getElementById('marg-gdd-prices-btn').style.display             = (prep?.esGDD === true && id) ? '' : 'none';
+  document.getElementById('marg-gdd-prices-btn').style.display             = id ? '' : 'none';
   document.getElementById('marg-form-cat').value                           = prep?.category || '';
   document.getElementById('marg-form-unit').innerHTML                      = buildUnitOptions(prep?.unit || 'unidad');
 
@@ -8025,10 +8025,9 @@ function margenCloseFormModal() {
 
 // ── Precios GDD para preparaciones ───────────────────────
 function gddPrepPricesToggle() {
-  const checked = document.getElementById('marg-form-gdd').checked;
-  const rawId   = document.getElementById('marg-form-id').value;
-  const id      = rawId.startsWith('prep:') ? rawId.slice(5) : '';
-  document.getElementById('marg-gdd-prices-btn').style.display = (checked && id) ? '' : 'none';
+  const rawId = document.getElementById('marg-form-id').value;
+  const id    = rawId.startsWith('prep:') ? rawId.slice(5) : '';
+  document.getElementById('marg-gdd-prices-btn').style.display = id ? '' : 'none';
 }
 
 function gddPrepPricesOpen() {
@@ -8055,14 +8054,36 @@ async function gddPrepPricesLoad(id) {
     const res  = await apiFetch(`/api/inv/products/${id}/prices`);
     const data = await res.json();
     const prices = (data.prices || []).sort((a, b) => b.mes.localeCompare(a.mes));
-    if (!prices.length) { listEl.textContent = 'Sin precios registrados.'; return; }
+    if (!prices.length) { listEl.innerHTML = '<div style="color:#aaa;font-size:13px">Sin precios registrados.</div>'; return; }
     listEl.innerHTML = prices.map(p => `
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f0f0f0">
-        <span style="color:#212529;font-weight:600">${p.mes}</span>
-        <span style="color:#16a34a;font-weight:700">$${(p.precio||0).toLocaleString('es-CL')}</span>
-        <button onclick="gddPrepPricesDelete('${id}','${p.id}')" style="background:transparent;border:none;color:#dc3545;cursor:pointer;font-size:13px">✕</button>
+      <div id="gpp-row-${p.id}" style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #f0f0f0">
+        <span style="color:#212529;font-weight:600;min-width:80px">${p.mes}</span>
+        <span id="gpp-val-${p.id}" style="color:#16a34a;font-weight:700;flex:1">$${(p.precio||0).toLocaleString('es-CL')}</span>
+        <input id="gpp-inp-${p.id}" type="number" value="${p.precio||0}" style="display:none;width:100px;padding:4px 8px;border:1px solid #dee2e6;border-radius:6px;font-size:13px">
+        <button id="gpp-edit-${p.id}" onclick="gddPrepPricesStartEdit('${id}','${p.id}','${p.mes}')" style="background:transparent;border:1px solid #dee2e6;border-radius:6px;padding:3px 8px;font-size:12px;cursor:pointer;color:#495057">Editar</button>
+        <button id="gpp-save-${p.id}" onclick="gddPrepPricesSaveEdit('${id}','${p.id}','${p.mes}')" style="display:none;background:#212529;border:none;border-radius:6px;padding:3px 10px;font-size:12px;cursor:pointer;color:#fff">Guardar</button>
+        <button onclick="gddPrepPricesDelete('${id}','${p.id}')" style="background:transparent;border:none;color:#dc3545;cursor:pointer;font-size:14px;line-height:1">✕</button>
       </div>`).join('');
   } catch(e) { listEl.textContent = 'Error al cargar precios.'; }
+}
+
+function gddPrepPricesStartEdit(prepId, entryId, mes) {
+  document.getElementById(`gpp-val-${entryId}`).style.display  = 'none';
+  document.getElementById(`gpp-inp-${entryId}`).style.display  = '';
+  document.getElementById(`gpp-edit-${entryId}`).style.display = 'none';
+  document.getElementById(`gpp-save-${entryId}`).style.display = '';
+  document.getElementById(`gpp-inp-${entryId}`).focus();
+}
+
+async function gddPrepPricesSaveEdit(prepId, entryId, mes) {
+  const precio = parseFloat(document.getElementById(`gpp-inp-${entryId}`).value);
+  const msgEl  = document.getElementById('gdd-prep-prices-msg');
+  if (isNaN(precio) || precio < 0) { msgEl.style.color='#dc3545'; msgEl.textContent='Precio inválido.'; return; }
+  try {
+    await apiFetch(`/api/inv/products/${prepId}/prices`, { method: 'POST', body: JSON.stringify({ mes, precio }) });
+    msgEl.style.color='#16a34a'; msgEl.textContent='Precio actualizado.';
+    gddPrepPricesLoad(prepId);
+  } catch(e) { msgEl.style.color='#dc3545'; msgEl.textContent='Error: '+e.message; }
 }
 
 async function gddPrepPricesAdd() {
