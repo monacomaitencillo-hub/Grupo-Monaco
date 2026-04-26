@@ -2006,8 +2006,10 @@ ${productList}
 
 IMPORTANTE:
 - Para cada producto de la guía, primero busca una coincidencia EXACTA en la LISTA DE PRODUCTOS (ignorando mayúsculas/minúsculas). Si existe un match exacto, úsalo siempre.
-- Solo si no hay match exacto, busca el nombre más parecido. Cuando hay productos similares (ej: "Rallado" vs "Barra"), elige el que coincida en TODOS los descriptores del texto original.
+- ATENCIÓN: muchos nombres en la lista tienen ingredientes entre paréntesis, ej: "Torta Cuatro Leches (Leche, Leche Condensada, Leche Evaporada, Manjar)". En la guía puede aparecer solo la parte principal: "Torta Cuatro Leches" o incluso "Cuatro Leches". Compara IGNORANDO el contenido entre paréntesis y elige el producto de la lista cuya parte principal (antes del paréntesis) coincida mejor con el texto de la guía.
+- Solo si no hay match exacto ni por nombre base, busca el nombre más parecido. Cuando hay productos similares (ej: "Rallado" vs "Barra"), elige el que coincida en TODOS los descriptores del texto original.
 - Si no encuentras ningún match claro, usa el nombre tal como aparece en la guía.
+- SIEMPRE usa el nombre COMPLETO de la lista (incluyendo los paréntesis si los tiene) como valor de "producto" en el JSON.
 - Incluye TODOS los productos de la tabla, tengan o no cantidad.
 - Si la cantidad está vacía/no marcada, ponla como null.
 - Sé preciso con las cantidades manuscritas (números escritos a mano).

@@ -6127,11 +6127,12 @@ async function gddExportExcel() {
       if (base && base !== fullName && !baseNameIndex[base]) baseNameIndex[base] = fullName;
     });
 
-    // Obtener entrada de precio: match exacto → match por nombre base → carry-forward
+    // Obtener entrada de precio: match exacto → nombre base → contains → carry-forward
     // Retorna { precio, unidadesPorEnvase } o null
     function getPrecioEntry(itemName, targetMes) {
       const normName = norm(itemName);
       let entries = pricesByName[normName];
+      // 1. match exacto por nombre base (antes del paréntesis)
       if (!entries?.length) {
         const mapped = baseNameIndex[normName];
         if (mapped) entries = pricesByName[mapped];
@@ -6140,6 +6141,15 @@ async function gddExportExcel() {
         const itemBase = normName.split('(')[0].trim();
         const mapped   = baseNameIndex[itemBase] || (pricesByName[itemBase] ? itemBase : null);
         if (mapped) entries = pricesByName[mapped] || pricesByName[itemBase];
+      }
+      // 2. si sigue sin resultado, buscar en todos los nombres si alguno EMPIEZA CON el texto buscado o viceversa
+      if (!entries?.length) {
+        const itemBase = normName.split('(')[0].trim();
+        const match = Object.keys(pricesByName).find(k => {
+          const kBase = k.split('(')[0].trim();
+          return kBase.startsWith(itemBase) || itemBase.startsWith(kBase);
+        });
+        if (match) entries = pricesByName[match];
       }
       if (!entries?.length) return null;
       const entry = entries.find(e => e.mes === targetMes) || entries.find(e => e.mes < targetMes);
