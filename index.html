@@ -6083,15 +6083,16 @@ async function gddExportExcel() {
   btn.textContent = 'Generando...'; btn.disabled = true;
   try {
     const res  = await apiFetch('/api/gdd/export-data');
-    const { records, products, preparations, priceHistory, restaurants } = await res.json();
+    const { records, products, preparations, recipes, priceHistory, restaurants } = await res.json();
 
     // Normaliza string para comparación flexible
     const norm = s => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
 
-    // Índice id → nombre normalizado (products + preparations)
+    // Índice id → nombre normalizado (products + preparations + recipes)
     const idToNormName = {};
     products.forEach(p => { if (p.id) idToNormName[p.id] = norm(p.name); });
     (preparations || []).forEach(p => { if (p.id) idToNormName[p.id] = norm(p.name); });
+    (recipes || []).forEach(p => { if (p.id) idToNormName[p.id] = norm(p.name); });
 
     // Índice nombre normalizado → [{mes, precio}] ordenado desc
     // Busca por nombre para recuperar historial aunque el item haya cambiado de products a preparations
@@ -7404,6 +7405,7 @@ function margenOpenPrepModal(id) {
   document.getElementById('marg-form-prep-extras').style.display           = '';
   document.getElementById('marg-form-gdd').checked                         = prep?.esGDD === true;
   document.getElementById('marg-gdd-prices-btn').style.display             = id ? '' : 'none';
+  document.getElementById('marg-form-recipe-gdd-section').style.display   = 'none';
   document.getElementById('marg-form-cat').value                           = prep?.category || '';
   document.getElementById('marg-form-unit').innerHTML                      = buildUnitOptions(prep?.unit || 'unidad');
 
@@ -7968,6 +7970,9 @@ function margenOpenFormModal(id) {
   document.getElementById('marg-form-price-wrap').style.display = '';
   document.getElementById('marg-form-add-prep-btn').style.display = '';
   document.getElementById('marg-form-prep-extras').style.display = 'none';
+  document.getElementById('marg-form-recipe-gdd-section').style.display = '';
+  document.getElementById('marg-form-recipe-gdd').checked = recipe?.esGDD === true;
+  document.getElementById('marg-recipe-gdd-prices-btn').style.display = (recipe?.esGDD === true && id) ? '' : 'none';
 
   // Construir checkboxes de locales con precio por local
   const rp = document.getElementById('marg-form-rest-prices');
@@ -8027,24 +8032,34 @@ function margenCloseFormModal() {
   document.getElementById('marg-form-add-prep-btn').style.display         = '';
 }
 
-// ── Precios GDD para preparaciones ───────────────────────
+// ── Precios GDD para preparaciones y recetas ─────────────
 function gddPrepPricesToggle() {
   const rawId = document.getElementById('marg-form-id').value;
   const id    = rawId.startsWith('prep:') ? rawId.slice(5) : '';
   document.getElementById('marg-gdd-prices-btn').style.display = id ? '' : 'none';
 }
 
-function gddPrepPricesOpen() {
-  const rawId = document.getElementById('marg-form-id').value;
-  const id    = rawId.startsWith('prep:') ? rawId.slice(5) : '';
+function gddRecipePricesToggle() {
+  const id      = document.getElementById('marg-form-id').value;
+  const checked = document.getElementById('marg-form-recipe-gdd').checked;
+  document.getElementById('marg-recipe-gdd-prices-btn').style.display = (checked && id) ? '' : 'none';
+}
+
+// Abre el modal de precios GDD para cualquier entidad (prep o receta)
+function gddEntityPricesOpen(id, name) {
   if (!id) return;
-  const name  = document.getElementById('marg-form-name').value;
-  document.getElementById('gdd-prep-prices-name').textContent = name;
+  document.getElementById('gdd-prep-prices-name').textContent = name || '';
   document.getElementById('gdd-prep-prices-msg').textContent  = '';
   document.getElementById('gdd-prep-price-mes').value         = new Date().toISOString().slice(0, 7);
   document.getElementById('gdd-prep-price-valor').value       = '';
   document.getElementById('gdd-prep-prices-modal').style.display = 'flex';
   gddPrepPricesLoad(id);
+}
+
+function gddPrepPricesOpen() {
+  const rawId = document.getElementById('marg-form-id').value;
+  const id    = rawId.startsWith('prep:') ? rawId.slice(5) : '';
+  gddEntityPricesOpen(id, document.getElementById('marg-form-name').value);
 }
 
 function gddPrepPricesClose() {
@@ -8382,13 +8397,14 @@ async function margenSaveForm() {
   const category     = document.getElementById('marg-form-cat')?.value || '';
   const subcategoria = document.getElementById('marg-form-subcat')?.value || '';
   const { agua: rendAgua, aire: rendAire, merma: mermaVal } = margenGetRendimientos();
+  const esGDDReceta = document.getElementById('marg-form-recipe-gdd')?.checked === true;
   try {
     if (id) {
-      const res  = await apiFetch(`/api/recipes/${id}`, { method: 'PUT', body: JSON.stringify({ name, sellingPrice: price, sellingPrices, restaurantIds, restaurantId: restId, restaurantName: restName, ingredients, esPromedio, rendimientoAgua: rendAgua, rendimientoAire: rendAire, merma: mermaVal, porciones, category, subcategoria, comentario }) });
+      const res  = await apiFetch(`/api/recipes/${id}`, { method: 'PUT', body: JSON.stringify({ name, sellingPrice: price, sellingPrices, restaurantIds, restaurantId: restId, restaurantName: restName, ingredients, esPromedio, esGDD: esGDDReceta, rendimientoAgua: rendAgua, rendimientoAire: rendAire, merma: mermaVal, porciones, category, subcategoria, comentario }) });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
     } else {
-      const res  = await apiFetch('/api/recipes/import', { method: 'POST', body: JSON.stringify({ recipes: [{ name, restaurantId: restId, restaurantName: restName, restaurantIds, sellingPrice: price, sellingPrices, ingredients, rendimientoAgua: rendAgua, rendimientoAire: rendAire, merma: mermaVal, porciones, category, subcategoria, comentario }] }) });
+      const res  = await apiFetch('/api/recipes/import', { method: 'POST', body: JSON.stringify({ recipes: [{ name, restaurantId: restId, restaurantName: restName, restaurantIds, sellingPrice: price, sellingPrices, ingredients, esPromedio, esGDD: esGDDReceta, rendimientoAgua: rendAgua, rendimientoAire: rendAire, merma: mermaVal, porciones, category, subcategoria, comentario }] }) });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
     }
@@ -8762,6 +8778,17 @@ async function margenDeleteRecipe(id, name) {
           📋 Ver/editar precios GDD
         </button>
       </div>
+      <!-- GDD para recetas (oculto para preparaciones) -->
+      <div id="marg-form-recipe-gdd-section" style="display:none;margin-bottom:14px">
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;color:#212529;padding:10px 14px;border:1px solid #dee2e6;border-radius:8px;width:fit-content">
+          <input type="checkbox" id="marg-form-recipe-gdd" style="width:16px;height:16px;accent-color:#ff5023" onchange="gddRecipePricesToggle()">
+          Viene por Guía de Despacho (GDD)
+        </label>
+        <button id="marg-recipe-gdd-prices-btn" onclick="gddEntityPricesOpen(document.getElementById('marg-form-id').value, document.getElementById('marg-form-name').value)" style="display:none;margin-top:10px;padding:8px 16px;background:transparent;border:1px solid #ff5023;border-radius:8px;font-size:13px;color:#ff5023;cursor:pointer;font-weight:600">
+          📋 Ver/editar precios GDD
+        </button>
+      </div>
+
       <div style="margin-bottom:16px">
         <div class="field-label">Notas / Comentario</div>
         <textarea id="marg-form-comentario" rows="3" placeholder="Ej: Preparar con 24h de anticipación, refrigerar..."

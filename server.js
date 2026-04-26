@@ -1975,14 +1975,16 @@ app.post('/api/gdd/scan', requireAuth, upload.single('file'), async (req, res) =
       ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: b64 } }
       : { type: 'image',    source: { type: 'base64', media_type: mime,               data: b64 } };
 
-    // Cargar lista de productos y preparaciones marcados como GDD para que Claude haga matching
-    const [prodSnap, prepSnap] = await Promise.all([
+    // Cargar lista de productos, preparaciones y recetas marcados como GDD para que Claude haga matching
+    const [prodSnap, prepSnap, recipeSnap] = await Promise.all([
       db.collection('products').get(),
-      db.collection('preparations').get()
+      db.collection('preparations').get(),
+      db.collection('recipes').get()
     ]);
     const productNames = [
       ...prodSnap.docs.map(d => d.data()).filter(p => p.esGDD === true && p.name).map(p => p.name),
-      ...prepSnap.docs.map(d => d.data()).filter(p => p.esGDD === true && p.name).map(p => p.name)
+      ...prepSnap.docs.map(d => d.data()).filter(p => p.esGDD === true && p.name).map(p => p.name),
+      ...recipeSnap.docs.map(d => d.data()).filter(p => p.esGDD === true && p.name).map(p => p.name)
     ].sort();
     const productList  = productNames.join('\n');
 
@@ -2093,10 +2095,11 @@ app.get('/api/gdd/records', requireAuth, async (req, res) => {
 });
 
 app.get('/api/gdd/export-data', requireAuth, async (req, res) => {
-  const [gddSnap, prodSnap, prepSnap, priceSnap, restSnap] = await Promise.all([
+  const [gddSnap, prodSnap, prepSnap, recipeSnap, priceSnap, restSnap] = await Promise.all([
     db.collection('gdd_records').orderBy('createdAt', 'desc').get(),
     db.collection('products').get(),
     db.collection('preparations').get(),
+    db.collection('recipes').get(),
     db.collection('product_price_history').get(),
     db.collection('restaurants').get()
   ]);
@@ -2104,6 +2107,7 @@ app.get('/api/gdd/export-data', requireAuth, async (req, res) => {
     records:      gddSnap.docs.map(d  => ({ id: d.id,  ...d.data()  })),
     products:     prodSnap.docs.map(d => ({ id: d.id,  ...d.data()  })),
     preparations: prepSnap.docs.map(d => ({ id: d.id,  ...d.data()  })),
+    recipes:      recipeSnap.docs.map(d=> ({ id: d.id,  ...d.data()  })),
     priceHistory: priceSnap.docs.map(d=> ({ id: d.id,  ...d.data()  })),
     restaurants:  restSnap.docs.map(d => ({ id: d.id,  ...d.data()  }))
   });
@@ -2151,6 +2155,7 @@ app.post('/api/recipes/import', requireAuth, async (req, res) => {
       sellingPrice: r.sellingPrice || 0,
       sellingPrices: r.sellingPrices || (r.restaurantId && r.sellingPrice ? { [r.restaurantId]: r.sellingPrice } : {}),
       ingredients: r.ingredients || [],
+      esGDD: r.esGDD === true,
       rendimientoAgua: Number(r.rendimientoAgua) || 0,
       rendimientoAire: Number(r.rendimientoAire) || 0,
       merma: Number(r.merma) || 0,
@@ -2176,7 +2181,7 @@ app.post('/api/recipes/import', requireAuth, async (req, res) => {
 app.put('/api/recipes/:id', requireAuth, async (req, res) => {
   if (!await isEditor(req.uid)) return res.status(403).json({ error: 'Sin permisos' });
   const update = {};
-  const { sellingPrice, sellingPrices, restaurantIds, restaurantId, restaurantName, ingredients, name, esPromedio, rendimientoAgua, rendimientoAire, merma, porciones, category, categoria, subcategoria, comentario } = req.body;
+  const { sellingPrice, sellingPrices, restaurantIds, restaurantId, restaurantName, ingredients, name, esPromedio, esGDD, rendimientoAgua, rendimientoAire, merma, porciones, category, categoria, subcategoria, comentario } = req.body;
   if (sellingPrice     !== undefined) update.sellingPrice     = Number(sellingPrice) || 0;
   if (sellingPrices    !== undefined) update.sellingPrices    = sellingPrices;
   if (restaurantIds    !== undefined) update.restaurantIds    = restaurantIds;
@@ -2185,6 +2190,7 @@ app.put('/api/recipes/:id', requireAuth, async (req, res) => {
   if (ingredients      !== undefined) update.ingredients      = ingredients;
   if (name             !== undefined) update.name             = name;
   if (esPromedio       !== undefined) update.esPromedio       = esPromedio === true;
+  if (esGDD            !== undefined) update.esGDD            = esGDD === true;
   if (rendimientoAgua  !== undefined) update.rendimientoAgua  = Number(rendimientoAgua)  || 0;
   if (rendimientoAire  !== undefined) update.rendimientoAire  = Number(rendimientoAire)  || 0;
   if (merma            !== undefined) update.merma            = Number(merma)            || 0;
