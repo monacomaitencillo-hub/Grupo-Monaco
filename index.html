@@ -8107,7 +8107,7 @@ async function gddPrepPricesSaveEdit(prepId, entryId, mes) {
 
 async function gddPrepPricesAdd() {
   const rawId = document.getElementById('marg-form-id').value;
-  const id    = rawId.startsWith('prep:') ? rawId.slice(5) : '';
+  const id    = rawId.startsWith('prep:') ? rawId.slice(5) : rawId;
   if (!id) return;
   const mes    = document.getElementById('gdd-prep-price-mes').value;
   const precio = parseFloat(document.getElementById('gdd-prep-price-valor').value);
