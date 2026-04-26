@@ -3644,6 +3644,7 @@ function ppRenderList() {
         <div style="flex:1;min-width:0">
           <div style="font-size:14px;font-weight:700;color:#212529">
             Costo unitario: <span style="color:#16a34a">$${(p.precio||0).toLocaleString('es-CL',{minimumFractionDigits:0,maximumFractionDigits:2})}</span>
+            <span style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;border-radius:5px;font-size:11px;font-weight:600;padding:1px 7px;margin-left:8px">×${p.unidadesPorEnvase||1} u/envase</span>
           </div>
           ${hasDetail ? `<div style="font-size:11px;color:#6c757d;margin-top:3px;display:flex;flex-wrap:wrap;gap:8px">
             <span>Neto: <b>$${Number(p.precioNeto||p.precio||0).toLocaleString('es-CL')}</b></span>
@@ -3707,6 +3708,12 @@ function ppRenderList() {
               oninput="ppCalcEditPreview('${p.id}')">
           </div>
         </div>
+        <div style="margin-bottom:10px">
+          <div style="font-size:11px;color:#1d4ed8;font-weight:600;text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">Unidades por envase GDD</div>
+          <input type="number" id="ppe-envase-${p.id}" value="${p.unidadesPorEnvase||1}" min="0.01" step="0.01"
+            style="width:120px;padding:7px 8px;border:1px solid #bfdbfe;border-radius:7px;font-size:13px;color:#1d4ed8;background:#eff6ff;box-sizing:border-box">
+          <span style="font-size:11px;color:#6c757d;margin-left:8px">Factor para GDD (ej: caja 5kg → 5)</span>
+        </div>
         <!-- Preview edición -->
         <div id="ppe-preview-${p.id}" style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:7px;padding:8px 12px;margin-bottom:10px;font-size:12px;color:#15803d;display:none">
           Costo unitario calculado: <strong id="ppe-prev-val-${p.id}">—</strong>
@@ -3762,9 +3769,10 @@ async function ppGuardarEdicion(id, mes) {
     precioNeto:     parseFloat(document.getElementById(`ppe-neto-${id}`)?.value)  || 0,
     descuento:      parseFloat(document.getElementById(`ppe-dto-${id}`)?.value)    || 0,
     cantidadCompra: parseFloat(document.getElementById(`ppe-cant-${id}`)?.value)   || 1,
-    unidadCompra:   document.getElementById(`ppe-desc-${id}`)?.value               || '',
-    tipoImpuesto:   document.getElementById(`ppe-tipo-${id}`)?.value               || 'alimento',
-    fleteNeto:      parseFloat(document.getElementById(`ppe-flete-${id}`)?.value)  || 0,
+    unidadCompra:      document.getElementById(`ppe-desc-${id}`)?.value               || '',
+    tipoImpuesto:      document.getElementById(`ppe-tipo-${id}`)?.value               || 'alimento',
+    fleteNeto:         parseFloat(document.getElementById(`ppe-flete-${id}`)?.value)  || 0,
+    unidadesPorEnvase: parseFloat(document.getElementById(`ppe-envase-${id}`)?.value) || 1,
     ...(priceHistoryCapacidadCC > 0 ? { capacidadCC: priceHistoryCapacidadCC } : {})
   };
   if (!body.precioNeto) { if(msgEl){msgEl.style.color='#f87171';msgEl.textContent='Ingresa precio neto.';} return; }
