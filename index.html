@@ -6105,9 +6105,30 @@ async function gddExportExcel() {
     });
     Object.values(pricesByName).forEach(arr => arr.sort((a, b) => b.mes.localeCompare(a.mes)));
 
-    // Obtener precio por nombre: mes exacto; si no hay, carry-forward del último precio conocido anterior
+    // Índice por nombre base (antes del primer paréntesis) → nombre completo normalizado
+    // Permite matchear "Torta Amor" con "Torta Amor (Hojarasca, frambuesa, ...)"
+    const baseNameIndex = {};
+    Object.keys(pricesByName).forEach(fullName => {
+      const base = fullName.split('(')[0].trim();
+      if (base && base !== fullName && !baseNameIndex[base]) baseNameIndex[base] = fullName;
+    });
+
+    // Obtener precio: match exacto → match por nombre base → carry-forward
     function getPrecio(itemName, targetMes) {
-      const entries = pricesByName[norm(itemName)];
+      const normName = norm(itemName);
+      // 1. Match exacto
+      let entries = pricesByName[normName];
+      // 2. El item es nombre corto y el producto tiene nombre largo con paréntesis
+      if (!entries?.length) {
+        const mapped = baseNameIndex[normName];
+        if (mapped) entries = pricesByName[mapped];
+      }
+      // 3. El producto es nombre corto y el item tiene nombre largo con paréntesis
+      if (!entries?.length) {
+        const itemBase = normName.split('(')[0].trim();
+        const mapped   = baseNameIndex[itemBase] || pricesByName[itemBase] && itemBase;
+        if (mapped) entries = pricesByName[mapped] || pricesByName[itemBase];
+      }
       if (!entries?.length) return 0;
       const exact = entries.find(e => e.mes === targetMes);
       if (exact) return exact.precio;
