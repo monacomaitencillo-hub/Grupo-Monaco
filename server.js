@@ -977,12 +977,13 @@ const ILA_RATES = {
 
 app.post('/api/inv/products/:id/prices', requireAuth, async (req, res) => {
   if (!await isEditor(req.uid)) return res.status(403).json({ error: 'Sin permisos' });
-  const { mes, precio, precioBruto, precioNeto, descuento, cantidadCompra, unidadCompra, tipoImpuesto, fleteNeto, capacidadCC } = req.body;
+  const { mes, precio, precioBruto, precioNeto, descuento, cantidadCompra, unidadCompra, tipoImpuesto, fleteNeto, capacidadCC, unidadesPorEnvase } = req.body;
   if (!mes) return res.status(400).json({ error: 'Faltan campos' });
 
   // Si viene el flujo detallado, calcular costo unitario
   let costoUnitario;
-  let entry = { productId: req.params.id, mes };
+  const envase = (unidadesPorEnvase != null && Number(unidadesPorEnvase) > 0) ? Number(unidadesPorEnvase) : 1;
+  let entry = { productId: req.params.id, mes, unidadesPorEnvase: envase };
 
   if (precioNeto != null) {
     // Flujo nuevo: usuario ingresa precio neto → calculamos bruto

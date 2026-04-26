@@ -6113,27 +6113,27 @@ async function gddExportExcel() {
       if (base && base !== fullName && !baseNameIndex[base]) baseNameIndex[base] = fullName;
     });
 
-    // Obtener precio: match exacto → match por nombre base → carry-forward
-    function getPrecio(itemName, targetMes) {
+    // Obtener entrada de precio: match exacto → match por nombre base → carry-forward
+    // Retorna { precio, unidadesPorEnvase } o null
+    function getPrecioEntry(itemName, targetMes) {
       const normName = norm(itemName);
-      // 1. Match exacto
       let entries = pricesByName[normName];
-      // 2. El item es nombre corto y el producto tiene nombre largo con paréntesis
       if (!entries?.length) {
         const mapped = baseNameIndex[normName];
         if (mapped) entries = pricesByName[mapped];
       }
-      // 3. El producto es nombre corto y el item tiene nombre largo con paréntesis
       if (!entries?.length) {
         const itemBase = normName.split('(')[0].trim();
-        const mapped   = baseNameIndex[itemBase] || pricesByName[itemBase] && itemBase;
+        const mapped   = baseNameIndex[itemBase] || (pricesByName[itemBase] ? itemBase : null);
         if (mapped) entries = pricesByName[mapped] || pricesByName[itemBase];
       }
-      if (!entries?.length) return 0;
-      const exact = entries.find(e => e.mes === targetMes);
-      if (exact) return exact.precio;
-      const prior = entries.find(e => e.mes < targetMes);
-      return prior ? prior.precio : 0;
+      if (!entries?.length) return null;
+      const entry = entries.find(e => e.mes === targetMes) || entries.find(e => e.mes < targetMes);
+      return entry ? { precio: entry.precio || 0, factor: entry.unidadesPorEnvase || 1 } : null;
+    }
+
+    function getPrecio(itemName, targetMes) {
+      return getPrecioEntry(itemName, targetMes)?.precio || 0;
     }
 
     // Índice restaurantId → nombre
@@ -6142,7 +6142,7 @@ async function gddExportExcel() {
 
     const wb = XLSX.utils.book_new();
     const rows = [];
-    rows.push(['Año', 'Mes', 'Fecha', 'Proveedor', 'Categoría', 'Producto', 'Unidad', 'Cantidad', 'Precio unit.', 'Total ($)']);
+    rows.push(['Año', 'Mes', 'Fecha', 'Proveedor', 'Categoría', 'Producto', 'Unidad', 'Cantidad', 'Precio unit.', 'Factor envase', 'Total ($)']);
 
     const sorted = [...records].sort((a, b) => (a.fecha || '').localeCompare(b.fecha || ''));
 
@@ -6152,9 +6152,11 @@ async function gddExportExcel() {
       const mesNum = (rec.fecha || '').substring(5, 7);
       (rec.items || []).forEach(item => {
         if (item.cantidad === null || item.cantidad === undefined) return;
-        const precio = getPrecio(item.producto, mes);
-        const total  = precio * (item.cantidad ?? 0);
-        rows.push([anio, mesNum, rec.fecha||'', rec.proveedor||'', item.categoria||'', item.producto||'', item.unidad||'', item.cantidad??'', precio, total]);
+        const entry  = getPrecioEntry(item.producto, mes);
+        const precio = entry?.precio || 0;
+        const factor = entry?.factor || 1;
+        const total  = precio * factor * (item.cantidad ?? 0);
+        rows.push([anio, mesNum, rec.fecha||'', rec.proveedor||'', item.categoria||'', item.producto||'', item.unidad||'', item.cantidad??'', precio, factor !== 1 ? factor : '', total]);
       });
     });
 
@@ -6175,8 +6177,8 @@ async function gddExportExcel() {
       if (!resumen[prov][anio][mesNum]) resumen[prov][anio][mesNum] = 0;
       (rec.items || []).forEach(item => {
         if (item.cantidad == null) return;
-        const precio = getPrecio(item.producto, mes2);
-        resumen[prov][anio][mesNum] += precio * (item.cantidad ?? 0);
+        const entry2 = getPrecioEntry(item.producto, mes2);
+        resumen[prov][anio][mesNum] += (entry2?.precio || 0) * (entry2?.factor || 1) * (item.cantidad ?? 0);
       });
     });
 
@@ -8073,6 +8075,7 @@ function gddEntityPricesOpen(id, name) {
   document.getElementById('gdd-prep-prices-msg').textContent  = '';
   document.getElementById('gdd-prep-price-mes').value         = new Date().toISOString().slice(0, 7);
   document.getElementById('gdd-prep-price-valor').value       = '';
+  document.getElementById('gdd-prep-price-envase').value      = '1';
   document.getElementById('gdd-prep-prices-modal').style.display = 'flex';
   gddPrepPricesLoad(id);
 }
@@ -8098,8 +8101,9 @@ async function gddPrepPricesLoad(id) {
     listEl.innerHTML = prices.map(p => `
       <div id="gpp-row-${p.id}" style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #f0f0f0">
         <span style="color:#212529;font-weight:600;min-width:80px">${p.mes}</span>
-        <span id="gpp-val-${p.id}" style="color:#16a34a;font-weight:700;flex:1">$${(p.precio||0).toLocaleString('es-CL')}</span>
-        <input id="gpp-inp-${p.id}" type="number" value="${p.precio||0}" style="display:none;width:100px;padding:4px 8px;border:1px solid #dee2e6;border-radius:6px;font-size:13px">
+        <span id="gpp-val-${p.id}" style="color:#16a34a;font-weight:700;flex:1">$${(p.precio||0).toLocaleString('es-CL')}${p.unidadesPorEnvase && p.unidadesPorEnvase !== 1 ? `<span style="color:#6c757d;font-size:11px;font-weight:400;margin-left:4px">×${p.unidadesPorEnvase}</span>` : ''}</span>
+        <input id="gpp-inp-${p.id}" type="number" value="${p.precio||0}" style="display:none;width:80px;padding:4px 8px;border:1px solid #dee2e6;border-radius:6px;font-size:13px">
+        <input id="gpp-env-${p.id}" type="number" value="${p.unidadesPorEnvase||1}" min="0.01" step="0.01" style="display:none;width:70px;padding:4px 8px;border:1px solid #dee2e6;border-radius:6px;font-size:13px" placeholder="envase">
         <button id="gpp-edit-${p.id}" onclick="gddPrepPricesStartEdit('${id}','${p.id}','${p.mes}')" style="background:transparent;border:1px solid #dee2e6;border-radius:6px;padding:3px 8px;font-size:12px;cursor:pointer;color:#495057">Editar</button>
         <button id="gpp-save-${p.id}" onclick="gddPrepPricesSaveEdit('${id}','${p.id}','${p.mes}')" style="display:none;background:#212529;border:none;border-radius:6px;padding:3px 10px;font-size:12px;cursor:pointer;color:#fff">Guardar</button>
         <button onclick="gddPrepPricesDelete('${id}','${p.id}')" style="background:transparent;border:none;color:#dc3545;cursor:pointer;font-size:14px;line-height:1">✕</button>
@@ -8110,17 +8114,19 @@ async function gddPrepPricesLoad(id) {
 function gddPrepPricesStartEdit(prepId, entryId, mes) {
   document.getElementById(`gpp-val-${entryId}`).style.display  = 'none';
   document.getElementById(`gpp-inp-${entryId}`).style.display  = '';
+  document.getElementById(`gpp-env-${entryId}`).style.display  = '';
   document.getElementById(`gpp-edit-${entryId}`).style.display = 'none';
   document.getElementById(`gpp-save-${entryId}`).style.display = '';
   document.getElementById(`gpp-inp-${entryId}`).focus();
 }
 
 async function gddPrepPricesSaveEdit(prepId, entryId, mes) {
-  const precio = parseFloat(document.getElementById(`gpp-inp-${entryId}`).value);
-  const msgEl  = document.getElementById('gdd-prep-prices-msg');
+  const precio          = parseFloat(document.getElementById(`gpp-inp-${entryId}`).value);
+  const unidadesPorEnvase = parseFloat(document.getElementById(`gpp-env-${entryId}`).value) || 1;
+  const msgEl           = document.getElementById('gdd-prep-prices-msg');
   if (isNaN(precio) || precio < 0) { msgEl.style.color='#dc3545'; msgEl.textContent='Precio inválido.'; return; }
   try {
-    await apiFetch(`/api/inv/products/${prepId}/prices`, { method: 'POST', body: JSON.stringify({ mes, precio }) });
+    await apiFetch(`/api/inv/products/${prepId}/prices`, { method: 'POST', body: JSON.stringify({ mes, precio, unidadesPorEnvase }) });
     msgEl.style.color='#16a34a'; msgEl.textContent='Precio actualizado.';
     gddPrepPricesLoad(prepId);
   } catch(e) { msgEl.style.color='#dc3545'; msgEl.textContent='Error: '+e.message; }
@@ -8130,14 +8136,16 @@ async function gddPrepPricesAdd() {
   const rawId = document.getElementById('marg-form-id').value;
   const id    = rawId.startsWith('prep:') ? rawId.slice(5) : rawId;
   if (!id) return;
-  const mes    = document.getElementById('gdd-prep-price-mes').value;
-  const precio = parseFloat(document.getElementById('gdd-prep-price-valor').value);
-  const msgEl  = document.getElementById('gdd-prep-prices-msg');
+  const mes             = document.getElementById('gdd-prep-price-mes').value;
+  const precio          = parseFloat(document.getElementById('gdd-prep-price-valor').value);
+  const unidadesPorEnvase = parseFloat(document.getElementById('gdd-prep-price-envase').value) || 1;
+  const msgEl           = document.getElementById('gdd-prep-prices-msg');
   if (!mes || isNaN(precio) || precio < 0) { msgEl.style.color='#dc3545'; msgEl.textContent='Completá mes y precio.'; return; }
   try {
-    await apiFetch(`/api/inv/products/${id}/prices`, { method: 'POST', body: JSON.stringify({ mes, precio }) });
+    await apiFetch(`/api/inv/products/${id}/prices`, { method: 'POST', body: JSON.stringify({ mes, precio, unidadesPorEnvase }) });
     msgEl.style.color='#16a34a'; msgEl.textContent='Precio agregado.';
     document.getElementById('gdd-prep-price-valor').value = '';
+    document.getElementById('gdd-prep-price-envase').value = '1';
     gddPrepPricesLoad(id);
   } catch(e) { msgEl.style.color='#dc3545'; msgEl.textContent='Error: '+e.message; }
 }
@@ -8834,7 +8842,7 @@ async function margenDeleteRecipe(id, name) {
       </div>
       <button onclick="gddPrepPricesClose()" style="background:transparent;border:none;font-size:20px;cursor:pointer;color:#6c757d">✕</button>
     </div>
-    <div style="display:flex;gap:8px;margin-bottom:16px">
+    <div style="display:flex;gap:8px;margin-bottom:8px">
       <div style="flex:1">
         <div style="font-size:12px;color:#6c757d;margin-bottom:4px">Mes (YYYY-MM)</div>
         <input type="month" id="gdd-prep-price-mes" style="width:100%;padding:8px 10px;border:1px solid #dee2e6;border-radius:8px;font-size:13px">
@@ -8843,6 +8851,10 @@ async function margenDeleteRecipe(id, name) {
         <div style="font-size:12px;color:#6c757d;margin-bottom:4px">Precio unitario ($)</div>
         <input type="number" id="gdd-prep-price-valor" min="0" step="1" placeholder="0" style="width:100%;padding:8px 10px;border:1px solid #dee2e6;border-radius:8px;font-size:13px">
       </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;background:#f8f9fa;padding:10px 12px;border-radius:8px">
+      <div style="font-size:12px;color:#6c757d;flex:1">Unidades por envase GDD <span style="color:#aaa">(ej: caja de 5kg → 5)</span></div>
+      <input type="number" id="gdd-prep-price-envase" min="0.01" step="0.01" value="1" style="width:80px;padding:6px 10px;border:1px solid #dee2e6;border-radius:8px;font-size:13px;text-align:center">
     </div>
     <button onclick="gddPrepPricesAdd()" style="background:#ff5023;color:#fff;border:none;border-radius:8px;padding:9px 20px;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:16px">Agregar precio</button>
     <div id="gdd-prep-prices-msg" style="font-size:12px;min-height:16px;margin-bottom:8px"></div>
