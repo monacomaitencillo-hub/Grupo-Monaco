@@ -1056,14 +1056,16 @@ app.post('/api/inv/products/:id/prices', requireAuth, async (req, res) => {
     entryId = ref.id;
   }
 
-  // Actualizar costPerUnit en el producto si el mes es igual o más reciente
+  // Actualizar costPerUnit en el producto si el mes es igual o más reciente (solo si es un producto real)
   const prodSnap = await db.collection('products').doc(req.params.id).get();
-  const currentMonth = prodSnap.exists ? (prodSnap.data().lastPriceMonth || '') : '';
-  if (entry.mes >= currentMonth) {
-    await db.collection('products').doc(req.params.id).update({
-      costPerUnit:    entry.precio,
-      lastPriceMonth: entry.mes
-    });
+  if (prodSnap.exists) {
+    const currentMonth = prodSnap.data().lastPriceMonth || '';
+    if (entry.mes >= currentMonth) {
+      await db.collection('products').doc(req.params.id).update({
+        costPerUnit:    entry.precio,
+        lastPriceMonth: entry.mes
+      });
+    }
   }
 
   res.json({ id: entryId, precio: entry.precio });
