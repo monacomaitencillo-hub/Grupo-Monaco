@@ -6151,6 +6151,20 @@ async function gddExportExcel() {
         });
         if (match) entries = pricesByName[match];
       }
+      // 3. fallback: mayor overlap de palabras (ignora preposiciones cortas)
+      if (!entries?.length) {
+        const stopWords = new Set(['de','del','la','el','los','las','un','una','y','e','en','con','sin','por','a']);
+        const tokens = w => w.replace(/[()]/g,'').split(/\s+/).filter(t => t.length > 1 && !stopWords.has(t));
+        const queryTokens = tokens(normName);
+        let bestKey = null, bestScore = 0;
+        Object.keys(pricesByName).forEach(k => {
+          const kTokens = tokens(k);
+          const shared = queryTokens.filter(t => kTokens.includes(t)).length;
+          const score = shared / Math.max(queryTokens.length, kTokens.length);
+          if (score > bestScore && score >= 0.5) { bestScore = score; bestKey = k; }
+        });
+        if (bestKey) entries = pricesByName[bestKey];
+      }
       if (!entries?.length) return null;
       const entry = entries.find(e => e.mes === targetMes) || entries.find(e => e.mes < targetMes);
       return entry ? { precio: entry.precio || 0, factor: entry.unidadesPorEnvase || 1 } : null;
