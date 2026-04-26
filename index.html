@@ -3545,6 +3545,10 @@ function openModalProducto(id) {
           </div>
         </div>
 
+        ${p?.esGDD ? `<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;background:#fff8f5;padding:10px 12px;border-radius:8px;border:1px solid #fed7aa">
+          <div style="font-size:12px;color:#6c757d;flex:1">Unidades por envase GDD <span style="color:#aaa">(ej: caja 5kg → 5)</span></div>
+          <input type="number" id="pp-envase" min="0.01" step="0.01" value="1" style="width:80px;padding:6px 10px;border:1px solid #dee2e6;border-radius:8px;font-size:13px;text-align:center">
+        </div>` : ''}
         <button onclick="ppAgregarPrecio()" style="background:#ff5023;color:#fff;border:none;border-radius:8px;padding:9px 22px;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:14px">Agregar</button>
         <div id="pp-msg" style="font-size:12px;min-height:16px;margin-bottom:8px"></div>
         <div id="pp-list" style="color:#888;font-size:13px">Cargando...</div>
@@ -3779,14 +3783,16 @@ async function ppAgregarPrecio() {
   const precioNeto = document.getElementById('pp-neto')?.value;
   const msgEl      = document.getElementById('pp-msg');
   if (!mes || !precioNeto) { if(msgEl){msgEl.style.color='#f87171';msgEl.textContent='Completa mes y precio neto.';} return; }
+  const envaseVal = parseFloat(document.getElementById('pp-envase')?.value) || 1;
   const body = {
     mes,
-    precioNeto:     Number(precioNeto),
-    descuento:      parseFloat(document.getElementById('pp-dto')?.value)      || 0,
-    cantidadCompra: parseFloat(document.getElementById('pp-cantidad')?.value) || 1,
-    unidadCompra:   document.getElementById('pp-unidad-compra')?.value        || '',
-    tipoImpuesto:   ppGetTipoImpuesto(),
-    fleteNeto:      parseFloat(document.getElementById('pp-flete')?.value) || 0,
+    precioNeto:        Number(precioNeto),
+    descuento:         parseFloat(document.getElementById('pp-dto')?.value)      || 0,
+    cantidadCompra:    parseFloat(document.getElementById('pp-cantidad')?.value) || 1,
+    unidadCompra:      document.getElementById('pp-unidad-compra')?.value        || '',
+    tipoImpuesto:      ppGetTipoImpuesto(),
+    fleteNeto:         parseFloat(document.getElementById('pp-flete')?.value) || 0,
+    unidadesPorEnvase: envaseVal,
     ...(priceHistoryCapacidadCC > 0 ? { capacidadCC: priceHistoryCapacidadCC } : {})
   };
   try {
