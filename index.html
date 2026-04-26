@@ -6115,7 +6115,7 @@ async function gddExportExcel() {
       const name = idToNormName[ph.productId];
       if (!name) return;
       if (!pricesByName[name]) pricesByName[name] = [];
-      pricesByName[name].push({ mes: ph.mes, precio: ph.precio });
+      pricesByName[name].push({ mes: ph.mes, precio: ph.precio, unidadesPorEnvase: ph.unidadesPorEnvase });
     });
     Object.values(pricesByName).forEach(arr => arr.sort((a, b) => b.mes.localeCompare(a.mes)));
 
