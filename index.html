@@ -7657,12 +7657,17 @@ function renderMargenPromosContent() {
 }
 
 function margenPromoCardHTML(promo) {
-  const recipes    = (promo.recipes || []).map(id => margenRecipes.find(r => r.id === id)).filter(Boolean);
-  const totalCost  = recipes.reduce((sum, r) => sum + calcRecipeCost(r), 0);
+  const recipeItems = (promo.recipes || []).map(x => {
+    const entry = typeof x === 'string' ? { id: x, quantity: 1 } : x;
+    const r = margenRecipes.find(r => r.id === entry.id);
+    return r ? { ...r, quantity: entry.quantity || 1 } : null;
+  }).filter(Boolean);
+  const totalCost  = recipeItems.reduce((sum, r) => sum + calcRecipeCost(r) * r.quantity, 0);
   const sellingNet = promo.sellingPrice > 0 ? promo.sellingPrice / 1.19 : 0;
   const margin     = sellingNet > 0 ? ((sellingNet - totalCost) / sellingNet * 100) : null;
   const mColor     = margenColor(margin);
   const safeName   = (promo.name || '').replace(/'/g, "\\'");
+  const recipeDesc = recipeItems.map(r => `${r.quantity > 1 ? r.quantity+'× ' : ''}${r.name}`).join(', ');
   return `
     <div style="background:#fff;border:1px solid #e9ecef;border-radius:14px;padding:20px;transition:box-shadow .18s,transform .18s"
       onmouseover="this.style.boxShadow='0 6px 24px rgba(0,0,0,.09)';this.style.transform='translateY(-2px)'"
@@ -7682,7 +7687,7 @@ function margenPromoCardHTML(promo) {
         </div>
       </div>
       <div style="font-size:12px;color:#6c757d;margin-bottom:12px">
-        ${recipes.length} receta${recipes.length !== 1 ? 's' : ''}${recipes.length ? ': ' + recipes.map(r => r.name).join(', ') : ''}
+        ${recipeItems.length} receta${recipeItems.length !== 1 ? 's' : ''}${recipeDesc ? ': ' + recipeDesc : ''}
       </div>
       <div style="display:flex;justify-content:space-between;border-top:1px solid #f1f3f4;padding-top:12px;gap:8px">
         <div style="text-align:center;flex:1">
@@ -7717,19 +7722,25 @@ function margenOpenPromoModal(id) {
   restSel.innerHTML = '<option value="">— Seleccionar local —</option>' +
     restaurants.map(r => `<option value="${r.id}"${promo?.restaurantId === r.id ? ' selected' : ''}>${r.name}</option>`).join('');
 
-  const selectedIds   = promo?.recipes || [];
+  // Normalizar: soporta formato viejo (array de strings) y nuevo (array de {id, quantity})
+  const savedRecipes  = (promo?.recipes || []).map(r => typeof r === 'string' ? { id: r, quantity: 1 } : r);
   const recipeList    = document.getElementById('marg-promo-recipes');
   const sortedRecipes = [...margenRecipes].sort((a, b) => a.name.localeCompare(b.name, 'es'));
   recipeList.innerHTML = sortedRecipes.length === 0
     ? '<div style="color:#888;font-size:13px;padding:8px 0">No hay recetas disponibles</div>'
-    : sortedRecipes.map(r => `
+    : sortedRecipes.map(r => {
+        const saved = savedRecipes.find(x => x.id === r.id);
+        return `
         <label style="display:flex;align-items:center;gap:8px;padding:7px 0;cursor:pointer;font-size:13px;color:#212529;border-bottom:1px solid #f8f9fa">
-          <input type="checkbox" value="${r.id}" ${selectedIds.includes(r.id) ? 'checked' : ''}
+          <input type="checkbox" value="${r.id}" ${saved ? 'checked' : ''}
             onchange="margenPromoUpdatePreview()"
             style="width:15px;height:15px;accent-color:#ff5023;flex-shrink:0">
           <span style="flex:1">${r.name}${r.restaurantName ? ` <span style="color:#aaa;font-size:11px">(${r.restaurantName})</span>` : ''}</span>
+          <input type="number" id="marg-promo-qty-${r.id}" value="${saved?.quantity || 1}" min="1" step="1"
+            oninput="margenPromoUpdatePreview()" onclick="event.stopPropagation()"
+            style="width:52px;padding:3px 6px;border:1px solid #dee2e6;border-radius:6px;font-size:12px;text-align:center">
           ${r.sellingPrice > 0 ? `<span style="font-size:12px;font-weight:600;color:#6c757d;flex-shrink:0">$${Math.round(r.sellingPrice).toLocaleString('es-CL')}</span>` : ''}
-        </label>`).join('');
+        </label>`; }).join('');
 
   margenPromoUpdatePreview();
   document.getElementById('marg-promo-modal').style.display = 'flex';
@@ -7749,23 +7760,26 @@ function margenPromoRemoveRecipe(id) {
 
 
 function margenPromoUpdatePreview() {
-  const selectedIds = [...document.querySelectorAll('#marg-promo-recipes input[type=checkbox]:checked')].map(cb => cb.value);
-  const recipes     = selectedIds.map(id => margenRecipes.find(r => r.id === id)).filter(Boolean);
-  const totalCost   = recipes.reduce((sum, r) => sum + calcRecipeCost(r), 0);
-  const selling     = Number(document.getElementById('marg-promo-price').value) || 0;
-  const sellingNet  = selling > 0 ? selling / 1.19 : 0;
-  const margin      = sellingNet > 0 ? ((sellingNet - totalCost) / sellingNet * 100) : null;
-  const mColor      = margenColor(margin);
-  const sumPrecioVenta = recipes.reduce((s, r) => s + (Number(r.sellingPrice) || 0), 0);
+  const selectedItems = [...document.querySelectorAll('#marg-promo-recipes input[type=checkbox]:checked')].map(cb => {
+    const r   = margenRecipes.find(x => x.id === cb.value);
+    const qty = parseInt(document.getElementById(`marg-promo-qty-${cb.value}`)?.value) || 1;
+    return r ? { ...r, qty } : null;
+  }).filter(Boolean);
+  const totalCost      = selectedItems.reduce((sum, r) => sum + calcRecipeCost(r) * r.qty, 0);
+  const selling        = Number(document.getElementById('marg-promo-price').value) || 0;
+  const sellingNet     = selling > 0 ? selling / 1.19 : 0;
+  const margin         = sellingNet > 0 ? ((sellingNet - totalCost) / sellingNet * 100) : null;
+  const mColor         = margenColor(margin);
+  const sumPrecioVenta = selectedItems.reduce((s, r) => s + (Number(r.sellingPrice) || 0) * r.qty, 0);
   document.getElementById('marg-promo-preview').innerHTML =
     `Costo total: <strong>$${Math.round(totalCost).toLocaleString('es-CL')}</strong>` +
-    (recipes.length > 0 ? `&nbsp;&nbsp;·&nbsp;&nbsp;Precio regular (c/IVA): <strong>$${Math.round(sumPrecioVenta).toLocaleString('es-CL')}</strong>` : '') +
+    (selectedItems.length > 0 ? `&nbsp;&nbsp;·&nbsp;&nbsp;Precio regular (c/IVA): <strong>$${Math.round(sumPrecioVenta).toLocaleString('es-CL')}</strong>` : '') +
     (margin !== null ? `&nbsp;&nbsp;·&nbsp;&nbsp;Margen: <strong style="color:${mColor}">${Math.round(margin)}%</strong>` : '');
   const chips = document.getElementById('marg-promo-chips');
   if (!chips) return;
-  chips.innerHTML = recipes.map(r => `
+  chips.innerHTML = selectedItems.map(r => `
     <span style="display:inline-flex;align-items:center;gap:4px;background:#fff0eb;border:1px solid #ffcdb8;border-radius:20px;padding:3px 8px 3px 10px;font-size:12px;color:#cc3a0d;font-weight:500">
-      ${r.name}${r.sellingPrice > 0 ? ` <span style="color:#e07050;font-weight:400">$${Math.round(r.sellingPrice).toLocaleString('es-CL')}</span>` : ''}
+      ${r.qty > 1 ? `<span style="background:#ff5023;color:#fff;border-radius:10px;padding:0 5px;font-size:10px;font-weight:700">${r.qty}×</span> ` : ''}${r.name}${r.sellingPrice > 0 ? ` <span style="color:#e07050;font-weight:400">$${Math.round(r.sellingPrice * r.qty).toLocaleString('es-CL')}</span>` : ''}
       <button onclick="margenPromoRemoveRecipe('${r.id}')"
         style="background:none;border:none;cursor:pointer;color:#cc3a0d;font-size:14px;line-height:1;padding:0;margin:0;display:flex;align-items:center">×</button>
     </span>`).join('');
@@ -7781,7 +7795,10 @@ async function margenSavePromo() {
   const restaurantId   = restSel.value;
   const restaurantName = restSel.options[restSel.selectedIndex]?.text.replace('— Seleccionar local —','') || '';
   const sellingPrice   = Number(document.getElementById('marg-promo-price').value) || 0;
-  const recipes        = [...document.querySelectorAll('#marg-promo-recipes input[type=checkbox]:checked')].map(cb => cb.value);
+  const recipes        = [...document.querySelectorAll('#marg-promo-recipes input[type=checkbox]:checked')].map(cb => ({
+    id: cb.value,
+    quantity: parseInt(document.getElementById(`marg-promo-qty-${cb.value}`)?.value) || 1
+  }));
   const comentario     = document.getElementById('marg-promo-comentario').value.trim();
   btn.disabled = true; btn.textContent = 'Guardando...'; msg.textContent = '';
   try {
