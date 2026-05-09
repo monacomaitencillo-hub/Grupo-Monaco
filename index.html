@@ -7658,11 +7658,21 @@ function renderMargenPromosContent() {
 
 function margenPromoCardHTML(promo) {
   const recipes    = (promo.recipes || []).map(id => margenRecipes.find(r => r.id === id)).filter(Boolean);
-  const totalCost  = recipes.reduce((sum, r) => sum + calcRecipeCost(r), 0);
+  const ingItems   = (promo.ingredients || []).map(x => {
+    const p = margenIngredients.find(i => i.id === x.id);
+    return p ? { ...p, quantity: x.quantity || 1 } : null;
+  }).filter(Boolean);
+  const recipeCost = recipes.reduce((sum, r) => sum + calcRecipeCost(r), 0);
+  const ingCost    = ingItems.reduce((sum, x) => sum + (x.costPerUnit || 0) * x.quantity, 0);
+  const totalCost  = recipeCost + ingCost;
   const sellingNet = promo.sellingPrice > 0 ? promo.sellingPrice / 1.19 : 0;
   const margin     = sellingNet > 0 ? ((sellingNet - totalCost) / sellingNet * 100) : null;
   const mColor     = margenColor(margin);
   const safeName   = (promo.name || '').replace(/'/g, "\\'");
+  const itemsDesc  = [
+    ...recipes.map(r => r.name),
+    ...ingItems.map(x => `${x.name}${x.quantity !== 1 ? ' ×'+x.quantity : ''}`)
+  ].join(', ');
   return `
     <div style="background:#fff;border:1px solid #e9ecef;border-radius:14px;padding:20px;transition:box-shadow .18s,transform .18s"
       onmouseover="this.style.boxShadow='0 6px 24px rgba(0,0,0,.09)';this.style.transform='translateY(-2px)'"
@@ -7682,7 +7692,7 @@ function margenPromoCardHTML(promo) {
         </div>
       </div>
       <div style="font-size:12px;color:#6c757d;margin-bottom:12px">
-        ${recipes.length} receta${recipes.length !== 1 ? 's' : ''}${recipes.length ? ': ' + recipes.map(r => r.name).join(', ') : ''}
+        ${recipes.length} receta${recipes.length !== 1 ? 's' : ''}${ingItems.length ? `, ${ingItems.length} ingrediente${ingItems.length !== 1 ? 's' : ''}` : ''}${itemsDesc ? ': ' + itemsDesc : ''}
       </div>
       <div style="display:flex;justify-content:space-between;border-top:1px solid #f1f3f4;padding-top:12px;gap:8px">
         <div style="text-align:center;flex:1">
@@ -7731,6 +7741,28 @@ function margenOpenPromoModal(id) {
           ${r.sellingPrice > 0 ? `<span style="font-size:12px;font-weight:600;color:#6c757d;flex-shrink:0">$${Math.round(r.sellingPrice).toLocaleString('es-CL')}</span>` : ''}
         </label>`).join('');
 
+  // Ingredientes
+  const selectedIngs  = promo?.ingredients || [];
+  const ingList       = document.getElementById('marg-promo-ingredients');
+  document.getElementById('marg-promo-ing-search').value = '';
+  const sortedIngs    = [...margenIngredients].sort((a, b) => a.name.localeCompare(b.name, 'es'));
+  ingList.innerHTML   = sortedIngs.length === 0
+    ? '<div style="color:#888;font-size:13px;padding:8px 0">No hay ingredientes disponibles</div>'
+    : sortedIngs.map(p => {
+        const sel = selectedIngs.find(x => x.id === p.id);
+        return `
+        <label style="display:flex;align-items:center;gap:8px;padding:7px 0;cursor:pointer;font-size:13px;color:#212529;border-bottom:1px solid #f8f9fa">
+          <input type="checkbox" value="${p.id}" ${sel ? 'checked' : ''}
+            onchange="margenPromoUpdatePreview()"
+            style="width:15px;height:15px;accent-color:#ff5023;flex-shrink:0">
+          <span style="flex:1">${p.name}</span>
+          <input type="number" id="marg-promo-ing-qty-${p.id}" value="${sel?.quantity || 1}" min="0.001" step="any"
+            oninput="margenPromoUpdatePreview()"
+            onclick="event.stopPropagation()"
+            style="width:58px;padding:3px 6px;border:1px solid #dee2e6;border-radius:6px;font-size:12px;text-align:center">
+          ${p.costPerUnit > 0 ? `<span style="font-size:11px;color:#6c757d;flex-shrink:0">$${Math.round(p.costPerUnit).toLocaleString('es-CL')}/u</span>` : ''}
+        </label>`; }).join('');
+
   margenPromoUpdatePreview();
   document.getElementById('marg-promo-modal').style.display = 'flex';
 }
@@ -7747,27 +7779,56 @@ function margenPromoRemoveRecipe(id) {
   if (cb) { cb.checked = false; margenPromoUpdatePreview(); }
 }
 
+function margenPromoRemoveIngredient(id) {
+  const cb = document.querySelector(`#marg-promo-ingredients input[value="${id}"]`);
+  if (cb) { cb.checked = false; margenPromoUpdatePreview(); }
+}
+
+function margenPromoFilterIngredients(q) {
+  const qq = q.toLowerCase();
+  document.querySelectorAll('#marg-promo-ingredients label').forEach(label => {
+    label.style.display = label.textContent.toLowerCase().includes(qq) ? '' : 'none';
+  });
+}
+
 function margenPromoUpdatePreview() {
   const selectedIds = [...document.querySelectorAll('#marg-promo-recipes input[type=checkbox]:checked')].map(cb => cb.value);
   const recipes     = selectedIds.map(id => margenRecipes.find(r => r.id === id)).filter(Boolean);
-  const totalCost   = recipes.reduce((sum, r) => sum + calcRecipeCost(r), 0);
-  const selling     = Number(document.getElementById('marg-promo-price').value) || 0;
-  const sellingNet  = selling > 0 ? selling / 1.19 : 0;
-  const margin      = sellingNet > 0 ? ((sellingNet - totalCost) / sellingNet * 100) : null;
-  const mColor      = margenColor(margin);
+  const recipeCost  = recipes.reduce((sum, r) => sum + calcRecipeCost(r), 0);
+
+  const selectedIngCbs = [...document.querySelectorAll('#marg-promo-ingredients input[type=checkbox]:checked')];
+  const ingItems = selectedIngCbs.map(cb => {
+    const p   = margenIngredients.find(x => x.id === cb.value);
+    const qty = parseFloat(document.getElementById(`marg-promo-ing-qty-${cb.value}`)?.value) || 1;
+    return p ? { ...p, qty } : null;
+  }).filter(Boolean);
+  const ingCost = ingItems.reduce((sum, x) => sum + (x.costPerUnit || 0) * x.qty, 0);
+
+  const totalCost  = recipeCost + ingCost;
+  const selling    = Number(document.getElementById('marg-promo-price').value) || 0;
+  const sellingNet = selling > 0 ? selling / 1.19 : 0;
+  const margin     = sellingNet > 0 ? ((sellingNet - totalCost) / sellingNet * 100) : null;
+  const mColor     = margenColor(margin);
   const sumPrecioVenta = recipes.reduce((s, r) => s + (Number(r.sellingPrice) || 0), 0);
   document.getElementById('marg-promo-preview').innerHTML =
     `Costo total: <strong>$${Math.round(totalCost).toLocaleString('es-CL')}</strong>` +
     (recipes.length > 0 ? `&nbsp;&nbsp;·&nbsp;&nbsp;Precio regular (c/IVA): <strong>$${Math.round(sumPrecioVenta).toLocaleString('es-CL')}</strong>` : '') +
     (margin !== null ? `&nbsp;&nbsp;·&nbsp;&nbsp;Margen: <strong style="color:${mColor}">${Math.round(margin)}%</strong>` : '');
-  // Actualizar chips de seleccionadas
+
   const chips = document.getElementById('marg-promo-chips');
-  if (!chips) return;
-  chips.innerHTML = recipes.map(r => `
+  if (chips) chips.innerHTML = recipes.map(r => `
     <span style="display:inline-flex;align-items:center;gap:4px;background:#fff0eb;border:1px solid #ffcdb8;border-radius:20px;padding:3px 8px 3px 10px;font-size:12px;color:#cc3a0d;font-weight:500">
       ${r.name}${r.sellingPrice > 0 ? ` <span style="color:#e07050;font-weight:400">$${Math.round(r.sellingPrice).toLocaleString('es-CL')}</span>` : ''}
       <button onclick="margenPromoRemoveRecipe('${r.id}')"
         style="background:none;border:none;cursor:pointer;color:#cc3a0d;font-size:14px;line-height:1;padding:0;margin:0;display:flex;align-items:center">×</button>
+    </span>`).join('');
+
+  const ingChips = document.getElementById('marg-promo-ing-chips');
+  if (ingChips) ingChips.innerHTML = ingItems.map(x => `
+    <span style="display:inline-flex;align-items:center;gap:4px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:20px;padding:3px 8px 3px 10px;font-size:12px;color:#1d4ed8;font-weight:500">
+      ${x.name} ×${x.qty}${x.costPerUnit > 0 ? ` <span style="color:#3b82f6;font-weight:400">$${Math.round(x.costPerUnit * x.qty).toLocaleString('es-CL')}</span>` : ''}
+      <button onclick="margenPromoRemoveIngredient('${x.id}')"
+        style="background:none;border:none;cursor:pointer;color:#1d4ed8;font-size:14px;line-height:1;padding:0;margin:0;display:flex;align-items:center">×</button>
     </span>`).join('');
 }
 
@@ -7782,21 +7843,25 @@ async function margenSavePromo() {
   const restaurantName = restSel.options[restSel.selectedIndex]?.text.replace('— Seleccionar local —','') || '';
   const sellingPrice   = Number(document.getElementById('marg-promo-price').value) || 0;
   const recipes        = [...document.querySelectorAll('#marg-promo-recipes input[type=checkbox]:checked')].map(cb => cb.value);
+  const ingredients    = [...document.querySelectorAll('#marg-promo-ingredients input[type=checkbox]:checked')].map(cb => ({
+    id: cb.value,
+    quantity: parseFloat(document.getElementById(`marg-promo-ing-qty-${cb.value}`)?.value) || 1
+  }));
   const comentario     = document.getElementById('marg-promo-comentario').value.trim();
   btn.disabled = true; btn.textContent = 'Guardando...'; msg.textContent = '';
   try {
     let res, data;
     if (id) {
-      res  = await apiFetch(`/api/promos/${id}`, { method: 'PUT', body: JSON.stringify({ name, restaurantId, restaurantName, sellingPrice, recipes, comentario }) });
+      res  = await apiFetch(`/api/promos/${id}`, { method: 'PUT', body: JSON.stringify({ name, restaurantId, restaurantName, sellingPrice, recipes, ingredients, comentario }) });
       data = await res.json();
       if (data.error) throw new Error(data.error);
       const idx = margenPromos.findIndex(p => p.id === id);
-      if (idx >= 0) margenPromos[idx] = { ...margenPromos[idx], name, restaurantId, restaurantName, sellingPrice, recipes, comentario };
+      if (idx >= 0) margenPromos[idx] = { ...margenPromos[idx], name, restaurantId, restaurantName, sellingPrice, recipes, ingredients, comentario };
     } else {
-      res  = await apiFetch('/api/promos', { method: 'POST', body: JSON.stringify({ name, restaurantId, restaurantName, sellingPrice, recipes, comentario }) });
+      res  = await apiFetch('/api/promos', { method: 'POST', body: JSON.stringify({ name, restaurantId, restaurantName, sellingPrice, recipes, ingredients, comentario }) });
       data = await res.json();
       if (data.error) throw new Error(data.error);
-      margenPromos.push({ id: data.id, name, restaurantId, restaurantName, sellingPrice, recipes, comentario });
+      margenPromos.push({ id: data.id, name, restaurantId, restaurantName, sellingPrice, recipes, ingredients, comentario });
     }
     document.getElementById('marg-promo-modal').style.display = 'none';
     renderMargenPromosContent();
@@ -8651,7 +8716,15 @@ async function margenDeleteRecipe(id, name) {
         <input id="marg-promo-search" class="inv-input" placeholder="Buscar receta..."
           oninput="clearTimeout(this._t);this._t=setTimeout(()=>margenPromoFilterRecipes(this.value),200)"
           style="margin-bottom:8px">
-        <div id="marg-promo-recipes" style="max-height:200px;overflow-y:auto;border:1px solid #dee2e6;border-radius:8px;padding:4px 12px"></div>
+        <div id="marg-promo-recipes" style="max-height:180px;overflow-y:auto;border:1px solid #dee2e6;border-radius:8px;padding:4px 12px"></div>
+      </div>
+      <div style="margin-bottom:16px">
+        <div class="field-label" style="margin-bottom:8px">Ingredientes incluidos</div>
+        <div id="marg-promo-ing-chips" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px"></div>
+        <input id="marg-promo-ing-search" class="inv-input" placeholder="Buscar ingrediente..."
+          oninput="clearTimeout(this._t);this._t=setTimeout(()=>margenPromoFilterIngredients(this.value),200)"
+          style="margin-bottom:8px">
+        <div id="marg-promo-ingredients" style="max-height:180px;overflow-y:auto;border:1px solid #dee2e6;border-radius:8px;padding:4px 12px"></div>
       </div>
       <div id="marg-promo-preview" style="padding:12px 14px;background:#f8f9fa;border-radius:8px;font-size:13px;color:#495057;border:1px solid #e9ecef;margin-bottom:8px">
         Costo total: <strong>$0</strong>

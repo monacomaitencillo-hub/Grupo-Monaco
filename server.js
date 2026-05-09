@@ -2370,12 +2370,13 @@ app.get('/api/promos', requireAuth, async (req, res) => {
 
 app.post('/api/promos', requireAuth, async (req, res) => {
   if (!await isEditor(req.uid)) return res.status(403).json({ error: 'Sin permisos' });
-  const { name, restaurantId, restaurantName, sellingPrice, recipes, comentario } = req.body;
+  const { name, restaurantId, restaurantName, sellingPrice, recipes, ingredients, comentario } = req.body;
   if (!name) return res.status(400).json({ error: 'Nombre requerido' });
   const ref = await db.collection('promos').add({
     name, restaurantId: restaurantId || null, restaurantName: restaurantName || '',
     sellingPrice: Number(sellingPrice) || 0,
     recipes: recipes || [],
+    ingredients: ingredients || [],
     comentario: comentario || '',
     createdAt: admin.firestore.FieldValue.serverTimestamp()
   });
@@ -2384,13 +2385,14 @@ app.post('/api/promos', requireAuth, async (req, res) => {
 
 app.put('/api/promos/:id', requireAuth, async (req, res) => {
   if (!await isEditor(req.uid)) return res.status(403).json({ error: 'Sin permisos' });
-  const { name, restaurantId, restaurantName, sellingPrice, recipes, comentario } = req.body;
+  const { name, restaurantId, restaurantName, sellingPrice, recipes, ingredients, comentario } = req.body;
   const update = { updatedAt: admin.firestore.FieldValue.serverTimestamp() };
   if (name             !== undefined) update.name             = name;
   if (restaurantId     !== undefined) update.restaurantId     = restaurantId;
   if (restaurantName   !== undefined) update.restaurantName   = restaurantName;
   if (sellingPrice     !== undefined) update.sellingPrice     = Number(sellingPrice) || 0;
   if (recipes          !== undefined) update.recipes          = recipes;
+  if (ingredients      !== undefined) update.ingredients      = ingredients;
   if (comentario       !== undefined) update.comentario       = comentario;
   await db.collection('promos').doc(req.params.id).update(update);
   res.json({ ok: true });
