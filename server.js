@@ -8,6 +8,7 @@ const os             = require('os');
 const path           = require('path');
 const { randomUUID } = require('crypto');
 const Anthropic      = require('@anthropic-ai/sdk');
+const XLSX           = require('xlsx');
 
 const ANTHROPIC_API_KEY = (process.env.ANTHROPIC_API_KEY || '').trim();
 const anthropic = new Anthropic({ apiKey: ANTHROPIC_API_KEY });
@@ -1720,6 +1721,103 @@ app.delete('/api/cierres/:id', requireAuth, async (req, res) => {
   await db.collection('ingresos').doc(req.params.id).delete();
   if (restId) delete cierresCache[restId]; // invalidar caché
   res.json({ ok: true });
+});
+
+// ── Importar cierres desde Excel ──────────────────────────
+app.post('/api/cierres/import-excel', requireAuth, upload.single('file'), async (req, res) => {
+  if (!await isEditor(req.uid)) return res.status(403).json({ error: 'Sin permisos' });
+  if (!req.file) return res.status(400).json({ error: 'No se recibió archivo' });
+
+  try {
+    // Cargar restaurantes para mapear nombre → id
+    const restSnap = await db.collection('restaurants').get();
+    const nameToId = {};
+    restSnap.docs.forEach(d => {
+      const name = (d.data().name || '').trim();
+      nameToId[name.toLowerCase()] = { id: d.id, name };
+    });
+
+    const wb = XLSX.readFile(req.file.path);
+    const ws = wb.Sheets['Respuestas Actualizada'];
+    if (!ws) return res.status(400).json({ error: 'No se encontró hoja "Respuestas Actualizada"' });
+
+    const rows = XLSX.utils.sheet_to_json(ws, { defval: null });
+
+    const n0 = v => (v != null && v !== '') ? Number(v) : 0;
+    const excelDate = v => {
+      if (!v) return null;
+      if (typeof v === 'string' && v.match(/^\d{4}-\d{2}-\d{2}/)) return v.slice(0, 10);
+      if (typeof v === 'number') {
+        const d = new Date(Math.round((v - 25569) * 86400 * 1000));
+        return d.toISOString().slice(0, 10);
+      }
+      return null;
+    };
+
+    let inserted = 0, updated = 0, skipped = 0;
+    const batchSize = 400;
+    let batchOps = [];
+
+    const flush = async () => {
+      await Promise.all(batchOps.map(op => op()));
+      batchOps = [];
+    };
+
+    for (const row of rows) {
+      const fecha = excelDate(row['Fecha']);
+      const localName = (row['Local'] || '').trim();
+      if (!fecha || !localName) { skipped++; continue; }
+
+      const restMatch = nameToId[localName.toLowerCase()];
+      if (!restMatch) { skipped++; continue; }
+
+      const { id: restaurantId, name: local } = restMatch;
+
+      const data = {
+        restaurantId, fecha, local,
+        totalPrograma:    n0(row['Total Programa']),
+        propinasPrograma: n0(row['Propina Programa']),
+        transbank:        n0(row['Total POS']),
+        transbankPropinas:n0(row['Propina POS']),
+        efectivo:         n0(row['Total Efectivo']),
+        propinaAMano:     n0(row['Propina Efectivo']),
+        gastos:           n0(row['Gasto']),
+        cantidadDelivery: n0(row['Cantidad Delivery']),
+        montoDelivery:    n0(row['Venta Delivery']),
+        envioDelivery:    n0(row['Envio Delivery']),
+        propinasDelivery: n0(row['Propina Delivery']),
+        montoRetiro:      n0(row['Venta Retiro']),
+        cantidadRetiro:   n0(row['Cantidad Retiro']),
+        comentarios:      row['Comentarios'] || null,
+        bookingTotal:     n0(row['Total Cabaña']),
+        importedAt:       new Date().toISOString(),
+      };
+
+      // Buscar si ya existe un cierre para esta fecha+restaurante
+      batchOps.push(async () => {
+        const existing = await db.collection('ingresos')
+          .where('restaurantId', '==', restaurantId)
+          .where('fecha', '==', fecha)
+          .limit(1).get();
+        if (!existing.empty) {
+          await existing.docs[0].ref.update(data);
+          updated++;
+        } else {
+          await db.collection('ingresos').add({ ...data, createdAt: new Date().toISOString() });
+          inserted++;
+        }
+        delete cierresCache[restaurantId];
+      });
+
+      if (batchOps.length >= batchSize) await flush();
+    }
+    await flush();
+    fs.unlinkSync(req.file.path);
+    res.json({ ok: true, inserted, updated, skipped });
+  } catch (e) {
+    console.error('import-excel error:', e);
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // ── Umbrales por categoría ────────────────────────────────

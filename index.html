@@ -845,7 +845,11 @@
       <button class="cierres-tab active" id="ctab-registros" onclick="switchCierresTab('registros')">Registros</button>
       <button class="cierres-tab" id="ctab-analitica" onclick="switchCierresTab('analitica')">Analítica</button>
     </div>
-    <button class="btn-new" style="margin-left:auto" id="btn-nuevo-cierre" onclick="openModalCierre()">+ Nuevo cierre</button>
+    <label id="btn-import-cierres" class="btn-new" style="margin-left:auto;cursor:pointer;display:flex;align-items:center;gap:6px" title="Importar Excel Ingresos Mónaco">
+      ↑ Importar Excel
+      <input type="file" accept=".xlsx,.xls" style="display:none" onchange="cierresImportExcel(this)">
+    </label>
+    <button class="btn-new" style="margin-left:8px" id="btn-nuevo-cierre" onclick="openModalCierre()">+ Nuevo cierre</button>
   </div>
   <div style="flex:1;padding:32px 28px;max-width:1100px;width:100%;margin:0 auto">
     <div id="cierres-rest-sel" style="display:flex;gap:8px;margin-bottom:24px;flex-wrap:wrap"></div>
@@ -4796,6 +4800,30 @@ async function delCierre(id) {
   if (!confirm('¿Eliminar este cierre?')) return;
   await apiFetch(`/api/cierres/${id}`, { method:'DELETE' });
   loadCierresList();
+}
+
+async function cierresImportExcel(input) {
+  const file = input.files[0];
+  if (!file) return;
+  input.value = '';
+  const btn = document.getElementById('btn-import-cierres');
+  const origText = btn.childNodes[0].textContent;
+  btn.childNodes[0].textContent = 'Importando...';
+  btn.style.pointerEvents = 'none';
+  try {
+    const form = new FormData();
+    form.append('file', file);
+    const res  = await apiFetch('/api/cierres/import-excel', { method: 'POST', body: form });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    alert(`✓ Importación completada:\n• ${data.inserted} filas nuevas\n• ${data.updated} filas actualizadas\n• ${data.skipped} filas omitidas (local no encontrado o sin fecha)`);
+    loadCierresList();
+  } catch(e) {
+    alert('Error al importar: ' + e.message);
+  } finally {
+    btn.childNodes[0].textContent = origText;
+    btn.style.pointerEvents = '';
+  }
 }
 
 // ── Analítica Cierres ──────────────────────────────────────
