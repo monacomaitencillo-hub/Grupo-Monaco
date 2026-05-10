@@ -5021,6 +5021,16 @@ function renderAnalyticsCharts(data) {
         <div class="analytics-kpi-value">${pctTB}%</div>
         <div class="analytics-kpi-sub">${100-pctTB}% efectivo</div>
       </div>
+      <div class="analytics-kpi">
+        <div class="analytics-kpi-label">Total POS</div>
+        <div class="analytics-kpi-value" style="color:#3b82f6">${fmtCLP(totalTB)}</div>
+        <div class="analytics-kpi-sub">${pctTB}% del ingreso</div>
+      </div>
+      <div class="analytics-kpi">
+        <div class="analytics-kpi-label">Total efectivo</div>
+        <div class="analytics-kpi-value" style="color:#f59e0b">${fmtCLP(totalEf)}</div>
+        <div class="analytics-kpi-sub">${100-pctTB}% del ingreso</div>
+      </div>
     </div>
 
     <div class="chart-card span3">
