@@ -842,30 +842,32 @@
   <div class="inv-topbar">
     <span style="font-size:14px;font-weight:600;color:#fff">Estado de Resultados</span>
   </div>
-  <div style="flex:1;padding:32px 28px;max-width:1100px;width:100%;margin:0 auto">
+  <div style="flex:1;padding:32px 28px;max-width:1300px;width:100%;margin:0 auto">
 
     <!-- Filtros -->
-    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:28px">
+    <div style="display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap;margin-bottom:28px">
       <div>
-        <label style="font-size:12px;color:#6b7280;display:block;margin-bottom:4px">Local</label>
-        <select id="eerr-rest-sel" onchange="eerrLoad()" style="border:1px solid #e5e7eb;border-radius:8px;padding:6px 12px;font-size:14px;background:#fff"></select>
+        <label style="font-size:12px;color:#6b7280;display:block;margin-bottom:4px">Local (Cierres)</label>
+        <select id="eerr-rest-sel" style="border:1px solid #e5e7eb;border-radius:8px;padding:6px 12px;font-size:14px;background:#fff"></select>
+      </div>
+      <div>
+        <label style="font-size:12px;color:#6b7280;display:block;margin-bottom:4px">Línea de Negocio (Chipax)</label>
+        <select id="eerr-chipax-sel" style="border:1px solid #e5e7eb;border-radius:8px;padding:6px 12px;font-size:14px;background:#fff"><option value="">— Sin seleccionar —</option></select>
       </div>
       <div>
         <label style="font-size:12px;color:#6b7280;display:block;margin-bottom:4px">Año</label>
-        <select id="eerr-year-sel" onchange="eerrLoad()" style="border:1px solid #e5e7eb;border-radius:8px;padding:6px 12px;font-size:14px;background:#fff"></select>
+        <select id="eerr-year-sel" style="border:1px solid #e5e7eb;border-radius:8px;padding:6px 12px;font-size:14px;background:#fff"></select>
       </div>
+      <button class="btn-new" onclick="eerrLoad()" style="margin-bottom:0">Cargar</button>
     </div>
 
+    <div id="eerr-loading" style="display:none;text-align:center;padding:48px;color:#6b7280">Cargando datos...</div>
+
     <!-- Tabla EERR -->
-    <div style="overflow-x:auto">
-      <table id="eerr-table" style="width:100%;border-collapse:collapse;font-size:14px">
-        <thead>
-          <tr style="background:#f9fafb">
-            <th style="text-align:left;padding:10px 14px;border-bottom:2px solid #e5e7eb;font-weight:600;color:#374151;white-space:nowrap">Concepto</th>
-          </tr>
-        </thead>
+    <div id="eerr-table-wrap" style="overflow-x:auto;display:none">
+      <table id="eerr-table" style="width:100%;border-collapse:collapse;font-size:13px;min-width:700px">
+        <thead><tr id="eerr-thead-row" style="background:#f9fafb"></tr></thead>
         <tbody id="eerr-tbody"></tbody>
-        <tfoot id="eerr-tfoot"></tfoot>
       </table>
     </div>
     <div id="eerr-empty" style="display:none;text-align:center;padding:48px;color:#9ca3af">Sin datos para el período seleccionado</div>
@@ -6048,7 +6050,7 @@ async function deleteSection(sectionId, name) {
 let eerrRestaurants = [];
 
 async function eerrInit() {
-  // Poblar selector de locales
+  // Poblar selector de locales (cierres)
   if (!eerrRestaurants.length) {
     try {
       const res  = await apiFetch('/api/restaurants');
@@ -6064,6 +6066,27 @@ async function eerrInit() {
       restSel.appendChild(o);
     });
   }
+
+  // Poblar líneas de negocio Chipax
+  const chipaxSel = document.getElementById('eerr-chipax-sel');
+  if (chipaxSel.options.length <= 1) {
+    try {
+      const res  = await apiFetch('/api/chipax/lineas-negocio');
+      const data = await res.json();
+      const lines = Array.isArray(data) ? data : (data.data || []);
+      lines.sort((a,b) => (a.nombre||'').localeCompare(b.nombre||''));
+      lines.forEach(l => {
+        const o = document.createElement('option');
+        o.value = l.id; o.textContent = l.nombre;
+        chipaxSel.appendChild(o);
+      });
+      // Auto-seleccionar si hay coincidencia de nombre
+      const restName = restSel.options[restSel.selectedIndex]?.text || '';
+      const match = lines.find(l => restName.toLowerCase().includes(l.nombre.toLowerCase()) || l.nombre.toLowerCase().includes(restName.toLowerCase()));
+      if (match) chipaxSel.value = match.id;
+    } catch(e) { console.error('chipax lineas', e); }
+  }
+
   // Poblar selector de año
   const yearSel = document.getElementById('eerr-year-sel');
   if (yearSel.options.length === 0) {
@@ -6074,104 +6097,182 @@ async function eerrInit() {
       yearSel.appendChild(o);
     }
   }
-  eerrLoad();
 }
 
 async function eerrLoad() {
-  const restaurantId = document.getElementById('eerr-rest-sel').value;
-  const year         = document.getElementById('eerr-year-sel').value;
-  if (!restaurantId || !year) return;
+  const restaurantId  = document.getElementById('eerr-rest-sel').value;
+  const lineaNegocioId= document.getElementById('eerr-chipax-sel').value;
+  const year          = document.getElementById('eerr-year-sel').value;
+  if (!year) return;
 
-  const MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  const MESES     = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  const loading   = document.getElementById('eerr-loading');
+  const tableWrap = document.getElementById('eerr-table-wrap');
+  const empty     = document.getElementById('eerr-empty');
+
+  loading.style.display   = 'block';
+  tableWrap.style.display = 'none';
+  empty.style.display     = 'none';
 
   try {
-    const res  = await apiFetch(`/api/cierres/${restaurantId}?all=true`);
-    const data = await res.json();
-    const todos = data.cierres || [];
-    const registros = todos.filter(r => (r.fecha || '').startsWith(year));
+    // Fetch cierres y Chipax en paralelo
+    const promises = [];
+    if (restaurantId) promises.push(
+      apiFetch(`/api/cierres/${restaurantId}?all=true`).then(r=>r.json()).catch(()=>({ cierres:[] }))
+    ); else promises.push(Promise.resolve({ cierres:[] }));
 
-    // Agrupar por mes
-    const byMonth = {}; // { 1: {transbank, efectivo} }
-    registros.forEach(r => {
-      const m = parseInt((r.fecha || '').split('-')[1], 10);
+    if (lineaNegocioId) promises.push(
+      apiFetch(`/api/chipax/ro-datos?lineaNegocioId=${lineaNegocioId}&fechaInicial=${year}-01-01&fechaFinal=${year}-12-31`)
+        .then(r=>r.json()).catch(()=>({ grouped:{} }))
+    ); else promises.push(Promise.resolve({ grouped:{} }));
+
+    const [cierresData, chipaxData] = await Promise.all(promises);
+
+    // ── Cierres: agrupar por mes ──
+    const cierres = (cierresData.cierres || []).filter(r => (r.fecha||'').startsWith(year));
+    const byMonth = {};
+    cierres.forEach(r => {
+      const m = parseInt((r.fecha||'').split('-')[1], 10);
       if (!m) return;
-      if (!byMonth[m]) byMonth[m] = { transbank: 0, efectivo: 0 };
+      if (!byMonth[m]) byMonth[m] = { transbank:0, efectivo:0 };
       byMonth[m].transbank += r.transbank || 0;
       byMonth[m].efectivo  += r.efectivo  || 0;
     });
 
-    const mesesConDatos = Object.keys(byMonth).map(Number).sort((a,b)=>a-b);
-    const table  = document.getElementById('eerr-table');
-    const thead  = table.querySelector('thead tr');
-    const tbody  = document.getElementById('eerr-tbody');
-    const tfoot  = document.getElementById('eerr-tfoot');
-    const empty  = document.getElementById('eerr-empty');
+    // ── Chipax: meses con datos ──
+    const grouped = chipaxData.grouped || {};
+    const chipaxMeses = new Set();
+    Object.values(grouped).forEach(subs => Object.values(subs).forEach(periodos => Object.keys(periodos).forEach(p => {
+      const m = parseInt(p.split('-')[1], 10);
+      if (m) chipaxMeses.add(m);
+    })));
 
-    if (!mesesConDatos.length) {
-      table.style.display = 'none';
-      empty.style.display = 'block';
+    // Unión de meses
+    const todosLosMeses = [...new Set([...Object.keys(byMonth).map(Number), ...chipaxMeses])].sort((a,b)=>a-b);
+
+    if (!todosLosMeses.length) {
+      loading.style.display = 'none';
+      empty.style.display   = 'block';
       return;
     }
-    table.style.display = '';
-    empty.style.display = 'none';
 
-    // Rebuild headers
-    thead.innerHTML = '<th style="text-align:left;padding:10px 14px;border-bottom:2px solid #e5e7eb;font-weight:600;color:#374151;white-space:nowrap">Concepto</th>';
-    let totalTB = 0, totalEf = 0;
-    mesesConDatos.forEach(m => {
+    // ── Helpers ──
+    const fmt = v => {
+      if (!v) return '-';
+      const abs = Math.abs(Math.round(v));
+      return (v < 0 ? '-$' : '$') + abs.toLocaleString('es-CL');
+    };
+    const colSpan = todosLosMeses.length + 2;
+
+    const thead = document.getElementById('eerr-thead-row');
+    const tbody = document.getElementById('eerr-tbody');
+    thead.innerHTML = '';
+    tbody.innerHTML = '';
+
+    // Headers
+    const addTH = (txt, bold) => {
       const th = document.createElement('th');
-      th.style.cssText = 'text-align:right;padding:10px 14px;border-bottom:2px solid #e5e7eb;font-weight:600;color:#374151;white-space:nowrap';
-      th.textContent = MESES[m-1];
+      th.style.cssText = `padding:9px 12px;border-bottom:2px solid #e5e7eb;text-align:right;white-space:nowrap;font-size:12px;color:#374151;${bold?'font-weight:700':'font-weight:500'}`;
+      th.textContent = txt;
       thead.appendChild(th);
-      totalTB += byMonth[m].transbank;
-      totalEf += byMonth[m].efectivo;
-    });
-    const thTotal = document.createElement('th');
-    thTotal.style.cssText = 'text-align:right;padding:10px 14px;border-bottom:2px solid #e5e7eb;font-weight:700;color:#374151;white-space:nowrap;background:#f3f4f6';
-    thTotal.textContent = 'Total';
-    thead.appendChild(thTotal);
+    };
+    const thLabel = document.createElement('th');
+    thLabel.style.cssText = 'padding:9px 12px;border-bottom:2px solid #e5e7eb;text-align:left;white-space:nowrap;font-size:12px;color:#374151;font-weight:600;min-width:200px';
+    thLabel.textContent = 'Concepto';
+    thead.appendChild(thLabel);
+    todosLosMeses.forEach(m => addTH(MESES[m-1]));
+    addTH('Total', true);
 
-    const fmt = v => '$' + Math.round(v).toLocaleString('es-CL');
-
-    const makeRow = (label, vals, total, bold, bg) => {
+    // Row builder
+    const addRow = (label, valsFn, opts = {}) => {
+      const { bold, bg, color, indent, separator } = opts;
       const tr = document.createElement('tr');
+      if (separator) {
+        tr.innerHTML = `<td colspan="${colSpan}" style="padding:6px 0;border-bottom:1px solid #e5e7eb"></td>`;
+        tbody.appendChild(tr); return;
+      }
       if (bg) tr.style.background = bg;
-      const tdLabel = document.createElement('td');
-      tdLabel.style.cssText = `padding:10px 14px;border-bottom:1px solid #f3f4f6;${bold?'font-weight:700':''}`;
-      tdLabel.textContent = label;
-      tr.appendChild(tdLabel);
+      const vals = todosLosMeses.map(m => valsFn(m));
+      const total = vals.reduce((a,b) => a+b, 0);
+      const tdL = document.createElement('td');
+      tdL.style.cssText = `padding:8px 12px;border-bottom:1px solid #f3f4f6;${indent?'padding-left:28px':''}${bold?';font-weight:700':''}${color?`;color:${color}`:''}`;
+      tdL.textContent = label;
+      tr.appendChild(tdL);
       vals.forEach(v => {
         const td = document.createElement('td');
-        td.style.cssText = `text-align:right;padding:10px 14px;border-bottom:1px solid #f3f4f6;${bold?'font-weight:700':''}`;
+        td.style.cssText = `text-align:right;padding:8px 12px;border-bottom:1px solid #f3f4f6;${bold?'font-weight:700':''}${color?`;color:${color}`:''}`;
         td.textContent = fmt(v);
         tr.appendChild(td);
       });
       const tdT = document.createElement('td');
-      tdT.style.cssText = `text-align:right;padding:10px 14px;border-bottom:1px solid #f3f4f6;font-weight:700;background:#f3f4f6`;
+      tdT.style.cssText = `text-align:right;padding:8px 12px;border-bottom:1px solid #f3f4f6;font-weight:700;background:#f9fafb${color?`;color:${color}`:''}`;
       tdT.textContent = fmt(total);
       tr.appendChild(tdT);
-      return tr;
+      tbody.appendChild(tr);
+      return total;
     };
 
-    tbody.innerHTML = '';
-    tfoot.innerHTML = '';
+    // Chipax helper: sumar todos los sub de una categoría
+    const chipaxCatMes = (cat, m) => {
+      const per = `${year}-${String(m).padStart(2,'0')}`;
+      const subs = grouped[cat] || {};
+      return -Object.values(subs).reduce((acc, periodos) => acc + (periodos[per] || 0), 0);
+    };
+    const chipaxSubMes = (cat, sub, m) => {
+      const per = `${year}-${String(m).padStart(2,'0')}`;
+      return -((grouped[cat]?.[sub]?.[per]) || 0);
+    };
 
-    const tbVals  = mesesConDatos.map(m => byMonth[m].transbank);
-    const efVals  = mesesConDatos.map(m => byMonth[m].efectivo);
-    const netVals = mesesConDatos.map(m => byMonth[m].transbank / 1.19 + byMonth[m].efectivo);
-    const netTotal = totalTB / 1.19 + totalEf;
+    // ── INGRESOS NETO ──
+    addRow('Ingresos Neto', m => (byMonth[m]?.transbank||0)/1.19 + (byMonth[m]?.efectivo||0), { bold:true, bg:'#f0fdf4', color:'#166534' });
+    addRow('Transbank (sin IVA)', m => (byMonth[m]?.transbank||0)/1.19, { indent:true });
+    addRow('Efectivo', m => byMonth[m]?.efectivo||0, { indent:true });
+    addRow('', null, { separator:true });
 
-    tbody.appendChild(makeRow('Transbank',     tbVals,  totalTB,  false));
-    tbody.appendChild(makeRow('Efectivo',      efVals,  totalEf,  false));
+    // ── COSTOS ──
+    const costCats = Object.keys(grouped).filter(c =>
+      ['Costos de Insumos','Remodelación / Reparación','Remodelación/Reparación','Costos de Explotación'].some(x => c.includes(x.split('/')[0].trim()))
+    );
+    if (costCats.length) {
+      addRow('Total Costos', m => costCats.reduce((s,c) => s + chipaxCatMes(c,m), 0), { bold:true, bg:'#fef2f2', color:'#991b1b' });
+      costCats.forEach(cat => {
+        addRow(cat, m => chipaxCatMes(cat, m), { bold:false, bg:'#fef2f2', color:'#b91c1c' });
+        const subs = Object.keys(grouped[cat] || {}).sort();
+        subs.forEach(sub => addRow(sub, m => chipaxSubMes(cat, sub, m), { indent:true, color:'#dc2626' }));
+      });
+      addRow('', null, { separator:true });
+    }
 
-    const trSep = document.createElement('tr');
-    trSep.innerHTML = `<td colspan="${mesesConDatos.length + 2}" style="padding:4px"></td>`;
-    tbody.appendChild(trSep);
+    // ── GASTOS ──
+    const gastoCats = Object.keys(grouped).filter(c =>
+      ['Administración y Venta','Egresos Fuera'].some(x => c.includes(x))
+    );
+    if (gastoCats.length) {
+      addRow('Total Gastos', m => gastoCats.reduce((s,c) => s + chipaxCatMes(c,m), 0), { bold:true, bg:'#fff7ed', color:'#9a3412' });
+      gastoCats.forEach(cat => {
+        addRow(cat, m => chipaxCatMes(cat, m), { bold:false, bg:'#fff7ed', color:'#c2410c' });
+        const subs = Object.keys(grouped[cat] || {}).sort();
+        subs.forEach(sub => addRow(sub, m => chipaxSubMes(cat, sub, m), { indent:true, color:'#ea580c' }));
+      });
+      addRow('', null, { separator:true });
+    }
 
-    tfoot.appendChild(makeRow('Ingreso Neto', netVals, netTotal, true, '#eff6ff'));
+    // ── RESULTADO OPERACIONAL ──
+    const allCats = Object.keys(grouped);
+    addRow('Resultado Operacional', m => {
+      const ingrNeto   = (byMonth[m]?.transbank||0)/1.19 + (byMonth[m]?.efectivo||0);
+      const totalCosts = allCats.reduce((s,c) => s + chipaxCatMes(c,m), 0);
+      return ingrNeto + totalCosts; // costs ya son negativos
+    }, { bold:true, bg:'#eff6ff', color:'#1e40af' });
+
+    loading.style.display   = 'none';
+    tableWrap.style.display = 'block';
 
   } catch(e) {
     console.error('eerrLoad error:', e);
+    loading.style.display = 'none';
+    empty.textContent     = 'Error al cargar: ' + e.message;
+    empty.style.display   = 'block';
   }
 }
 

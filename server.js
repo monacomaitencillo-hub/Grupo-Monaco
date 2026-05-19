@@ -11,6 +11,37 @@ const Anthropic      = require('@anthropic-ai/sdk');
 const XLSX           = require('xlsx');
 const { GoogleAuth } = require('google-auth-library');
 
+// ── Chipax ────────────────────────────────────────────────
+const CHIPAX_APP_ID     = process.env.CHIPAX_APP_ID     || '';
+const CHIPAX_SECRET_KEY = process.env.CHIPAX_SECRET_KEY || '';
+const CHIPAX_BASE       = 'https://api.chipax.com/v2';
+let chipaxTokenCache    = null; // { token, expiresAt }
+
+async function chipaxToken() {
+  if (chipaxTokenCache && chipaxTokenCache.expiresAt > Date.now() + 60000) {
+    return chipaxTokenCache.token;
+  }
+  const r = await fetch(`${CHIPAX_BASE}/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ app_id: CHIPAX_APP_ID, secret_key: CHIPAX_SECRET_KEY }),
+  });
+  if (!r.ok) throw new Error(`Chipax login error ${r.status}`);
+  const d = await r.json();
+  const token = d.token || d.message;
+  chipaxTokenCache = { token, expiresAt: Date.now() + 23 * 60 * 60 * 1000 }; // 23h
+  return token;
+}
+
+async function chipaxGet(path) {
+  const token = await chipaxToken();
+  const r = await fetch(`${CHIPAX_BASE}${path}`, {
+    headers: { Authorization: `JWT ${token}` },
+  });
+  if (!r.ok) throw new Error(`Chipax GET ${path} error ${r.status}: ${await r.text()}`);
+  return r.json();
+}
+
 const GOOGLE_SHEET_ID = process.env.GOOGLE_SHEET_ID || '';
 const GOOGLE_SA       = process.env.GOOGLE_SERVICE_ACCOUNT ? JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT) : null;
 
@@ -2923,6 +2954,73 @@ Cuando necesites datos, usá las herramientas disponibles. Respondé siempre en 
     res.json({ response: text, history: cleanHistory });
   } catch (e) {
     console.error('Agent error:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── Chipax endpoints ──────────────────────────────────────
+app.get('/api/chipax/lineas-negocio', requireAuth, async (req, res) => {
+  try {
+    const data = await chipaxGet('/lineas-negocio');
+    res.json(data);
+  } catch(e) {
+    console.error('chipax lineas-negocio:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Cache RO y cuentas
+const chipaxROCache    = {};
+let   chipaxCuentasCache = null;
+
+async function getChipaxCuentas() {
+  if (chipaxCuentasCache) return chipaxCuentasCache;
+  const tree   = await chipaxGet('/cuentas/tree');
+  const nodes  = tree.data || tree;
+  // Aplanar árbol: { cuentaId → { nombre, padre } }
+  const map = {};
+  function flatten(node, parentName) {
+    if (node.id && node.id !== 1) {
+      map[node.id] = { nombre: node.name, padre: parentName || null };
+    }
+    (node.children || []).forEach(c => flatten(c, node.id === 1 ? null : node.name));
+  }
+  (Array.isArray(nodes) ? nodes : [nodes]).forEach(n => flatten(n, null));
+  chipaxCuentasCache = map;
+  return map;
+}
+
+app.get('/api/chipax/ro-datos', requireAuth, async (req, res) => {
+  const { lineaNegocioId, fechaInicial, fechaFinal } = req.query;
+  if (!fechaInicial || !fechaFinal) return res.status(400).json({ error: 'Faltan fechaInicial y fechaFinal' });
+  const cacheKey = `${lineaNegocioId||'0'}_${fechaInicial}_${fechaFinal}`;
+  const cached   = chipaxROCache[cacheKey];
+  if (cached && cached.cachedAt > Date.now() - 10 * 60 * 1000) {
+    return res.json(cached.data);
+  }
+  try {
+    const qs      = `fechaInicial=${fechaInicial}&fechaFinal=${fechaFinal}${lineaNegocioId ? `&lineaNegocioId=${lineaNegocioId}` : ''}`;
+    const [roData, cuentas] = await Promise.all([chipaxGet(`/ro-datos?${qs}`), getChipaxCuentas()]);
+    const egresos = (roData.data || roData || []).filter(r => r.tipoMovimiento === 'Egreso');
+
+    // Agrupar por categoria (padre) → subcategoria → periodo → suma montoTotal abs
+    const grouped = {}; // { categoria: { sub: { periodo: monto } } }
+    egresos.forEach(r => {
+      const cuenta = cuentas[r.cuentaId] || {};
+      const sub    = cuenta.nombre || 'Sin clasificar';
+      const cat    = cuenta.padre  || 'Otros';
+      const per    = r.periodo || r.fecha?.slice(0, 7) || 'N/A';
+      const monto  = Math.abs(r.montoTotal || r.montoNeto || 0);
+      if (!grouped[cat]) grouped[cat] = {};
+      if (!grouped[cat][sub]) grouped[cat][sub] = {};
+      grouped[cat][sub][per] = (grouped[cat][sub][per] || 0) + monto;
+    });
+
+    const result = { grouped, raw: egresos };
+    chipaxROCache[cacheKey] = { data: result, cachedAt: Date.now() };
+    res.json(result);
+  } catch(e) {
+    console.error('chipax ro-datos:', e.message);
     res.status(500).json({ error: e.message });
   }
 });
