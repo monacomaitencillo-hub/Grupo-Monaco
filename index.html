@@ -972,6 +972,61 @@
 </div>
 
 <!-- ── REUNIONES MODULE ── -->
+<!-- ── PEDIDOS DE COMPRA ── -->
+<div id="orden-compra-module" style="display:none;flex-direction:column;min-height:100vh">
+  <div class="inv-topbar">
+    <span style="font-size:14px;font-weight:600;color:#fff">Pedidos</span>
+  </div>
+  <div style="flex:1;padding:32px 28px;max-width:860px;width:100%;margin:0 auto">
+    <div style="background:#fff;border:1px solid #e9ecef;border-radius:14px;padding:24px;margin-bottom:24px">
+      <div style="font-size:16px;font-weight:700;color:#212529;margin-bottom:16px">Analizar pedido de WhatsApp</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+        <div>
+          <div class="field-label">Local</div>
+          <select id="oc-rest" class="inv-input">
+            <option value="">— Seleccionar local —</option>
+          </select>
+        </div>
+        <div>
+          <div class="field-label">Trabajador (opcional)</div>
+          <input id="oc-worker" class="inv-input" placeholder="Ej: María">
+        </div>
+      </div>
+      <div style="margin-bottom:14px">
+        <div class="field-label">Pega el texto del pedido</div>
+        <textarea id="oc-text" rows="6" placeholder="Pega aquí el mensaje de WhatsApp con el pedido..."
+          style="width:100%;padding:10px 12px;border:1px solid #dee2e6;border-radius:8px;font-size:13px;color:#212529;resize:vertical;outline:none;font-family:inherit;box-sizing:border-box"></textarea>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <button onclick="ocAnalizar()" id="oc-btn"
+          style="background:#ff5023;color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:14px;font-weight:600;cursor:pointer">
+          Analizar pedido
+        </button>
+        <span id="oc-msg" style="font-size:13px;color:#6c757d"></span>
+      </div>
+    </div>
+    <div id="oc-result" style="display:none">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div style="font-size:15px;font-weight:700;color:#212529">Resultado</div>
+        <div id="oc-result-meta" style="font-size:12px;color:#6c757d"></div>
+      </div>
+      <div style="background:#fff;border:1px solid #e9ecef;border-radius:12px;overflow:hidden">
+        <table style="width:100%;border-collapse:collapse;font-size:13px">
+          <thead>
+            <tr style="background:#f8f9fa">
+              <th style="padding:12px 16px;text-align:left;font-weight:600;color:#495057;font-size:11px;text-transform:uppercase;letter-spacing:.4px">Producto</th>
+              <th style="padding:12px 16px;text-align:right;font-weight:600;color:#495057;font-size:11px;text-transform:uppercase;letter-spacing:.4px">Pedido</th>
+              <th style="padding:12px 16px;text-align:right;font-weight:600;color:#495057;font-size:11px;text-transform:uppercase;letter-spacing:.4px">Stock actual</th>
+              <th style="padding:12px 16px;text-align:center;font-weight:600;color:#495057;font-size:11px;text-transform:uppercase;letter-spacing:.4px">En sistema</th>
+            </tr>
+          </thead>
+          <tbody id="oc-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ── GDD MODULE ── -->
 <div id="gdd-module" style="display:none;flex-direction:column;min-height:100vh">
   <div class="inv-topbar">
@@ -1448,7 +1503,7 @@ async function doLogout() {
   document.getElementById('login-screen').style.display = 'flex';
 }
 
-const ALL_MODULES_EL = ['hub','dashboard','inventario','registro-inv-module','add-stock-module','cierres-module','pdf-upload-module','pdf-view-module','usuarios-module','pedidos-module','reuniones-module','gdd-module','margenes-module'];
+const ALL_MODULES_EL = ['hub','dashboard','inventario','registro-inv-module','add-stock-module','cierres-module','pdf-upload-module','pdf-view-module','usuarios-module','pedidos-module','reuniones-module','gdd-module','margenes-module','orden-compra-module'];
 function hideAll() { ALL_MODULES_EL.forEach(id => { const el = document.getElementById(id); if(el) el.style.display = 'none'; }); }
 // Note: hideAll() does NOT hide #admin-wrapper — goToHub() handles that separately
 
@@ -1464,7 +1519,7 @@ function goTo(module) {
     ventas: 'Ventas', stock: 'Añadir stock', inventario: 'Gestión de Clientes y Proveedor',
     'registro-inv': 'Registro de Inventarios', cierres: 'Cierres de caja', pedidos: 'Pedidos Helados',
     'pdf-upload': 'Añadir PDF', 'pdf-view': 'Ver Manual', usuarios: 'Usuarios', reuniones: 'Reuniones',
-    gdd: 'Guías de Despacho', margenes: 'Márgenes'
+    gdd: 'Guías de Despacho', margenes: 'Márgenes', 'orden-compra': 'Pedidos'
   };
   const titleEl = document.getElementById('admin-topbar-title');
   if (titleEl) titleEl.textContent = moduleNames[module] || module;
@@ -1522,6 +1577,9 @@ function goTo(module) {
   } else if (module === 'margenes') {
     document.getElementById('margenes-module').style.display = 'flex';
     initMargenesModule();
+  } else if (module === 'orden-compra') {
+    document.getElementById('orden-compra-module').style.display = 'flex';
+    ocInit();
   }
 }
 
@@ -2884,6 +2942,7 @@ function renderAdminSidebar() {
     { id: 'reuniones',    icon: 'fas fa-users',           name: 'Reuniones',                   adminOnly: false },
     { id: 'gdd',          icon: 'fas fa-file-invoice',    name: 'Guías de Despacho',           adminOnly: false },
     { id: 'margenes',     icon: 'fas fa-percentage',      name: 'Márgenes',                    adminOnly: false },
+    { id: 'orden-compra', icon: 'fas fa-cart-plus',       name: 'Pedidos',                     adminOnly: false },
     { id: 'pdf-upload',   icon: 'fas fa-file-upload',     name: 'Añadir PDF',                  adminOnly: true  },
     { id: 'pdf-view',     icon: 'fas fa-book',            name: 'Ver Manual',                  adminOnly: false },
     { id: 'usuarios',     icon: 'fas fa-user-cog',        name: 'Usuarios',                    adminOnly: true  },
@@ -2955,6 +3014,7 @@ function renderSidebar() {
     { id: 'reuniones',     icon: '📋', name: 'Reuniones',                     bg: 'linear-gradient(135deg,#5b6af0,#7c8cf8)', adminOnly: false },
     { id: 'gdd',           icon: '📦', name: 'Guías de Despacho',             bg: 'linear-gradient(135deg,#0e7490,#06b6d4)', adminOnly: false },
     { id: 'margenes',      icon: '📐', name: 'Márgenes',                      bg: 'linear-gradient(135deg,#7c3aed,#a855f7)', adminOnly: false },
+    { id: 'orden-compra',  icon: '🛍️', name: 'Pedidos',                       bg: 'linear-gradient(135deg,#0f766e,#14b8a6)', adminOnly: false },
     { id: 'usuarios',      icon: '👥', name: 'Usuarios',                      bg: 'linear-gradient(135deg,#c95e6b,#e07585)', adminOnly: true  },
   ];
   const visible = allModules.filter(m => {
@@ -2990,6 +3050,7 @@ function renderHub() {
     { id: 'reuniones',     icon: '📋', name: 'Reuniones',                     bg: 'linear-gradient(135deg,#5b6af0,#7c8cf8)', adminOnly: false },
     { id: 'gdd',           icon: '📦', name: 'Guías de Despacho',             bg: 'linear-gradient(135deg,#0e7490,#06b6d4)', adminOnly: false },
     { id: 'margenes',      icon: '📐', name: 'Márgenes',                      bg: 'linear-gradient(135deg,#7c3aed,#a855f7)', adminOnly: false },
+    { id: 'orden-compra',  icon: '🛍️', name: 'Pedidos',                       bg: 'linear-gradient(135deg,#0f766e,#14b8a6)', adminOnly: false },
     { id: 'usuarios',      icon: '👥', name: 'Usuarios',                      bg: 'linear-gradient(135deg,#c95e6b,#e07585)', adminOnly: true  },
   ];
   const visible = allModules.filter(m => {
@@ -5920,6 +5981,67 @@ async function deleteSection(sectionId, name) {
   reunSections = reunSections.filter(s => s.id !== sectionId);
   renderSectionsList();
   document.getElementById('reun-pages-list').innerHTML = '';
+}
+
+// ── Pedidos de Compra ───────────────────────────────────
+function ocInit() {
+  const sel = document.getElementById('oc-rest');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">— Seleccionar local —</option>' +
+    restaurants.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
+}
+
+async function ocAnalizar() {
+  const restaurantId = document.getElementById('oc-rest').value;
+  const text         = document.getElementById('oc-text').value.trim();
+  const worker       = document.getElementById('oc-worker').value.trim();
+  const btn          = document.getElementById('oc-btn');
+  const msg          = document.getElementById('oc-msg');
+  if (!restaurantId) { msg.style.color='#ef4444'; msg.textContent='Selecciona un local.'; return; }
+  if (!text)         { msg.style.color='#ef4444'; msg.textContent='Pega el texto del pedido.'; return; }
+
+  btn.disabled = true; btn.textContent = 'Analizando...';
+  msg.style.color = '#6c757d'; msg.textContent = 'Claude está procesando el pedido...';
+
+  try {
+    const res  = await apiFetch('/api/orden-compra/parse', { method:'POST', body: JSON.stringify({ text, restaurantId }) });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    ocRenderResult(data.items, worker);
+  } catch(e) {
+    msg.style.color = '#ef4444'; msg.textContent = 'Error: ' + e.message;
+  } finally {
+    btn.disabled = false; btn.textContent = 'Analizar pedido';
+  }
+}
+
+function ocRenderResult(items, worker) {
+  const resultEl = document.getElementById('oc-result');
+  const tbody    = document.getElementById('oc-tbody');
+  const meta     = document.getElementById('oc-result-meta');
+  const msg      = document.getElementById('oc-msg');
+
+  const restName = document.getElementById('oc-rest').selectedOptions[0]?.text || '';
+  meta.textContent = `${restName}${worker ? ' · ' + worker : ''} · ${items.length} producto${items.length!==1?'s':''}`;
+  msg.textContent = '';
+
+  tbody.innerHTML = items.map(item => {
+    const stockTxt = item.stockActual !== null
+      ? `${item.stockActual} ${item.unidad || ''}`
+      : '<span style="color:#adb5bd">sin registro</span>';
+    const badgeColor = item.enInventario ? '#d1fae5' : '#fef3c7';
+    const badgeText  = item.enInventario ? '<span style="color:#065f46">✓ sí</span>' : '<span style="color:#92400e">— no</span>';
+    return `<tr style="border-top:1px solid #f1f3f4">
+      <td style="padding:12px 16px;font-weight:500;color:#212529">${item.producto}</td>
+      <td style="padding:12px 16px;text-align:right;color:#212529">${item.cantidadPedida} ${item.unidad||''}</td>
+      <td style="padding:12px 16px;text-align:right;color:#6c757d">${stockTxt}</td>
+      <td style="padding:12px 16px;text-align:center">
+        <span style="background:${badgeColor};border-radius:6px;padding:2px 8px;font-size:12px">${badgeText}</span>
+      </td>
+    </tr>`;
+  }).join('');
+
+  resultEl.style.display = '';
 }
 
 // ── GDD: Guías de Despacho ──────────────────────────────
