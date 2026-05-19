@@ -837,6 +837,41 @@
   </div>
 </div>
 
+<!-- ── EERR ── -->
+<div id="eerr-module" style="display:none;flex-direction:column;min-height:100vh">
+  <div class="inv-topbar">
+    <span style="font-size:14px;font-weight:600;color:#fff">Estado de Resultados</span>
+  </div>
+  <div style="flex:1;padding:32px 28px;max-width:1100px;width:100%;margin:0 auto">
+
+    <!-- Filtros -->
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:28px">
+      <div>
+        <label style="font-size:12px;color:#6b7280;display:block;margin-bottom:4px">Local</label>
+        <select id="eerr-rest-sel" onchange="eerrLoad()" style="border:1px solid #e5e7eb;border-radius:8px;padding:6px 12px;font-size:14px;background:#fff"></select>
+      </div>
+      <div>
+        <label style="font-size:12px;color:#6b7280;display:block;margin-bottom:4px">Año</label>
+        <select id="eerr-year-sel" onchange="eerrLoad()" style="border:1px solid #e5e7eb;border-radius:8px;padding:6px 12px;font-size:14px;background:#fff"></select>
+      </div>
+    </div>
+
+    <!-- Tabla EERR -->
+    <div style="overflow-x:auto">
+      <table id="eerr-table" style="width:100%;border-collapse:collapse;font-size:14px">
+        <thead>
+          <tr style="background:#f9fafb">
+            <th style="text-align:left;padding:10px 14px;border-bottom:2px solid #e5e7eb;font-weight:600;color:#374151;white-space:nowrap">Concepto</th>
+          </tr>
+        </thead>
+        <tbody id="eerr-tbody"></tbody>
+        <tfoot id="eerr-tfoot"></tfoot>
+      </table>
+    </div>
+    <div id="eerr-empty" style="display:none;text-align:center;padding:48px;color:#9ca3af">Sin datos para el período seleccionado</div>
+  </div>
+</div>
+
 <!-- ── CIERRES DE CAJA ── -->
 <div id="cierres-module" style="display:none;flex-direction:column;min-height:100vh">
   <div class="inv-topbar">
@@ -1504,7 +1539,7 @@ async function doLogout() {
   document.getElementById('login-screen').style.display = 'flex';
 }
 
-const ALL_MODULES_EL = ['hub','dashboard','inventario','registro-inv-module','add-stock-module','cierres-module','pdf-upload-module','pdf-view-module','usuarios-module','pedidos-module','reuniones-module','gdd-module','margenes-module','orden-compra-module'];
+const ALL_MODULES_EL = ['hub','dashboard','inventario','registro-inv-module','add-stock-module','cierres-module','pdf-upload-module','pdf-view-module','usuarios-module','pedidos-module','reuniones-module','gdd-module','margenes-module','orden-compra-module','eerr-module'];
 function hideAll() { ALL_MODULES_EL.forEach(id => { const el = document.getElementById(id); if(el) el.style.display = 'none'; }); }
 // Note: hideAll() does NOT hide #admin-wrapper — goToHub() handles that separately
 
@@ -1520,7 +1555,7 @@ function goTo(module) {
     ventas: 'Ventas', stock: 'Añadir stock', inventario: 'Gestión de Clientes y Proveedor',
     'registro-inv': 'Registro de Inventarios', cierres: 'Cierres de caja', pedidos: 'Pedidos Helados',
     'pdf-upload': 'Añadir PDF', 'pdf-view': 'Ver Manual', usuarios: 'Usuarios', reuniones: 'Reuniones',
-    gdd: 'Guías de Despacho', margenes: 'Márgenes', 'orden-compra': 'Pedidos'
+    gdd: 'Guías de Despacho', margenes: 'Márgenes', 'orden-compra': 'Pedidos', eerr: 'EERR'
   };
   const titleEl = document.getElementById('admin-topbar-title');
   if (titleEl) titleEl.textContent = moduleNames[module] || module;
@@ -1581,6 +1616,9 @@ function goTo(module) {
   } else if (module === 'orden-compra') {
     document.getElementById('orden-compra-module').style.display = 'flex';
     ocInit();
+  } else if (module === 'eerr') {
+    document.getElementById('eerr-module').style.display = 'flex';
+    eerrInit();
   }
 }
 
@@ -2944,6 +2982,7 @@ function renderAdminSidebar() {
     { id: 'gdd',          icon: 'fas fa-file-invoice',    name: 'Guías de Despacho',           adminOnly: false },
     { id: 'margenes',     icon: 'fas fa-percentage',      name: 'Márgenes',                    adminOnly: false },
     { id: 'orden-compra', icon: 'fas fa-cart-plus',       name: 'Pedidos',                     adminOnly: false },
+    { id: 'eerr',         icon: 'fas fa-chart-line',      name: 'EERR',                        adminOnly: false },
     { id: 'pdf-upload',   icon: 'fas fa-file-upload',     name: 'Añadir PDF',                  adminOnly: true  },
     { id: 'pdf-view',     icon: 'fas fa-book',            name: 'Ver Manual',                  adminOnly: false },
     { id: 'usuarios',     icon: 'fas fa-user-cog',        name: 'Usuarios',                    adminOnly: true  },
@@ -3016,6 +3055,7 @@ function renderSidebar() {
     { id: 'gdd',           icon: '📦', name: 'Guías de Despacho',             bg: 'linear-gradient(135deg,#0e7490,#06b6d4)', adminOnly: false },
     { id: 'margenes',      icon: '📐', name: 'Márgenes',                      bg: 'linear-gradient(135deg,#7c3aed,#a855f7)', adminOnly: false },
     { id: 'orden-compra',  icon: '🛍️', name: 'Pedidos',                       bg: 'linear-gradient(135deg,#0f766e,#14b8a6)', adminOnly: false },
+    { id: 'eerr',          icon: '📊', name: 'EERR',                          bg: 'linear-gradient(135deg,#1d4ed8,#3b82f6)', adminOnly: false },
     { id: 'usuarios',      icon: '👥', name: 'Usuarios',                      bg: 'linear-gradient(135deg,#c95e6b,#e07585)', adminOnly: true  },
   ];
   const visible = allModules.filter(m => {
@@ -3052,6 +3092,7 @@ function renderHub() {
     { id: 'gdd',           icon: '📦', name: 'Guías de Despacho',             bg: 'linear-gradient(135deg,#0e7490,#06b6d4)', adminOnly: false },
     { id: 'margenes',      icon: '📐', name: 'Márgenes',                      bg: 'linear-gradient(135deg,#7c3aed,#a855f7)', adminOnly: false },
     { id: 'orden-compra',  icon: '🛍️', name: 'Pedidos',                       bg: 'linear-gradient(135deg,#0f766e,#14b8a6)', adminOnly: false },
+    { id: 'eerr',          icon: '📊', name: 'EERR',                          bg: 'linear-gradient(135deg,#1d4ed8,#3b82f6)', adminOnly: false },
     { id: 'usuarios',      icon: '👥', name: 'Usuarios',                      bg: 'linear-gradient(135deg,#c95e6b,#e07585)', adminOnly: true  },
   ];
   const visible = allModules.filter(m => {
@@ -6001,6 +6042,137 @@ async function deleteSection(sectionId, name) {
   reunSections = reunSections.filter(s => s.id !== sectionId);
   renderSectionsList();
   document.getElementById('reun-pages-list').innerHTML = '';
+}
+
+// ── EERR ─────────────────────────────────────────────────
+let eerrRestaurants = [];
+
+async function eerrInit() {
+  // Poblar selector de locales
+  if (!eerrRestaurants.length) {
+    try {
+      const res  = await apiFetch('/api/restaurants');
+      const data = await res.json();
+      eerrRestaurants = data.restaurants || data || [];
+    } catch(e) { eerrRestaurants = []; }
+  }
+  const restSel = document.getElementById('eerr-rest-sel');
+  if (restSel.options.length === 0) {
+    eerrRestaurants.forEach(r => {
+      const o = document.createElement('option');
+      o.value = r.id; o.textContent = r.name;
+      restSel.appendChild(o);
+    });
+  }
+  // Poblar selector de año
+  const yearSel = document.getElementById('eerr-year-sel');
+  if (yearSel.options.length === 0) {
+    const cur = new Date().getFullYear();
+    for (let y = cur; y >= cur - 3; y--) {
+      const o = document.createElement('option');
+      o.value = y; o.textContent = y;
+      yearSel.appendChild(o);
+    }
+  }
+  eerrLoad();
+}
+
+async function eerrLoad() {
+  const restaurantId = document.getElementById('eerr-rest-sel').value;
+  const year         = document.getElementById('eerr-year-sel').value;
+  if (!restaurantId || !year) return;
+
+  const MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+
+  try {
+    const res  = await apiFetch(`/api/cierres/${restaurantId}?all=true`);
+    const data = await res.json();
+    const todos = data.cierres || [];
+    const registros = todos.filter(r => (r.fecha || '').startsWith(year));
+
+    // Agrupar por mes
+    const byMonth = {}; // { 1: {transbank, efectivo} }
+    registros.forEach(r => {
+      const m = parseInt((r.fecha || '').split('-')[1], 10);
+      if (!m) return;
+      if (!byMonth[m]) byMonth[m] = { transbank: 0, efectivo: 0 };
+      byMonth[m].transbank += r.transbank || 0;
+      byMonth[m].efectivo  += r.efectivo  || 0;
+    });
+
+    const mesesConDatos = Object.keys(byMonth).map(Number).sort((a,b)=>a-b);
+    const table  = document.getElementById('eerr-table');
+    const thead  = table.querySelector('thead tr');
+    const tbody  = document.getElementById('eerr-tbody');
+    const tfoot  = document.getElementById('eerr-tfoot');
+    const empty  = document.getElementById('eerr-empty');
+
+    if (!mesesConDatos.length) {
+      table.style.display = 'none';
+      empty.style.display = 'block';
+      return;
+    }
+    table.style.display = '';
+    empty.style.display = 'none';
+
+    // Rebuild headers
+    thead.innerHTML = '<th style="text-align:left;padding:10px 14px;border-bottom:2px solid #e5e7eb;font-weight:600;color:#374151;white-space:nowrap">Concepto</th>';
+    let totalTB = 0, totalEf = 0;
+    mesesConDatos.forEach(m => {
+      const th = document.createElement('th');
+      th.style.cssText = 'text-align:right;padding:10px 14px;border-bottom:2px solid #e5e7eb;font-weight:600;color:#374151;white-space:nowrap';
+      th.textContent = MESES[m-1];
+      thead.appendChild(th);
+      totalTB += byMonth[m].transbank;
+      totalEf += byMonth[m].efectivo;
+    });
+    const thTotal = document.createElement('th');
+    thTotal.style.cssText = 'text-align:right;padding:10px 14px;border-bottom:2px solid #e5e7eb;font-weight:700;color:#374151;white-space:nowrap;background:#f3f4f6';
+    thTotal.textContent = 'Total';
+    thead.appendChild(thTotal);
+
+    const fmt = v => '$' + Math.round(v).toLocaleString('es-CL');
+
+    const makeRow = (label, vals, total, bold, bg) => {
+      const tr = document.createElement('tr');
+      if (bg) tr.style.background = bg;
+      const tdLabel = document.createElement('td');
+      tdLabel.style.cssText = `padding:10px 14px;border-bottom:1px solid #f3f4f6;${bold?'font-weight:700':''}`;
+      tdLabel.textContent = label;
+      tr.appendChild(tdLabel);
+      vals.forEach(v => {
+        const td = document.createElement('td');
+        td.style.cssText = `text-align:right;padding:10px 14px;border-bottom:1px solid #f3f4f6;${bold?'font-weight:700':''}`;
+        td.textContent = fmt(v);
+        tr.appendChild(td);
+      });
+      const tdT = document.createElement('td');
+      tdT.style.cssText = `text-align:right;padding:10px 14px;border-bottom:1px solid #f3f4f6;font-weight:700;background:#f3f4f6`;
+      tdT.textContent = fmt(total);
+      tr.appendChild(tdT);
+      return tr;
+    };
+
+    tbody.innerHTML = '';
+    tfoot.innerHTML = '';
+
+    const tbVals  = mesesConDatos.map(m => byMonth[m].transbank);
+    const efVals  = mesesConDatos.map(m => byMonth[m].efectivo);
+    const netVals = mesesConDatos.map(m => byMonth[m].transbank / 1.19 + byMonth[m].efectivo);
+    const netTotal = totalTB / 1.19 + totalEf;
+
+    tbody.appendChild(makeRow('Transbank',     tbVals,  totalTB,  false));
+    tbody.appendChild(makeRow('Efectivo',      efVals,  totalEf,  false));
+
+    const trSep = document.createElement('tr');
+    trSep.innerHTML = `<td colspan="${mesesConDatos.length + 2}" style="padding:4px"></td>`;
+    tbody.appendChild(trSep);
+
+    tfoot.appendChild(makeRow('Ingreso Neto', netVals, netTotal, true, '#eff6ff'));
+
+  } catch(e) {
+    console.error('eerrLoad error:', e);
+  }
 }
 
 // ── Pedidos de Compra ───────────────────────────────────
