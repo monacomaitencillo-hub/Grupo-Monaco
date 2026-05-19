@@ -9,15 +9,20 @@ const path           = require('path');
 const { randomUUID } = require('crypto');
 const Anthropic      = require('@anthropic-ai/sdk');
 const XLSX           = require('xlsx');
-const { google }     = require('googleapis');
+const { GoogleAuth } = require('google-auth-library');
 
 const GOOGLE_SHEET_ID = process.env.GOOGLE_SHEET_ID || '';
 const GOOGLE_SA       = process.env.GOOGLE_SERVICE_ACCOUNT ? JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT) : null;
 
-function getSheetsClient() {
+async function getSheetsRows(range) {
   if (!GOOGLE_SA) throw new Error('GOOGLE_SERVICE_ACCOUNT no configurada');
-  const auth = new google.auth.GoogleAuth({ credentials: GOOGLE_SA, scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'] });
-  return google.sheets({ version: 'v4', auth });
+  const auth = new GoogleAuth({ credentials: GOOGLE_SA, scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'] });
+  const token = await auth.getAccessToken();
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEET_ID}/values/${encodeURIComponent(range)}`;
+  const resp = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  if (!resp.ok) { const t = await resp.text(); throw new Error(`Sheets API error ${resp.status}: ${t}`); }
+  const data = await resp.json();
+  return data.values || [];
 }
 
 const ANTHROPIC_API_KEY = (process.env.ANTHROPIC_API_KEY || '').trim();
@@ -1737,12 +1742,7 @@ app.delete('/api/cierres/:id', requireAuth, async (req, res) => {
 app.post('/api/cierres/sync-sheets', requireAuth, async (req, res) => {
   if (!await isEditor(req.uid)) return res.status(403).json({ error: 'Sin permisos' });
   try {
-    const sheets = getSheetsClient();
-    const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: GOOGLE_SHEET_ID,
-      range: 'Respuestas Actualizada!A:Q',
-    });
-    const rows = response.data.values || [];
+    const rows = await getSheetsRows('Respuestas Actualizada!A:Q');
     if (rows.length < 2) return res.json({ ok: true, inserted: 0, updated: 0, skipped: 0 });
 
     const headers = rows[0].map(h => (h || '').trim());
