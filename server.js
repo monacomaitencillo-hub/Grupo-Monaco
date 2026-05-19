@@ -9,6 +9,16 @@ const path           = require('path');
 const { randomUUID } = require('crypto');
 const Anthropic      = require('@anthropic-ai/sdk');
 const XLSX           = require('xlsx');
+const { google }     = require('googleapis');
+
+const GOOGLE_SHEET_ID = process.env.GOOGLE_SHEET_ID || '';
+const GOOGLE_SA       = process.env.GOOGLE_SERVICE_ACCOUNT ? JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT) : null;
+
+function getSheetsClient() {
+  if (!GOOGLE_SA) throw new Error('GOOGLE_SERVICE_ACCOUNT no configurada');
+  const auth = new google.auth.GoogleAuth({ credentials: GOOGLE_SA, scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'] });
+  return google.sheets({ version: 'v4', auth });
+}
 
 const ANTHROPIC_API_KEY = (process.env.ANTHROPIC_API_KEY || '').trim();
 const anthropic = new Anthropic({ apiKey: ANTHROPIC_API_KEY });
@@ -1721,6 +1731,106 @@ app.delete('/api/cierres/:id', requireAuth, async (req, res) => {
   await db.collection('ingresos').doc(req.params.id).delete();
   if (restId) delete cierresCache[restId]; // invalidar caché
   res.json({ ok: true });
+});
+
+// ── Sincronizar cierres desde Google Sheets ───────────────
+app.post('/api/cierres/sync-sheets', requireAuth, async (req, res) => {
+  if (!await isEditor(req.uid)) return res.status(403).json({ error: 'Sin permisos' });
+  try {
+    const sheets = getSheetsClient();
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: GOOGLE_SHEET_ID,
+      range: 'Respuestas Actualizada!A:Q',
+    });
+    const rows = response.data.values || [];
+    if (rows.length < 2) return res.json({ ok: true, inserted: 0, updated: 0, skipped: 0 });
+
+    const headers = rows[0].map(h => (h || '').trim());
+    const colIdx  = name => headers.indexOf(name);
+
+    const iFecha    = colIdx('Fecha');
+    const iLocal    = colIdx('Local');
+    const iTotalProg= colIdx('Total Programa');
+    const iPropProg = colIdx('Propina Programa');
+    const iTotalPOS = colIdx('Total POS');
+    const iPropPOS  = colIdx('Propina POS');
+    const iEfectivo = colIdx('Total Efectivo');
+    const iPropEf   = colIdx('Propina Efectivo');
+    const iGasto    = colIdx('Gasto');
+    const iCantDel  = colIdx('Cantidad Delivery');
+    const iVtaDel   = colIdx('Venta Delivery');
+    const iEnvioDel = colIdx('Envio Delivery');
+    const iPropDel  = colIdx('Propina Delivery');
+    const iVtaRet   = colIdx('Venta Retiro');
+    const iCantRet  = colIdx('Cantidad Retiro');
+    const iComment  = colIdx('Comentarios');
+    const iCabana   = colIdx('Total Cabaña');
+
+    const restSnap = await db.collection('restaurants').get();
+    const nameToId = {};
+    restSnap.docs.forEach(d => { nameToId[(d.data().name||'').toLowerCase().trim()] = { id: d.id, name: d.data().name }; });
+
+    const n0 = v => (v !== undefined && v !== '' && v !== null) ? Number(String(v).replace(/[^0-9.-]/g,'')) || 0 : 0;
+    const parseDate = v => {
+      if (!v) return null;
+      // Google Sheets serial number
+      if (/^\d+(\.\d+)?$/.test(String(v))) {
+        const d = new Date(Math.round((Number(v) - 25569) * 86400 * 1000));
+        return d.toISOString().slice(0, 10);
+      }
+      // DD/MM/YYYY or YYYY-MM-DD
+      const parts = String(v).split(/[\/\-]/);
+      if (parts.length === 3) {
+        if (parts[0].length === 4) return `${parts[0]}-${parts[1].padStart(2,'0')}-${parts[2].padStart(2,'0')}`;
+        return `${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
+      }
+      return null;
+    };
+
+    let inserted = 0, updated = 0, skipped = 0;
+    const dataRows = rows.slice(1);
+    const BATCH = 50;
+
+    for (let i = 0; i < dataRows.length; i += BATCH) {
+      const chunk = dataRows.slice(i, i + BATCH);
+      await Promise.all(chunk.map(async row => {
+        const fecha     = parseDate(row[iFecha]);
+        const localName = (row[iLocal] || '').trim();
+        if (!fecha || !localName) { skipped++; return; }
+        const restMatch = nameToId[localName.toLowerCase()];
+        if (!restMatch) { skipped++; return; }
+        const { id: restaurantId, name: local } = restMatch;
+        const data = {
+          restaurantId, fecha, local,
+          totalPrograma:     n0(row[iTotalProg]),
+          propinasPrograma:  n0(row[iPropProg]),
+          transbank:         n0(row[iTotalPOS]),
+          transbankPropinas: n0(row[iPropPOS]),
+          efectivo:          n0(row[iEfectivo]),
+          propinaAMano:      n0(row[iPropEf]),
+          gastos:            n0(row[iGasto]),
+          cantidadDelivery:  n0(row[iCantDel]),
+          montoDelivery:     n0(row[iVtaDel]),
+          envioDelivery:     n0(row[iEnvioDel]),
+          propinasDelivery:  n0(row[iPropDel]),
+          montoRetiro:       n0(row[iVtaRet]),
+          cantidadRetiro:    n0(row[iCantRet]),
+          comentarios:       row[iComment] || null,
+          bookingTotal:      n0(row[iCabana]),
+          syncedAt:          new Date().toISOString(),
+        };
+        const existing = await db.collection('ingresos')
+          .where('restaurantId', '==', restaurantId).where('fecha', '==', fecha).limit(1).get();
+        if (!existing.empty) { await existing.docs[0].ref.update(data); updated++; }
+        else { await db.collection('ingresos').add({ ...data, createdAt: new Date().toISOString() }); inserted++; }
+        delete cierresCache[restaurantId];
+      }));
+    }
+    res.json({ ok: true, inserted, updated, skipped });
+  } catch(e) {
+    console.error('sync-sheets error:', e);
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // ── Importar cierres desde Excel ──────────────────────────

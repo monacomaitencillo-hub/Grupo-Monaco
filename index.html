@@ -849,6 +849,7 @@
       ↑ Importar Excel
       <input type="file" accept=".xlsx,.xls" style="display:none" onchange="cierresImportExcel(this)">
     </label>
+    <button class="btn-new" id="btn-sync-sheets" style="margin-left:8px" onclick="cierresSyncSheets(this)" title="Sincronizar desde Google Sheets">🔄 Sincronizar</button>
     <button class="btn-new" style="margin-left:8px" id="btn-nuevo-cierre" onclick="openModalCierre()">+ Nuevo cierre</button>
   </div>
   <div style="flex:1;padding:32px 28px;max-width:1100px;width:100%;margin:0 auto">
@@ -4887,6 +4888,24 @@ async function cierresImportExcel(input) {
   }
 }
 
+async function cierresSyncSheets(btn) {
+  const orig = btn.textContent;
+  btn.textContent = 'Sincronizando...';
+  btn.disabled = true;
+  try {
+    const res  = await apiFetch('/api/cierres/sync-sheets', { method: 'POST' });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    alert(`✓ Sincronización completada:\n• ${data.inserted} filas nuevas\n• ${data.updated} filas actualizadas\n• ${data.skipped} filas omitidas`);
+    loadCierresList();
+  } catch(e) {
+    alert('Error al sincronizar: ' + e.message);
+  } finally {
+    btn.textContent = orig;
+    btn.disabled = false;
+  }
+}
+
 // ── Analítica Cierres ──────────────────────────────────────
 let cierresTab      = 'registros';
 let analyticsData   = [];
@@ -4897,6 +4916,7 @@ function switchCierresTab(tab) {
   document.getElementById('cierres-tab-registros').style.display = tab === 'registros' ? 'block' : 'none';
   document.getElementById('cierres-tab-analitica').style.display = tab === 'analitica'  ? 'block' : 'none';
   document.getElementById('btn-nuevo-cierre').style.display       = tab === 'registros' ? '' : 'none';
+  document.getElementById('btn-sync-sheets').style.display        = tab === 'registros' ? '' : 'none';
   document.getElementById('ctab-registros').classList.toggle('active', tab === 'registros');
   document.getElementById('ctab-analitica').classList.toggle('active', tab === 'analitica');
   if (tab === 'analitica') initAnalytics();
