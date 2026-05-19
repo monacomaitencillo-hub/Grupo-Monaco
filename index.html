@@ -845,17 +845,23 @@
   <div style="flex:1;padding:32px 28px;max-width:1300px;width:100%;margin:0 auto">
 
     <!-- Filtros -->
-    <div style="display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap;margin-bottom:28px">
+    <div style="display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px">
       <div>
         <label style="font-size:12px;color:#6b7280;display:block;margin-bottom:4px">Local</label>
-        <select id="eerr-rest-sel" style="border:1px solid #e5e7eb;border-radius:8px;padding:6px 12px;font-size:14px;background:#fff"></select>
+        <select id="eerr-rest-sel" onchange="eerrOnRestChange()" style="border:1px solid #e5e7eb;border-radius:8px;padding:6px 12px;font-size:14px;background:#fff"></select>
       </div>
       <div>
         <label style="font-size:12px;color:#6b7280;display:block;margin-bottom:4px">Año</label>
         <select id="eerr-year-sel" style="border:1px solid #e5e7eb;border-radius:8px;padding:6px 12px;font-size:14px;background:#fff"></select>
       </div>
       <button class="btn-new" onclick="eerrLoad()" style="margin-bottom:0">Cargar</button>
-      <span id="eerr-chipax-status" style="font-size:12px;color:#6b7280;align-self:center"></span>
+    </div>
+    <!-- Vinculación Chipax -->
+    <div id="eerr-chipax-row" style="display:flex;gap:10px;align-items:center;margin-bottom:24px;font-size:13px">
+      <span style="color:#6b7280">Chipax:</span>
+      <select id="eerr-chipax-sel" style="border:1px solid #e5e7eb;border-radius:8px;padding:5px 10px;font-size:13px;background:#fff"><option value="">— Vincular línea de negocio —</option></select>
+      <button onclick="eerrSaveMapping()" style="padding:4px 10px;background:#f3f4f6;border:1px solid #e5e7eb;border-radius:6px;font-size:12px;cursor:pointer">Guardar vínculo</button>
+      <span id="eerr-chipax-status" style="color:#6b7280"></span>
     </div>
 
     <div id="eerr-loading" style="display:none;text-align:center;padding:48px;color:#6b7280">Cargando datos...</div>
@@ -6044,9 +6050,12 @@ async function deleteSection(sectionId, name) {
 }
 
 // ── EERR ─────────────────────────────────────────────────
-let eerrRestaurants = [];
+let eerrRestaurants  = [];
+let eerrChipaxLineas = [];
+let eerrMapping      = {};
 
 async function eerrInit() {
+  // Restaurantes
   if (!eerrRestaurants.length) {
     try {
       const res  = await apiFetch('/api/restaurants');
@@ -6062,6 +6071,8 @@ async function eerrInit() {
       restSel.appendChild(o);
     });
   }
+
+  // Año
   const yearSel = document.getElementById('eerr-year-sel');
   if (yearSel.options.length === 0) {
     const cur = new Date().getFullYear();
@@ -6070,6 +6081,53 @@ async function eerrInit() {
       o.value = y; o.textContent = y;
       yearSel.appendChild(o);
     }
+  }
+
+  // Chipax líneas + mapping guardado (en paralelo)
+  const [lineasRes, mappingRes] = await Promise.all([
+    apiFetch('/api/chipax/lineas-negocio').then(r=>r.json()).catch(()=>[]),
+    apiFetch('/api/chipax/mapping').then(r=>r.json()).catch(()=>({})),
+  ]);
+  eerrChipaxLineas = Array.isArray(lineasRes) ? lineasRes : (lineasRes.data||[]);
+  eerrMapping      = mappingRes || {};
+
+  const chipaxSel = document.getElementById('eerr-chipax-sel');
+  chipaxSel.innerHTML = '<option value="">— Vincular línea de negocio —</option>';
+  eerrChipaxLineas.sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||'')).forEach(l => {
+    const o = document.createElement('option');
+    o.value = l.id; o.textContent = l.nombre;
+    chipaxSel.appendChild(o);
+  });
+
+  eerrOnRestChange();
+}
+
+function eerrOnRestChange() {
+  const restaurantId = document.getElementById('eerr-rest-sel').value;
+  const chipaxSel    = document.getElementById('eerr-chipax-sel');
+  const status       = document.getElementById('eerr-chipax-status');
+  const saved        = eerrMapping[restaurantId];
+  if (saved?.lineaNegocioId) {
+    chipaxSel.value = saved.lineaNegocioId;
+    if (status) status.textContent = '✓ Vinculado';
+  } else {
+    chipaxSel.value = '';
+    if (status) status.textContent = 'Sin vínculo — selecciona y guarda';
+  }
+}
+
+async function eerrSaveMapping() {
+  const restaurantId   = document.getElementById('eerr-rest-sel').value;
+  const lineaNegocioId = document.getElementById('eerr-chipax-sel').value;
+  const lineaNombre    = document.getElementById('eerr-chipax-sel').selectedOptions[0]?.text || '';
+  const status         = document.getElementById('eerr-chipax-status');
+  if (!restaurantId || !lineaNegocioId) return;
+  try {
+    await apiFetch('/api/chipax/mapping', { method:'PUT', body: JSON.stringify({ restaurantId, lineaNegocioId: Number(lineaNegocioId), lineaNombre }) });
+    eerrMapping[restaurantId] = { lineaNegocioId: Number(lineaNegocioId), lineaNombre };
+    if (status) status.textContent = '✓ Vinculado';
+  } catch(e) {
+    if (status) status.textContent = 'Error al guardar';
   }
 }
 
@@ -6090,16 +6148,9 @@ async function eerrLoad() {
   if (status) status.textContent = '';
 
   try {
-    // Auto-match Chipax por nombre del restaurante
-    const restName = document.getElementById('eerr-rest-sel').selectedOptions[0]?.text || '';
-    let lineaNegocioId = null;
-    if (restName) {
-      try {
-        const m = await apiFetch(`/api/chipax/match?nombre=${encodeURIComponent(restName)}`).then(r=>r.json());
-        lineaNegocioId = m.id;
-        if (status) status.textContent = m.nombre ? `Chipax: ${m.nombre}` : 'Sin match en Chipax';
-      } catch(e) {}
-    }
+    // Obtener lineaNegocioId del mapping guardado
+    const saved = eerrMapping[restaurantId];
+    const lineaNegocioId = saved?.lineaNegocioId || null;
 
     // Fetch cierres y Chipax en paralelo
     const promises = [];

@@ -3001,18 +3001,23 @@ async function getChipaxCuentas() {
   return map;
 }
 
-// Auto-match por nombre de restaurante → lineaNegocioId
-app.get('/api/chipax/match', requireAuth, async (req, res) => {
-  const { nombre } = req.query;
+// Mapping restaurantId → lineaNegocioId (guardado en Firestore)
+app.get('/api/chipax/mapping', requireAuth, async (req, res) => {
   try {
-    const lineas = await getChipaxLineas();
-    const norm   = normName(nombre);
-    const match  = lineas.find(l => normName(l.nombre) === norm)
-                || lineas.find(l => normName(l.nombre).includes(norm) || norm.includes(normName(l.nombre)));
-    res.json(match ? { id: match.id, nombre: match.nombre } : { id: null, nombre: null });
-  } catch(e) {
-    res.status(500).json({ error: e.message });
-  }
+    const snap = await db.collection('settings').doc('chipax_mapping').get();
+    res.json(snap.exists ? snap.data() : {});
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.put('/api/chipax/mapping', requireAuth, async (req, res) => {
+  if (!await isEditor(req.uid)) return res.status(403).json({ error: 'Sin permisos' });
+  try {
+    const { restaurantId, lineaNegocioId, lineaNombre } = req.body;
+    await db.collection('settings').doc('chipax_mapping').set(
+      { [restaurantId]: { lineaNegocioId, lineaNombre } }, { merge: true }
+    );
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
 app.get('/api/chipax/ro-datos', requireAuth, async (req, res) => {
