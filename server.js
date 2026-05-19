@@ -3041,7 +3041,10 @@ app.get('/api/chipax/ro-datos', requireAuth, async (req, res) => {
       const sub    = cuenta.nombre || 'Sin clasificar';
       const cat    = cuenta.padre  || 'Otros';
       const per    = r.periodo || r.fecha?.slice(0, 7) || 'N/A';
-      const monto  = Math.abs(r.montoTotal || r.montoNeto || 0);
+      // Filtrar períodos fuera del rango solicitado
+      if (!per.startsWith(fechaInicial.slice(0, 4)) && !per.startsWith(fechaFinal.slice(0, 4))) return;
+      // Usar montoNeto (sin IVA) igual que Chipax en su UI
+      const monto  = Math.abs(r.montoAsignado || r.montoNeto || 0);
       if (!grouped[cat]) grouped[cat] = {};
       if (!grouped[cat][sub]) grouped[cat][sub] = {};
       grouped[cat][sub][per] = (grouped[cat][sub][per] || 0) + monto;
