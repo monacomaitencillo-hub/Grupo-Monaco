@@ -2973,9 +2973,10 @@ function normName(s) {
 
 app.get('/api/chipax/lineas-negocio', requireAuth, async (req, res) => {
   try {
+    console.log('chipax app_id set:', !!CHIPAX_APP_ID, 'secret set:', !!CHIPAX_SECRET_KEY);
     res.json(await getChipaxLineas());
   } catch(e) {
-    console.error('chipax lineas-negocio:', e.message);
+    console.error('chipax lineas-negocio ERROR:', e.message, e.stack);
     res.status(500).json({ error: e.message });
   }
 });

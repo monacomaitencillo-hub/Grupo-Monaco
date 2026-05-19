@@ -6085,9 +6085,13 @@ async function eerrInit() {
 
   // Chipax líneas + mapping guardado (en paralelo)
   const [lineasRes, mappingRes] = await Promise.all([
-    apiFetch('/api/chipax/lineas-negocio').then(r=>r.json()).catch(()=>[]),
+    apiFetch('/api/chipax/lineas-negocio').then(r=>r.json()).catch(e=>({ _error: e.message })),
     apiFetch('/api/chipax/mapping').then(r=>r.json()).catch(()=>({})),
   ]);
+  if (lineasRes._error || lineasRes.error) {
+    console.error('Chipax lineas error:', lineasRes._error || lineasRes.error);
+    document.getElementById('eerr-chipax-status').textContent = 'Error Chipax: ' + (lineasRes.error || lineasRes._error);
+  }
   eerrChipaxLineas = Array.isArray(lineasRes) ? lineasRes : (lineasRes.data||[]);
   eerrMapping      = mappingRes || {};
 
