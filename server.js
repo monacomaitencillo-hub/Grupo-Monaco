@@ -1826,71 +1826,69 @@ app.post('/api/orden-compra/parse', requireAuth, async (req, res) => {
   const { text, restaurantId } = req.body;
   if (!text || !restaurantId) return res.status(400).json({ error: 'Faltan parámetros' });
 
-  // Cargar inventario del local
-  const [prodSnap, prepSnap, stockSnap] = await Promise.all([
-    db.collection('products').get(),
-    db.collection('preparations').get(),
-    db.collection('stock').doc(restaurantId).collection('products').get()
-  ]);
-  const stockMap = {};
-  stockSnap.docs.forEach(d => { stockMap[d.id] = d.data(); });
+  try {
+    const [prodSnap, prepSnap, stockSnap] = await Promise.all([
+      db.collection('products').get(),
+      db.collection('preparations').get(),
+      db.collection('stock').doc(restaurantId).collection('products').get()
+    ]);
+    const stockMap = {};
+    stockSnap.docs.forEach(d => { stockMap[d.id] = d.data(); });
 
-  const inventario = [
-    ...prodSnap.docs.map(d => ({ id: d.id, name: d.data().name, unit: d.data().unit || '', quantity: stockMap[d.id]?.quantity ?? null })),
-    ...prepSnap.docs.map(d => ({ id: d.id, name: d.data().name, unit: d.data().unit || '', quantity: stockMap[d.id]?.quantity ?? null }))
-  ].filter(p => (p.quantity !== null) || true); // incluir todos
+    const inventario = [
+      ...prodSnap.docs.map(d => ({ id: d.id, name: d.data().name, unit: d.data().unit || '', quantity: stockMap[d.id]?.quantity ?? null })),
+      ...prepSnap.docs.map(d => ({ id: d.id, name: d.data().name, unit: d.data().unit || '', quantity: stockMap[d.id]?.quantity ?? null }))
+    ];
 
-  const inventarioStr = inventario.map(p => `- ${p.name} (${p.unit || 'unidad'}): stock actual ${p.quantity ?? 'sin registro'}`).join('\n');
+    const inventarioStr = inventario.map(p => `- ${p.name} (${p.unit || 'unidad'}): stock ${p.quantity ?? 'sin registro'}`).join('\n');
 
-  const prompt = `Eres un asistente de gestión de restaurantes. El siguiente texto es un pedido enviado por un trabajador vía WhatsApp. Extrae la lista de productos que pide con sus cantidades y unidades.
+    const prompt = `Eres un asistente de gestión de restaurantes. El siguiente texto es un pedido enviado por un trabajador vía WhatsApp. Extrae la lista de productos que pide con sus cantidades y unidades.
 
 TEXTO DEL PEDIDO:
 ${text}
 
-INVENTARIO ACTUAL DEL LOCAL (para que puedas cruzar los nombres aunque vengan escritos diferente):
+INVENTARIO DEL LOCAL (usa estos nombres exactos si coinciden):
 ${inventarioStr}
 
-Devuelve un JSON puro (sin markdown) con este formato:
-{
-  "items": [
-    { "producto": "nombre exacto como aparece en el inventario si lo encuentras, sino el nombre como viene en el pedido", "cantidadPedida": número, "unidad": "unidad" }
-  ]
-}
+Devuelve un JSON puro (sin markdown):
+{ "items": [ { "producto": "nombre del inventario si coincide, sino nombre del pedido", "cantidadPedida": número, "unidad": "unidad" } ] }
 
 Reglas:
-- Si el producto del pedido coincide con alguno del inventario (aunque esté escrito diferente), usa el nombre EXACTO del inventario.
-- Si no lo encuentras, usa el nombre como viene en el pedido.
-- Extrae todos los productos mencionados.
-- Solo devuelve el JSON.`;
+- Usa el nombre EXACTO del inventario si el producto coincide (aunque esté escrito diferente).
+- Si no coincide con ninguno, usa el nombre como viene en el pedido.
+- Extrae todos los productos. Solo devuelve el JSON.`;
 
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: { 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-    body: JSON.stringify({ model: 'claude-opus-4-6', max_tokens: 1024, messages: [{ role: 'user', content: prompt }] })
-  });
-  const claudeData = await response.json();
-  if (!response.ok) throw new Error(claudeData.error?.message || 'Error Claude');
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+      body: JSON.stringify({ model: 'claude-opus-4-6', max_tokens: 1024, messages: [{ role: 'user', content: prompt }] })
+    });
+    const claudeData = await response.json();
+    if (!response.ok) throw new Error(claudeData.error?.message || 'Error Claude API');
 
-  const raw = claudeData.content?.[0]?.text || '{}';
-  const parsed = JSON.parse(raw.replace(/```json|```/g, '').trim());
-  const items = parsed.items || [];
+    const raw = claudeData.content?.[0]?.text || '{}';
+    const parsed = JSON.parse(raw.replace(/```json|```/g, '').trim());
+    const items = parsed.items || [];
 
-  // Cruzar con inventario
-  const invByName = {};
-  inventario.forEach(p => { invByName[p.name.toLowerCase().trim()] = p; });
+    const invByName = {};
+    inventario.forEach(p => { invByName[p.name.toLowerCase().trim()] = p; });
 
-  const result = items.map(item => {
-    const match = invByName[item.producto.toLowerCase().trim()];
-    return {
-      producto:      item.producto,
-      cantidadPedida: item.cantidadPedida,
-      unidad:        item.unidad || match?.unit || '',
-      stockActual:   match?.quantity ?? null,
-      enInventario:  !!match
-    };
-  });
+    const result = items.map(item => {
+      const match = invByName[item.producto.toLowerCase().trim()];
+      return {
+        producto:       item.producto,
+        cantidadPedida: item.cantidadPedida,
+        unidad:         item.unidad || match?.unit || '',
+        stockActual:    match?.quantity ?? null,
+        enInventario:   !!match
+      };
+    });
 
-  res.json({ items: result });
+    res.json({ items: result });
+  } catch(e) {
+    console.error('orden-compra/parse error:', e);
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // ── Umbrales por categoría ────────────────────────────────
