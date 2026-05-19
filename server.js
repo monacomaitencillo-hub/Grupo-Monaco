@@ -12,8 +12,8 @@ const XLSX           = require('xlsx');
 const { GoogleAuth } = require('google-auth-library');
 
 // ── Chipax ────────────────────────────────────────────────
-const CHIPAX_APP_ID     = process.env.CHIPAX_APP_ID     || '';
-const CHIPAX_SECRET_KEY = process.env.CHIPAX_SECRET_KEY || '';
+const CHIPAX_APP_ID     = (process.env.CHIPAX_APP_ID     || '').trim();
+const CHIPAX_SECRET_KEY = (process.env.CHIPAX_SECRET_KEY || '').trim();
 const CHIPAX_BASE       = 'https://api.chipax.com/v2';
 let chipaxTokenCache    = null; // { token, expiresAt }
 
