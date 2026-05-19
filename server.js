@@ -2959,10 +2959,21 @@ Cuando necesites datos, usá las herramientas disponibles. Respondé siempre en 
 });
 
 // ── Chipax endpoints ──────────────────────────────────────
+let chipaxLineasCache = null;
+async function getChipaxLineas() {
+  if (chipaxLineasCache) return chipaxLineasCache;
+  const data = await chipaxGet('/lineas-negocio');
+  chipaxLineasCache = Array.isArray(data) ? data : (data.data || []);
+  return chipaxLineasCache;
+}
+
+function normName(s) {
+  return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+}
+
 app.get('/api/chipax/lineas-negocio', requireAuth, async (req, res) => {
   try {
-    const data = await chipaxGet('/lineas-negocio');
-    res.json(data);
+    res.json(await getChipaxLineas());
   } catch(e) {
     console.error('chipax lineas-negocio:', e.message);
     res.status(500).json({ error: e.message });
@@ -2989,6 +3000,20 @@ async function getChipaxCuentas() {
   chipaxCuentasCache = map;
   return map;
 }
+
+// Auto-match por nombre de restaurante → lineaNegocioId
+app.get('/api/chipax/match', requireAuth, async (req, res) => {
+  const { nombre } = req.query;
+  try {
+    const lineas = await getChipaxLineas();
+    const norm   = normName(nombre);
+    const match  = lineas.find(l => normName(l.nombre) === norm)
+                || lineas.find(l => normName(l.nombre).includes(norm) || norm.includes(normName(l.nombre)));
+    res.json(match ? { id: match.id, nombre: match.nombre } : { id: null, nombre: null });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
 
 app.get('/api/chipax/ro-datos', requireAuth, async (req, res) => {
   const { lineaNegocioId, fechaInicial, fechaFinal } = req.query;

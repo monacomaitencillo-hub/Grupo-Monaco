@@ -847,18 +847,15 @@
     <!-- Filtros -->
     <div style="display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap;margin-bottom:28px">
       <div>
-        <label style="font-size:12px;color:#6b7280;display:block;margin-bottom:4px">Local (Cierres)</label>
+        <label style="font-size:12px;color:#6b7280;display:block;margin-bottom:4px">Local</label>
         <select id="eerr-rest-sel" style="border:1px solid #e5e7eb;border-radius:8px;padding:6px 12px;font-size:14px;background:#fff"></select>
-      </div>
-      <div>
-        <label style="font-size:12px;color:#6b7280;display:block;margin-bottom:4px">Línea de Negocio (Chipax)</label>
-        <select id="eerr-chipax-sel" style="border:1px solid #e5e7eb;border-radius:8px;padding:6px 12px;font-size:14px;background:#fff"><option value="">— Sin seleccionar —</option></select>
       </div>
       <div>
         <label style="font-size:12px;color:#6b7280;display:block;margin-bottom:4px">Año</label>
         <select id="eerr-year-sel" style="border:1px solid #e5e7eb;border-radius:8px;padding:6px 12px;font-size:14px;background:#fff"></select>
       </div>
       <button class="btn-new" onclick="eerrLoad()" style="margin-bottom:0">Cargar</button>
+      <span id="eerr-chipax-status" style="font-size:12px;color:#6b7280;align-self:center"></span>
     </div>
 
     <div id="eerr-loading" style="display:none;text-align:center;padding:48px;color:#6b7280">Cargando datos...</div>
@@ -6050,7 +6047,6 @@ async function deleteSection(sectionId, name) {
 let eerrRestaurants = [];
 
 async function eerrInit() {
-  // Poblar selector de locales (cierres)
   if (!eerrRestaurants.length) {
     try {
       const res  = await apiFetch('/api/restaurants');
@@ -6066,28 +6062,6 @@ async function eerrInit() {
       restSel.appendChild(o);
     });
   }
-
-  // Poblar líneas de negocio Chipax
-  const chipaxSel = document.getElementById('eerr-chipax-sel');
-  if (chipaxSel.options.length <= 1) {
-    try {
-      const res  = await apiFetch('/api/chipax/lineas-negocio');
-      const data = await res.json();
-      const lines = Array.isArray(data) ? data : (data.data || []);
-      lines.sort((a,b) => (a.nombre||'').localeCompare(b.nombre||''));
-      lines.forEach(l => {
-        const o = document.createElement('option');
-        o.value = l.id; o.textContent = l.nombre;
-        chipaxSel.appendChild(o);
-      });
-      // Auto-seleccionar si hay coincidencia de nombre
-      const restName = restSel.options[restSel.selectedIndex]?.text || '';
-      const match = lines.find(l => restName.toLowerCase().includes(l.nombre.toLowerCase()) || l.nombre.toLowerCase().includes(restName.toLowerCase()));
-      if (match) chipaxSel.value = match.id;
-    } catch(e) { console.error('chipax lineas', e); }
-  }
-
-  // Poblar selector de año
   const yearSel = document.getElementById('eerr-year-sel');
   if (yearSel.options.length === 0) {
     const cur = new Date().getFullYear();
@@ -6100,21 +6074,33 @@ async function eerrInit() {
 }
 
 async function eerrLoad() {
-  const restaurantId  = document.getElementById('eerr-rest-sel').value;
-  const lineaNegocioId= document.getElementById('eerr-chipax-sel').value;
-  const year          = document.getElementById('eerr-year-sel').value;
+  const restaurantId = document.getElementById('eerr-rest-sel').value;
+  const year         = document.getElementById('eerr-year-sel').value;
   if (!year) return;
 
   const MESES     = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
   const loading   = document.getElementById('eerr-loading');
   const tableWrap = document.getElementById('eerr-table-wrap');
   const empty     = document.getElementById('eerr-empty');
+  const status    = document.getElementById('eerr-chipax-status');
 
   loading.style.display   = 'block';
   tableWrap.style.display = 'none';
   empty.style.display     = 'none';
+  if (status) status.textContent = '';
 
   try {
+    // Auto-match Chipax por nombre del restaurante
+    const restName = document.getElementById('eerr-rest-sel').selectedOptions[0]?.text || '';
+    let lineaNegocioId = null;
+    if (restName) {
+      try {
+        const m = await apiFetch(`/api/chipax/match?nombre=${encodeURIComponent(restName)}`).then(r=>r.json());
+        lineaNegocioId = m.id;
+        if (status) status.textContent = m.nombre ? `Chipax: ${m.nombre}` : 'Sin match en Chipax';
+      } catch(e) {}
+    }
+
     // Fetch cierres y Chipax en paralelo
     const promises = [];
     if (restaurantId) promises.push(
