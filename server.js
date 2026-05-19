@@ -1770,7 +1770,19 @@ app.post('/api/cierres/sync-sheets', requireAuth, async (req, res) => {
     const nameToId = {};
     restSnap.docs.forEach(d => { nameToId[(d.data().name||'').toLowerCase().trim()] = { id: d.id, name: d.data().name }; });
 
-    const n0 = v => (v !== undefined && v !== '' && v !== null) ? Number(String(v).replace(/[^0-9.-]/g,'')) || 0 : 0;
+    const n0 = v => {
+      if (v === undefined || v === '' || v === null) return 0;
+      let s = String(v).trim().replace(/[$\s]/g, '');
+      // Formato chileno: 1.234.567 o 1.234.567,89
+      if (s.includes(',')) {
+        // Coma como decimal: quitar puntos de miles y convertir coma a punto
+        s = s.replace(/\./g, '').replace(',', '.');
+      } else if (/\.\d{3}(\.|$)/.test(s) || /^\d{1,3}(\.\d{3})+$/.test(s)) {
+        // Punto como separador de miles (ej: 924.000 o 1.234.567)
+        s = s.replace(/\./g, '');
+      }
+      return Number(s.replace(/[^0-9.-]/g, '')) || 0;
+    };
     const parseDate = v => {
       if (!v) return null;
       // Google Sheets serial number
