@@ -33,11 +33,37 @@ async function chipaxToken() {
   return token;
 }
 
-async function chipaxGet(path) {
+// Fetch todas las páginas de un endpoint paginado de Chipax
+async function chipaxGetAll(path) {
+  const first = await chipaxGet(path);
+  const items = first.data || first;
+  if (!Array.isArray(items)) return first;
+  const meta = first.meta || first.pagination || {};
+  const totalPages = meta.last_page || meta.totalPages || meta.total_pages || 1;
+  if (totalPages <= 1) return first;
+  const sep = path.includes('?') ? '&' : '?';
+  const pages = await Promise.all(
+    Array.from({ length: totalPages - 1 }, (_, i) => chipaxGet(`${path}${sep}page=${i + 2}`))
+  );
+  const allItems = [...items];
+  pages.forEach(p => { const d = p.data || p; if (Array.isArray(d)) allItems.push(...d); });
+  return { ...first, data: allItems };
+}
+
+async function chipaxGet(path, attempts = 3) {
   const token = await chipaxToken();
   const r = await fetch(`${CHIPAX_BASE}${path}`, {
     headers: { Authorization: `JWT ${token}` },
   });
+  if (r.status === 401 && attempts > 0) {
+    chipaxTokenCache = null;
+    return chipaxGet(path, 0); // re-auth, no más retries de 401
+  }
+  if ((r.status === 500 || r.status === 502 || r.status === 503 || r.status === 429) && attempts > 1) {
+    const delay = (4 - attempts) * 1500; // 1.5s, 3s
+    await new Promise(res => setTimeout(res, delay));
+    return chipaxGet(path, attempts - 1);
+  }
   if (!r.ok) throw new Error(`Chipax GET ${path} error ${r.status}: ${await r.text()}`);
   return r.json();
 }
@@ -2991,14 +3017,25 @@ async function getChipaxCuentas() {
   const tree   = await chipaxGet('/cuentas/tree');
   const nodes  = tree.data || tree;
   // Aplanar árbol: { cuentaId → { nombre, padre } }
+  // Para nodos a profundidad 3+, colapsamos al nivel 2 (sub) y nivel 1 (cat),
+  // así transacciones en sub-cuentas de "Sueldos (Remuneraciones)" no se pierden.
   const map = {};
-  function flatten(node, parentName) {
+  function flatten(node, ancestors) {
     if (node.id && node.id !== 1) {
-      map[node.id] = { nombre: node.name, padre: parentName || null };
+      const depth = ancestors.length;
+      if (depth === 0) {
+        map[node.id] = { nombre: node.name, padre: null };
+      } else if (depth === 1) {
+        map[node.id] = { nombre: node.name, padre: ancestors[0] };
+      } else {
+        // Profundidad 3+: colapsar al sub (ancestors[1]) y cat (ancestors[0])
+        map[node.id] = { nombre: ancestors[1], padre: ancestors[0] };
+      }
     }
-    (node.children || []).forEach(c => flatten(c, node.id === 1 ? null : node.name));
+    const next = node.id === 1 ? [] : [...ancestors, node.name];
+    (node.children || []).forEach(c => flatten(c, next));
   }
-  (Array.isArray(nodes) ? nodes : [nodes]).forEach(n => flatten(n, null));
+  (Array.isArray(nodes) ? nodes : [nodes]).forEach(n => flatten(n, []));
   chipaxCuentasCache = map;
   return map;
 }
@@ -3022,6 +3059,41 @@ app.put('/api/chipax/mapping', requireAuth, async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// Endpoint temporal de debug — breakdown por cuentaId con mapping, filtrable por periodo
+app.get('/api/chipax/debug-raw', requireAuth, async (req, res) => {
+  const { lineaNegocioId, year, periodo } = req.query;
+  if (!lineaNegocioId || !year) return res.status(400).json({ error: 'Falta lineaNegocioId o year' });
+  try {
+    const qs = `fechaInicial=${year}-01-01&fechaFinal=${year}-12-31&lineaNegocioId=${lineaNegocioId}`;
+    const [roData, cuentas] = await Promise.all([chipaxGetAll(`/ro-datos?${qs}`), getChipaxCuentas()]);
+    let egresos = (roData.data || roData || []).filter(r => r.tipoMovimiento === 'Egreso');
+    if (periodo) egresos = egresos.filter(r => (r.periodo || r.fecha?.slice(0,7)) === periodo);
+
+    // Agrupar por cuentaId con suma
+    const byCuenta = {};
+    egresos.forEach(r => {
+      const cid = r.cuentaId;
+      const cnt = cuentas[cid] || {};
+      const key = `${cid}`;
+      if (!byCuenta[key]) byCuenta[key] = {
+        cuentaId: cid, nombre: cnt.nombre || '??', padre: cnt.padre || '??',
+        count: 0, totalMontoAsignado: 0, totalMontoNeto: 0, sample: []
+      };
+      byCuenta[key].count++;
+      byCuenta[key].totalMontoAsignado += Math.abs(r.montoAsignado || 0);
+      byCuenta[key].totalMontoNeto += Math.abs(r.montoNeto || 0);
+      if (byCuenta[key].sample.length < 2) byCuenta[key].sample.push({
+        periodo: r.periodo, fecha: r.fecha, montoAsignado: r.montoAsignado,
+        montoNeto: r.montoNeto, descripcion: r.descripcion || r.glosa
+      });
+    });
+
+    const breakdown = Object.values(byCuenta).sort((a,b) => b.totalMontoAsignado - a.totalMontoAsignado);
+    const grandTotal = egresos.reduce((s,r) => s + Math.abs(r.montoAsignado || r.montoNeto || 0), 0);
+    res.json({ total: egresos.length, grandTotal, periodo: periodo || 'todos', breakdown });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 app.get('/api/chipax/ro-datos', requireAuth, async (req, res) => {
   const { lineaNegocioId, fechaInicial, fechaFinal } = req.query;
   if (!fechaInicial || !fechaFinal) return res.status(400).json({ error: 'Faltan fechaInicial y fechaFinal' });
@@ -3032,8 +3104,17 @@ app.get('/api/chipax/ro-datos', requireAuth, async (req, res) => {
   }
   try {
     const qs      = `fechaInicial=${fechaInicial}&fechaFinal=${fechaFinal}${lineaNegocioId ? `&lineaNegocioId=${lineaNegocioId}` : ''}`;
-    const [roData, cuentas] = await Promise.all([chipaxGet(`/ro-datos?${qs}`), getChipaxCuentas()]);
+    const [roData, cuentas] = await Promise.all([chipaxGetAll(`/ro-datos?${qs}`), getChipaxCuentas()]);
     const egresos = (roData.data || roData || []).filter(r => r.tipoMovimiento === 'Egreso');
+
+    // Log estructura de un egreso para diagnóstico (solo una vez)
+    if (egresos.length > 0) {
+      const sample = egresos[0];
+      console.log('[ro-datos] campos egreso sample:', JSON.stringify({
+        periodo: sample.periodo, fecha: sample.fecha, fechaClasificacion: sample.fechaClasificacion,
+        montoNeto: sample.montoNeto, montoAsignado: sample.montoAsignado, tipoMovimiento: sample.tipoMovimiento
+      }));
+    }
 
     // Agrupar por categoria (padre) → subcategoria → periodo → suma montoTotal abs
     const grouped = {}; // { categoria: { sub: { periodo: monto } } }
@@ -3041,10 +3122,10 @@ app.get('/api/chipax/ro-datos', requireAuth, async (req, res) => {
       const cuenta = cuentas[r.cuentaId] || {};
       const sub    = cuenta.nombre || 'Sin clasificar';
       const cat    = cuenta.padre  || 'Otros';
+      // Chipax agrupa por período de clasificación del documento
       const per    = r.periodo || r.fecha?.slice(0, 7) || 'N/A';
       // Filtrar períodos fuera del rango solicitado
       if (!per.startsWith(fechaInicial.slice(0, 4)) && !per.startsWith(fechaFinal.slice(0, 4))) return;
-      // Usar montoNeto (sin IVA) igual que Chipax en su UI
       const monto  = Math.abs(r.montoAsignado || r.montoNeto || 0);
       if (!grouped[cat]) grouped[cat] = {};
       if (!grouped[cat][sub]) grouped[cat][sub] = {};
@@ -3053,9 +3134,54 @@ app.get('/api/chipax/ro-datos', requireAuth, async (req, res) => {
 
     const result = { grouped, raw: egresos };
     chipaxROCache[cacheKey] = { data: result, cachedAt: Date.now() };
+    // Guardar en Firestore para uso de "Todos los locales"
+    if (lineaNegocioId && fechaInicial) {
+      const year = fechaInicial.slice(0, 4);
+      db.collection('eerr_chipax_cache').doc(`${lineaNegocioId}_${year}_v2`).set({ grouped, savedAt: Date.now() }).catch(() => {});
+    }
     res.json(result);
   } catch(e) {
     console.error('chipax ro-datos:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/chipax/ro-datos-todos?year=YYYY — lee de Firestore (guardado al cargar cada local)
+app.get('/api/chipax/ro-datos-todos', requireAuth, async (req, res) => {
+  const { year } = req.query;
+  if (!year) return res.status(400).json({ error: 'Falta year' });
+  try {
+    const mappingSnap = await db.collection('settings').doc('chipax_mapping').get();
+    const mapping     = mappingSnap.exists ? mappingSnap.data() : {};
+    const lineasIds   = [...new Set(Object.values(mapping).map(v => v?.lineaNegocioId).filter(Boolean))];
+    if (!lineasIds.length) return res.json({ grouped: {} });
+
+    // Leer caché de Firestore para cada linea (guardado al cargar cada local individualmente)
+    const snapshots = await Promise.all(
+      lineasIds.map(lid => db.collection('eerr_chipax_cache').doc(`${lid}_${year}_v2`).get())
+    );
+
+    const mergedGrouped = {};
+    let lineasConDatos = 0;
+    snapshots.forEach((snap, i) => {
+      if (!snap.exists) { console.log(`[ro-datos-todos] linea ${lineasIds[i]} sin cache en Firestore`); return; }
+      lineasConDatos++;
+      const grp = snap.data().grouped || {};
+      Object.entries(grp).forEach(([cat, subs]) => {
+        if (!mergedGrouped[cat]) mergedGrouped[cat] = {};
+        Object.entries(subs).forEach(([sub, periodos]) => {
+          if (!mergedGrouped[cat][sub]) mergedGrouped[cat][sub] = {};
+          Object.entries(periodos).forEach(([per, val]) => {
+            mergedGrouped[cat][sub][per] = (mergedGrouped[cat][sub][per] || 0) + val;
+          });
+        });
+      });
+    });
+
+    console.log(`[ro-datos-todos] ${lineasConDatos}/${lineasIds.length} lineas con datos en Firestore`);
+    res.json({ grouped: mergedGrouped, lineasConDatos, lineasTotal: lineasIds.length });
+  } catch(e) {
+    console.error('chipax ro-datos-todos:', e.message);
     res.status(500).json({ error: e.message });
   }
 });
@@ -3174,6 +3300,116 @@ app.get('/api/eerr/scotiabank', requireAuth, async (req, res) => {
     res.json(grouped);
   } catch(e) {
     console.error('eerr scotiabank:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/eerr/config
+app.get('/api/eerr/config', requireAuth, async (req, res) => {
+  try {
+    const snap = await db.collection('settings').doc('eerr_config').get();
+    res.json(snap.exists ? snap.data() : { excluded: [] });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// PUT /api/eerr/config
+app.put('/api/eerr/config', requireAuth, async (req, res) => {
+  if (!await isEditor(req.uid)) return res.status(403).json({ error: 'Sin permisos' });
+  try {
+    const { excluded } = req.body;
+    await db.collection('settings').doc('eerr_config').set({ excluded: excluded || [] });
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/eerr/chipax-subs — todos los subs únicos de todas las lineas mapeadas
+app.get('/api/eerr/chipax-subs', requireAuth, async (req, res) => {
+  try {
+    const mappingSnap = await db.collection('settings').doc('chipax_mapping').get();
+    const mapping = mappingSnap.exists ? mappingSnap.data() : {};
+    const lineasIds = [...new Set(Object.values(mapping).map(v => v?.lineaNegocioId).filter(Boolean))];
+    if (!lineasIds.length) return res.json({ subs: [] });
+    const year = new Date().getFullYear();
+    const fechaInicial = `${year-1}-01-01`;
+    const fechaFinal   = `${year}-12-31`;
+    const allSubs = {}; // { cat: Set(subs) }
+    await Promise.all(lineasIds.map(async lid => {
+      try {
+        const qs = `fechaInicial=${fechaInicial}&fechaFinal=${fechaFinal}&lineaNegocioId=${lid}`;
+        const [roData, cuentas] = await Promise.all([chipaxGetAll(`/ro-datos?${qs}`), getChipaxCuentas()]);
+        const egresos = (roData.data||roData||[]).filter(r => r.tipoMovimiento === 'Egreso');
+        egresos.forEach(r => {
+          const cuenta = cuentas[r.cuentaId] || {};
+          const cat = cuenta.padre || cuenta.nombre || 'Sin categoría';
+          const sub = cuenta.nombre || 'Sin subcategoría';
+          if (!allSubs[cat]) allSubs[cat] = new Set();
+          allSubs[cat].add(sub);
+        });
+      } catch(e) { /* skip */ }
+    }));
+    const subs = Object.entries(allSubs)
+      .map(([cat, s]) => ({ cat, subs: [...s].sort() }))
+      .sort((a,b) => a.cat.localeCompare(b.cat));
+    res.json({ subs });
+  } catch(e) {
+    console.error('eerr chipax-subs:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/eerr/gdd?year=Y
+app.get('/api/eerr/gdd', requireAuth, async (req, res) => {
+  const { year } = req.query;
+  if (!year) return res.status(400).json({ error: 'year requerido' });
+  try {
+    const lines = {}; // { "GDD Cafetería Mónaco": { "2025-01": 608184, ... } }
+
+    // 1. Leer hoja histórica "Guias de Despacho"
+    const sheetRows = await getEerrSheetRows('Guias de Despacho');
+    console.log('GDD sheet rows:', sheetRows.length, 'headers:', sheetRows[0]);
+    if (sheetRows.length > 1) {
+      const headers = sheetRows[0].map(h => (h||'').trim());
+      const iLocal = headers.indexOf('Local');
+      const iAnio  = headers.findIndex(h => /^a[ñn]o$/i.test(h));
+      const iMes   = headers.indexOf('Mes');
+      const iMonto = headers.indexOf('Monto');
+      console.log('GDD header indices:', { iLocal, iAnio, iMes, iMonto });
+      if (iLocal>=0 && iAnio>=0 && iMes>=0 && iMonto>=0) {
+        sheetRows.slice(1).forEach(row => {
+          const localName = (row[iLocal]||'').trim();
+          const rowYear   = String(row[iAnio]||'').trim();
+          const mes       = parseInt(row[iMes], 10);
+          const monto     = parseMontoSheet(row[iMonto]);
+          if (!localName || rowYear !== year || !mes || !monto) return;
+          const period = `${year}-${String(mes).padStart(2,'0')}`;
+          if (!lines[localName]) lines[localName] = {};
+          lines[localName][period] = (lines[localName][period]||0) + monto;
+        });
+      }
+    }
+
+    // 2. Datos crudos de Firestore (el cliente calcula los totales con su lógica completa)
+    const [gddSnap, prodSnap, prepSnap, priceSnap, restSnap] = await Promise.all([
+      db.collection('gdd_records')
+        .where('fecha', '>=', `${year}-01-01`)
+        .where('fecha', '<=', `${year}-12-31`)
+        .get(),
+      db.collection('products').get(),
+      db.collection('preparations').get(),
+      db.collection('product_price_history').get(),
+      db.collection('restaurants').get(),
+    ]);
+
+    res.json({
+      sheetLines: lines,
+      records:      gddSnap.docs.map(d => ({ id: d.id, ...d.data() })),
+      products:     prodSnap.docs.map(d => ({ id: d.id, ...d.data() })),
+      preparations: prepSnap.docs.map(d => ({ id: d.id, ...d.data() })),
+      priceHistory: priceSnap.docs.map(d => ({ id: d.id, ...d.data() })),
+      restaurants:  restSnap.docs.map(d => ({ id: d.id, ...d.data() })),
+    });
+  } catch(e) {
+    console.error('eerr gdd:', e.message);
     res.status(500).json({ error: e.message });
   }
 });
