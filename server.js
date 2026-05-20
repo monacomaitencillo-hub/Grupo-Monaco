@@ -3061,18 +3061,30 @@ app.put('/api/chipax/mapping', requireAuth, async (req, res) => {
 
 // Endpoint temporal de debug — breakdown por cuentaId con mapping, filtrable por periodo
 app.get('/api/chipax/debug-raw', requireAuth, async (req, res) => {
-  const { lineaNegocioId, year, periodo } = req.query;
+  const { lineaNegocioId, year, periodo, cuentaId: filtCuentaId } = req.query;
   if (!lineaNegocioId || !year) return res.status(400).json({ error: 'Falta lineaNegocioId o year' });
   try {
     const qs = `fechaInicial=${year}-01-01&fechaFinal=${year}-12-31&lineaNegocioId=${lineaNegocioId}`;
     const [roData, cuentas] = await Promise.all([chipaxGetAll(`/ro-datos?${qs}`), getChipaxCuentas()]);
     const todos = roData.data || roData || [];
-    // Contar tipos de movimiento únicos para diagnóstico
     const tiposCounts = {};
     todos.forEach(r => { tiposCounts[r.tipoMovimiento] = (tiposCounts[r.tipoMovimiento] || 0) + 1; });
 
     let egresos = todos.filter(r => r.tipoMovimiento === 'Egreso');
     if (periodo) egresos = egresos.filter(r => (r.periodo || r.fecha?.slice(0,7)) === periodo);
+
+    // Si se pide cuentaId específico, devolver TODAS sus transacciones del año (sin filtro de periodo)
+    if (filtCuentaId) {
+      const cid = parseInt(filtCuentaId);
+      const txs = todos.filter(r => r.cuentaId === cid).map(r => ({
+        periodo: r.periodo, fecha: r.fecha, fechaClasificacion: r.fechaClasificacion,
+        montoAsignado: r.montoAsignado, montoNeto: r.montoNeto,
+        descripcion: r.descripcion || r.glosa
+      })).sort((a,b) => (a.periodo||'').localeCompare(b.periodo||''));
+      const cnt = cuentas[cid] || {};
+      return res.json({ cuentaId: cid, nombre: cnt.nombre, padre: cnt.padre, count: txs.length,
+        totalMontoAsignado: txs.reduce((s,r) => s+Math.abs(r.montoAsignado||0),0), transactions: txs });
+    }
 
     // También analizar NON-Egreso en el período para ver si se pierden montos
     let otrosTipos = todos.filter(r => r.tipoMovimiento !== 'Egreso');
