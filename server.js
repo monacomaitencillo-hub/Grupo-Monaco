@@ -3066,8 +3066,17 @@ app.get('/api/chipax/debug-raw', requireAuth, async (req, res) => {
   try {
     const qs = `fechaInicial=${year}-01-01&fechaFinal=${year}-12-31&lineaNegocioId=${lineaNegocioId}`;
     const [roData, cuentas] = await Promise.all([chipaxGetAll(`/ro-datos?${qs}`), getChipaxCuentas()]);
-    let egresos = (roData.data || roData || []).filter(r => r.tipoMovimiento === 'Egreso');
+    const todos = roData.data || roData || [];
+    // Contar tipos de movimiento únicos para diagnóstico
+    const tiposCounts = {};
+    todos.forEach(r => { tiposCounts[r.tipoMovimiento] = (tiposCounts[r.tipoMovimiento] || 0) + 1; });
+
+    let egresos = todos.filter(r => r.tipoMovimiento === 'Egreso');
     if (periodo) egresos = egresos.filter(r => (r.periodo || r.fecha?.slice(0,7)) === periodo);
+
+    // También analizar NON-Egreso en el período para ver si se pierden montos
+    let otrosTipos = todos.filter(r => r.tipoMovimiento !== 'Egreso');
+    if (periodo) otrosTipos = otrosTipos.filter(r => (r.periodo || r.fecha?.slice(0,7)) === periodo);
 
     // Agrupar por cuentaId con suma
     const byCuenta = {};
@@ -3090,7 +3099,16 @@ app.get('/api/chipax/debug-raw', requireAuth, async (req, res) => {
 
     const breakdown = Object.values(byCuenta).sort((a,b) => b.totalMontoAsignado - a.totalMontoAsignado);
     const grandTotal = egresos.reduce((s,r) => s + Math.abs(r.montoAsignado || r.montoNeto || 0), 0);
-    res.json({ total: egresos.length, grandTotal, periodo: periodo || 'todos', breakdown });
+
+    // Mostrar transacciones de otros tipos (no Egreso) en el período
+    const otrosResumen = otrosTipos.map(r => ({
+      tipoMovimiento: r.tipoMovimiento, cuentaId: r.cuentaId,
+      cuentaNombre: (cuentas[r.cuentaId] || {}).nombre, cuentaPadre: (cuentas[r.cuentaId] || {}).padre,
+      periodo: r.periodo, montoAsignado: r.montoAsignado, montoNeto: r.montoNeto,
+      descripcion: r.descripcion || r.glosa
+    }));
+
+    res.json({ total: egresos.length, grandTotal, periodo: periodo || 'todos', tiposCounts, breakdown, otrosEnPeriodo: otrosResumen });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
