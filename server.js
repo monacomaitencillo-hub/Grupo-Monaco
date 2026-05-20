@@ -3152,8 +3152,8 @@ app.get('/api/chipax/ro-datos', requireAuth, async (req, res) => {
       const cuenta = cuentas[r.cuentaId] || {};
       const sub    = cuenta.nombre || 'Sin clasificar';
       const cat    = cuenta.padre  || 'Otros';
-      // Chipax agrupa por período de clasificación del documento
-      const per    = r.periodo || r.fecha?.slice(0, 7) || 'N/A';
+      // Chipax agrupa por fechaClasificacion (la fecha que el usuario asigna manualmente)
+      const per    = r.fechaClasificacion?.slice(0, 7) || r.periodo || r.fecha?.slice(0, 7) || 'N/A';
       // Filtrar períodos fuera del rango solicitado
       if (!per.startsWith(fechaInicial.slice(0, 4)) && !per.startsWith(fechaFinal.slice(0, 4))) return;
       const monto  = Math.abs(r.montoAsignado || r.montoNeto || 0);
@@ -3167,7 +3167,7 @@ app.get('/api/chipax/ro-datos', requireAuth, async (req, res) => {
     // Guardar en Firestore para uso de "Todos los locales"
     if (lineaNegocioId && fechaInicial) {
       const year = fechaInicial.slice(0, 4);
-      db.collection('eerr_chipax_cache').doc(`${lineaNegocioId}_${year}_v2`).set({ grouped, savedAt: Date.now() }).catch(() => {});
+      db.collection('eerr_chipax_cache').doc(`${lineaNegocioId}_${year}_v3`).set({ grouped, savedAt: Date.now() }).catch(() => {});
     }
     res.json(result);
   } catch(e) {
@@ -3188,7 +3188,7 @@ app.get('/api/chipax/ro-datos-todos', requireAuth, async (req, res) => {
 
     // Leer caché de Firestore para cada linea (guardado al cargar cada local individualmente)
     const snapshots = await Promise.all(
-      lineasIds.map(lid => db.collection('eerr_chipax_cache').doc(`${lid}_${year}_v2`).get())
+      lineasIds.map(lid => db.collection('eerr_chipax_cache').doc(`${lid}_${year}_v3`).get())
     );
 
     const mergedGrouped = {};
