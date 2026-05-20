@@ -42,7 +42,8 @@ async function chipaxGet(path) {
   return r.json();
 }
 
-const GOOGLE_SHEET_ID = process.env.GOOGLE_SHEET_ID || '';
+const GOOGLE_SHEET_ID      = process.env.GOOGLE_SHEET_ID || '';
+const MONACO_EERR_SHEET_ID = '1civhBvKt9Cw6CHF7vl6DPlHtkzl7JlgBI7rGtCLYWLE';
 const GOOGLE_SA       = process.env.GOOGLE_SERVICE_ACCOUNT ? JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT) : null;
 
 async function getSheetsRows(range) {
@@ -3055,6 +3056,124 @@ app.get('/api/chipax/ro-datos', requireAuth, async (req, res) => {
     res.json(result);
   } catch(e) {
     console.error('chipax ro-datos:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── EERR Google Sheets ────────────────────────────────────
+async function getEerrSheetRows(sheetName) {
+  if (!GOOGLE_SA) throw new Error('GOOGLE_SERVICE_ACCOUNT no configurada');
+  const auth  = new GoogleAuth({ credentials: GOOGLE_SA, scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'] });
+  const token = await auth.getAccessToken();
+  const url   = `https://sheets.googleapis.com/v4/spreadsheets/${MONACO_EERR_SHEET_ID}/values/${encodeURIComponent(sheetName + '!A:M')}`;
+  const resp  = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  if (!resp.ok) throw new Error(`Sheets error ${resp.status}: ${await resp.text()}`);
+  const data  = await resp.json();
+  return data.values || [];
+}
+
+const MESES_ES = { enero:1,febrero:2,marzo:3,abril:4,mayo:5,junio:6,julio:7,agosto:8,septiembre:9,octubre:10,noviembre:11,diciembre:12 };
+
+// Parsear monto chileno: "1.234.567" → 1234567
+function parseMontoSheet(v) {
+  if (!v) return 0;
+  let s = String(v).trim().replace(/[$\s]/g,'');
+  if (s.includes(',')) s = s.replace(/\./g,'').replace(',','.');
+  else if (/^\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g,'');
+  return Math.abs(Number(s.replace(/[^0-9.-]/g,'')) || 0);
+}
+
+// GET /api/eerr/efectivo-pagado?localName=X&year=Y
+app.get('/api/eerr/efectivo-pagado', requireAuth, async (req, res) => {
+  const { localName, year } = req.query;
+  try {
+    const rows = await getEerrSheetRows('Efectivo Pagado');
+    if (!rows.length) return res.json({});
+    const headers = rows[0].map(h => (h||'').trim());
+    const iMes    = headers.indexOf('Mes Correspondiente');
+    const iLocal  = headers.indexOf('LOCAL');
+    const iTipo   = headers.indexOf('TIPO GASTO');
+    const iMonto  = headers.indexOf('MONTO');
+    const iYear   = headers.indexOf('AÑO');
+
+    // grouped: { tipoGasto: { 'YYYY-MM': monto } }
+    const grouped = {};
+    rows.slice(1).forEach(row => {
+      const rowYear = String(row[iYear] || '').trim();
+      if (year && rowYear !== String(year)) return;
+      const mesStr  = (row[iMes] || '').trim().toLowerCase();
+      const mesNum  = MESES_ES[mesStr];
+      if (!mesNum) return;
+      const periodo = `${rowYear}-${String(mesNum).padStart(2,'0')}`;
+      const tipo    = (row[iTipo] || '').trim() || 'Sin clasificar';
+      const monto   = parseMontoSheet(row[iMonto]);
+      if (!monto) return;
+
+      // LOCAL puede ser múltiple "A / B / C"
+      const localesRaw = (row[iLocal] || '').split('/').map(l => l.trim()).filter(Boolean);
+      if (!localesRaw.length) return;
+
+      // Filtrar por localName si se especifica
+      const normLocal = s => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+      const matching  = localName
+        ? localesRaw.filter(l => normLocal(l).includes(normLocal(localName)) || normLocal(localName).includes(normLocal(l)))
+        : localesRaw;
+      if (localName && !matching.length) return;
+
+      const montoPorLocal = monto / localesRaw.length;
+      if (!grouped[tipo]) grouped[tipo] = {};
+      grouped[tipo][periodo] = (grouped[tipo][periodo] || 0) + montoPorLocal;
+    });
+
+    res.json(grouped);
+  } catch(e) {
+    console.error('eerr efectivo-pagado:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/eerr/scotiabank?localName=X&year=Y
+app.get('/api/eerr/scotiabank', requireAuth, async (req, res) => {
+  const { localName, year } = req.query;
+  try {
+    const rows = await getEerrSheetRows('Scotiabank');
+    if (!rows.length) return res.json({});
+    const headers = rows[0].map(h => (h||'').trim());
+    const iFiltro = headers.indexOf('FILTRO');
+    const iCargos = headers.indexOf('Cargos (CLP)');
+    const iMes    = headers.indexOf('Mes Correspondiente');
+    const iLocal  = headers.indexOf('LOCAL');
+    const iTipo   = headers.indexOf('TIPO GASTO');
+    const iYear   = headers.indexOf('AÑO');
+
+    const grouped = {};
+    rows.slice(1).forEach(row => {
+      // Solo filas sin FILTRO y con cargo
+      const filtro = (row[iFiltro] || '').trim();
+      if (filtro) return; // tiene valor en FILTRO → excluir
+      const cargo = parseMontoSheet(row[iCargos]);
+      if (!cargo) return; // sin cargo → excluir
+
+      const rowYear = String(row[iYear] || '').trim();
+      if (year && rowYear !== String(year)) return;
+      const mesStr  = (row[iMes] || '').trim().toLowerCase();
+      const mesNum  = MESES_ES[mesStr];
+      if (!mesNum) return;
+      const periodo = `${rowYear}-${String(mesNum).padStart(2,'0')}`;
+      const tipo    = (row[iTipo] || '').trim() || 'Sin clasificar';
+      const local   = (row[iLocal] || '').trim();
+
+      const normLocal = s => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+      if (localName && !normLocal(local).includes(normLocal(localName)) && !normLocal(localName).includes(normLocal(local))) return;
+      if (!local && localName) return;
+
+      if (!grouped[tipo]) grouped[tipo] = {};
+      grouped[tipo][periodo] = (grouped[tipo][periodo] || 0) + cargo;
+    });
+
+    res.json(grouped);
+  } catch(e) {
+    console.error('eerr scotiabank:', e.message);
     res.status(500).json({ error: e.message });
   }
 });

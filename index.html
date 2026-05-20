@@ -6156,18 +6156,20 @@ async function eerrLoad() {
     const saved = eerrMapping[restaurantId];
     const lineaNegocioId = saved?.lineaNegocioId || null;
 
-    // Fetch cierres y Chipax en paralelo
-    const promises = [];
-    if (restaurantId) promises.push(
-      apiFetch(`/api/cierres/${restaurantId}?all=true`).then(r=>r.json()).catch(()=>({ cierres:[] }))
-    ); else promises.push(Promise.resolve({ cierres:[] }));
+    // Fetch todo en paralelo
+    const restName = document.getElementById('eerr-rest-sel').selectedOptions[0]?.text || '';
+    const qs = `localName=${encodeURIComponent(restName)}&year=${year}`;
 
-    if (lineaNegocioId) promises.push(
-      apiFetch(`/api/chipax/ro-datos?lineaNegocioId=${lineaNegocioId}&fechaInicial=${year}-01-01&fechaFinal=${year}-12-31`)
-        .then(r=>r.json()).catch(()=>({ grouped:{} }))
-    ); else promises.push(Promise.resolve({ grouped:{} }));
-
-    const [cierresData, chipaxData] = await Promise.all(promises);
+    const [cierresData, chipaxData, efectivoData, scotiaData] = await Promise.all([
+      restaurantId
+        ? apiFetch(`/api/cierres/${restaurantId}?all=true`).then(r=>r.json()).catch(()=>({ cierres:[] }))
+        : Promise.resolve({ cierres:[] }),
+      lineaNegocioId
+        ? apiFetch(`/api/chipax/ro-datos?lineaNegocioId=${lineaNegocioId}&fechaInicial=${year}-01-01&fechaFinal=${year}-12-31`).then(r=>r.json()).catch(()=>({ grouped:{} }))
+        : Promise.resolve({ grouped:{} }),
+      apiFetch(`/api/eerr/efectivo-pagado?${qs}`).then(r=>r.json()).catch(()=>({})),
+      apiFetch(`/api/eerr/scotiabank?${qs}`).then(r=>r.json()).catch(()=>({})),
+    ]);
 
     // ── Cierres: agrupar por mes ──
     const cierres = (cierresData.cierres || []).filter(r => (r.fecha||'').startsWith(year));
@@ -6298,12 +6300,37 @@ async function eerrLoad() {
       addRow('', null, { separator:true });
     }
 
+    // Helper para sheets data (efectivo/scotia)
+    const sheetMes = (data, tipo, m) => {
+      const per = `${year}-${String(m).padStart(2,'0')}`;
+      return -((data[tipo]?.[per]) || 0);
+    };
+    const sheetCatTotal = (data, m) => Object.keys(data).reduce((s,t) => s + sheetMes(data,t,m), 0);
+
+    // ── EFECTIVO PAGADO ──
+    const epTipos = Object.keys(efectivoData).sort();
+    if (epTipos.length) {
+      addRow('Efectivo Pagado', m => sheetCatTotal(efectivoData, m), { bold:true, bg:'#fdf4ff', color:'#7e22ce' });
+      epTipos.forEach(t => addRow(t, m => sheetMes(efectivoData, t, m), { indent:true, color:'#9333ea' }));
+      addRow('', null, { separator:true });
+    }
+
+    // ── SCOTIABANK ──
+    const sbTipos = Object.keys(scotiaData).sort();
+    if (sbTipos.length) {
+      addRow('Scotiabank', m => sheetCatTotal(scotiaData, m), { bold:true, bg:'#f0fdf4', color:'#065f46' });
+      sbTipos.forEach(t => addRow(t, m => sheetMes(scotiaData, t, m), { indent:true, color:'#047857' }));
+      addRow('', null, { separator:true });
+    }
+
     // ── RESULTADO OPERACIONAL ──
     const allCats = Object.keys(grouped);
     addRow('Resultado Operacional', m => {
       const ingrNeto   = (byMonth[m]?.transbank||0)/1.19 + (byMonth[m]?.efectivo||0);
-      const totalCosts = allCats.reduce((s,c) => s + chipaxCatMes(c,m), 0);
-      return ingrNeto + totalCosts; // costs ya son negativos
+      const chipaxTotal = allCats.reduce((s,c) => s + chipaxCatMes(c,m), 0);
+      const epTotal    = sheetCatTotal(efectivoData, m);
+      const sbTotal    = sheetCatTotal(scotiaData, m);
+      return ingrNeto + chipaxTotal + epTotal + sbTotal;
     }, { bold:true, bg:'#eff6ff', color:'#1e40af' });
 
     loading.style.display   = 'none';
