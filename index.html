@@ -127,6 +127,7 @@
       font-size: 18px; flex-shrink: 0;
     }
     .mob-nav-label { font-size: 14px; font-weight: 600; color: #ddd; }
+    .mob-nav-section { font-size: 10px; font-weight: 700; color: #555; text-transform: uppercase; letter-spacing: .8px; padding: 12px 14px 4px; }
     .mob-sidebar-footer {
       padding: 16px 20px; border-top: 1px solid #1a1a1a;
       display: flex; align-items: center; justify-content: space-between;
@@ -855,6 +856,7 @@
         <select id="eerr-year-sel" style="border:1px solid #e5e7eb;border-radius:8px;padding:6px 12px;font-size:14px;background:#fff"></select>
       </div>
       <button class="btn-new" onclick="eerrLoad()" style="margin-bottom:0">Cargar</button>
+      <button onclick="goTo('eerr-config')" style="margin-bottom:0;padding:7px 14px;background:#f3f4f6;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;color:#374151;cursor:pointer;display:flex;align-items:center;gap:6px"><i class="fas fa-sliders-h"></i> Configurar</button>
     </div>
     <!-- Vinculación Chipax -->
     <div id="eerr-chipax-row" style="display:flex;gap:10px;align-items:center;margin-bottom:24px;font-size:13px">
@@ -1064,6 +1066,26 @@
           <tbody id="oc-tbody"></tbody>
         </table>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── EERR CONFIG MODULE ── -->
+<div id="eerr-config-module" style="display:none;flex-direction:column;min-height:100vh">
+  <div class="inv-topbar">
+    <span style="font-size:14px;font-weight:600;color:#fff">Configuración EERR</span>
+  </div>
+  <div style="flex:1;padding:32px 28px;max-width:900px;width:100%;margin:0 auto">
+    <div style="background:#fff;border-radius:16px;padding:28px;border:1px solid #e5e7eb;margin-bottom:24px">
+      <h3 style="font-size:15px;font-weight:700;color:#111827;margin:0 0 8px 0">Subcategorías Chipax</h3>
+      <p style="font-size:13px;color:#6b7280;margin:0 0 20px 0">Sincroniza para ver todas las subcategorías. Desmarca las que NO quieres incluir en el EERR (ej: Propinas).</p>
+      <div style="display:flex;gap:12px;align-items:center;margin-bottom:20px">
+        <button id="eerr-config-sync-btn" onclick="eerrConfigSync()" style="padding:8px 18px;background:#1d4ed8;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">Sincronizar desde Chipax</button>
+        <span id="eerr-config-loading" style="display:none;font-size:13px;color:#6b7280">Cargando...</span>
+        <button id="eerr-config-save-btn" onclick="eerrConfigSave()" style="display:none;padding:8px 18px;background:#059669;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">Guardar configuración</button>
+        <span id="eerr-config-status" style="font-size:13px;color:#6b7280"></span>
+      </div>
+      <div id="eerr-config-checkboxes" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:0 32px"></div>
     </div>
   </div>
 </div>
@@ -1544,13 +1566,14 @@ async function doLogout() {
   document.getElementById('login-screen').style.display = 'flex';
 }
 
-const ALL_MODULES_EL = ['hub','dashboard','inventario','registro-inv-module','add-stock-module','cierres-module','pdf-upload-module','pdf-view-module','usuarios-module','pedidos-module','reuniones-module','gdd-module','margenes-module','orden-compra-module','eerr-module'];
+const ALL_MODULES_EL = ['hub','dashboard','inventario','registro-inv-module','add-stock-module','cierres-module','pdf-upload-module','pdf-view-module','usuarios-module','pedidos-module','reuniones-module','gdd-module','margenes-module','orden-compra-module','eerr-module','eerr-config-module'];
 function hideAll() { ALL_MODULES_EL.forEach(id => { const el = document.getElementById(id); if(el) el.style.display = 'none'; }); }
 // Note: hideAll() does NOT hide #admin-wrapper — goToHub() handles that separately
 
 function goTo(module) {
   hideAll();
   closeSidebar();
+  if (window._sidebarExpandGroup) window._sidebarExpandGroup(module);
   setSidebarVisibility(module !== 'hub');
   // Mostrar AdminLTE wrapper
   document.getElementById('hub').style.display = 'none';
@@ -1560,7 +1583,7 @@ function goTo(module) {
     ventas: 'Ventas', stock: 'Añadir stock', inventario: 'Gestión de Clientes y Proveedor',
     'registro-inv': 'Registro de Inventarios', cierres: 'Cierres de caja', pedidos: 'Pedidos Helados',
     'pdf-upload': 'Añadir PDF', 'pdf-view': 'Ver Manual', usuarios: 'Usuarios', reuniones: 'Reuniones',
-    gdd: 'Guías de Despacho', margenes: 'Márgenes', 'orden-compra': 'Pedidos', eerr: 'EERR'
+    gdd: 'Guías de Despacho', margenes: 'Márgenes', 'orden-compra': 'Pedidos', eerr: 'EERR', 'eerr-config': 'Config EERR'
   };
   const titleEl = document.getElementById('admin-topbar-title');
   if (titleEl) titleEl.textContent = moduleNames[module] || module;
@@ -1624,6 +1647,9 @@ function goTo(module) {
   } else if (module === 'eerr') {
     document.getElementById('eerr-module').style.display = 'flex';
     eerrInit();
+  } else if (module === 'eerr-config') {
+    document.getElementById('eerr-config-module').style.display = 'flex';
+    eerrConfigInit();
   }
 }
 
@@ -2976,37 +3002,112 @@ function switchInvTab(tab) {
 
 // ── AdminLTE Sidebar ────────────────────────────────────────
 function renderAdminSidebar() {
-  const allModules = [
-    { id: 'ventas',       icon: 'fas fa-chart-bar',      name: 'Ventas',                      adminOnly: false },
-    { id: 'stock',        icon: 'fas fa-boxes',           name: 'Añadir stock',                adminOnly: false },
-    { id: 'inventario',   icon: 'fas fa-address-book',    name: 'Clientes y Proveedores',      adminOnly: false },
-    { id: 'registro-inv', icon: 'fas fa-clipboard-list',  name: 'Registro de Inventarios',     adminOnly: false },
-    { id: 'cierres',      icon: 'fas fa-cash-register',   name: 'Cierres de caja',             adminOnly: false },
-    { id: 'pedidos',      icon: 'fas fa-shopping-cart',   name: 'Pedidos Helados',                     adminOnly: false },
-    { id: 'reuniones',    icon: 'fas fa-users',           name: 'Reuniones',                   adminOnly: false },
-    { id: 'gdd',          icon: 'fas fa-file-invoice',    name: 'Guías de Despacho',           adminOnly: false },
-    { id: 'margenes',     icon: 'fas fa-percentage',      name: 'Márgenes',                    adminOnly: false },
-    { id: 'orden-compra', icon: 'fas fa-cart-plus',       name: 'Pedidos',                     adminOnly: false },
-    { id: 'eerr',         icon: 'fas fa-chart-line',      name: 'EERR',                        adminOnly: false },
-    { id: 'pdf-upload',   icon: 'fas fa-file-upload',     name: 'Añadir PDF',                  adminOnly: true  },
-    { id: 'pdf-view',     icon: 'fas fa-book',            name: 'Ver Manual',                  adminOnly: false },
-    { id: 'usuarios',     icon: 'fas fa-user-cog',        name: 'Usuarios',                    adminOnly: true  },
+  const groups = [
+    {
+      label: 'Operaciones', icon: 'fas fa-store',
+      items: [
+        { id: 'ventas',       icon: 'fas fa-chart-bar',     name: 'Ventas',               adminOnly: false },
+        { id: 'cierres',      icon: 'fas fa-cash-register', name: 'Cierres de caja',      adminOnly: false },
+        { id: 'pedidos',      icon: 'fas fa-shopping-cart', name: 'Pedidos Helados',      adminOnly: false },
+      ]
+    },
+    {
+      label: 'Inventario', icon: 'fas fa-boxes',
+      items: [
+        { id: 'stock',        icon: 'fas fa-boxes',          name: 'Añadir stock',            adminOnly: false },
+        { id: 'registro-inv', icon: 'fas fa-clipboard-list', name: 'Registro de Inventarios', adminOnly: false },
+        { id: 'gdd',          icon: 'fas fa-file-invoice',   name: 'Guías de Despacho',       adminOnly: false },
+        { id: 'orden-compra', icon: 'fas fa-cart-plus',      name: 'Pedidos de Compra',       adminOnly: false },
+      ]
+    },
+    {
+      label: 'Finanzas', icon: 'fas fa-chart-line',
+      items: [
+        { id: 'eerr',         icon: 'fas fa-chart-line',    name: 'EERR',                 adminOnly: false },
+        { id: 'margenes',     icon: 'fas fa-percentage',    name: 'Márgenes',             adminOnly: false },
+      ]
+    },
+    {
+      label: 'Administración', icon: 'fas fa-cog',
+      items: [
+        { id: 'inventario',   icon: 'fas fa-address-book',  name: 'Clientes y Proveedores', adminOnly: false },
+        { id: 'reuniones',    icon: 'fas fa-users',         name: 'Reuniones',              adminOnly: false },
+        { id: 'usuarios',     icon: 'fas fa-user-cog',      name: 'Usuarios',               adminOnly: true  },
+      ]
+    },
+    {
+      label: 'Recursos', icon: 'fas fa-book',
+      items: [
+        { id: 'pdf-upload',   icon: 'fas fa-file-upload',   name: 'Añadir PDF',           adminOnly: true  },
+        { id: 'pdf-view',     icon: 'fas fa-book',          name: 'Ver Manual',           adminOnly: false },
+      ]
+    },
   ];
-  const visible = allModules.filter(m => {
-    if (m.adminOnly) return userRole === 'superadmin';
-    return userRole === 'superadmin' || userModules.includes(m.id);
-  });
+
   const nav = document.getElementById('admin-sidebar-nav');
   if (!nav) return;
-  nav.innerHTML = visible.map(m => `
-    <li class="nav-item">
-      <a href="#" class="nav-link" data-module="${m.id}">
-        <i class="nav-icon ${m.icon}"></i>
-        <p>${m.name}</p>
-      </a>
-    </li>`).join('');
 
-  // Bind clicks — use capture phase so AdminLTE overlay doesn't block, and touchstart for mobile
+  let html = '';
+  groups.forEach((group, gi) => {
+    const visibleItems = group.items.filter(m => {
+      if (m.adminOnly) return userRole === 'superadmin';
+      return userRole === 'superadmin' || userModules.includes(m.id);
+    });
+    if (!visibleItems.length) return;
+    const groupId = `sidebar-group-${gi}`;
+    html += `
+    <li class="nav-item" style="border-bottom:1px solid rgba(255,255,255,0.06)">
+      <a href="#" class="nav-link sidebar-group-toggle" data-group="${groupId}"
+         style="display:flex;align-items:center;padding:10px 16px;color:rgba(255,255,255,0.75);font-size:12px;text-transform:uppercase;letter-spacing:.6px;font-weight:600">
+        <i class="${group.icon}" style="width:20px;font-size:13px;opacity:.8"></i>
+        <span style="flex:1;margin-left:10px">${group.label}</span>
+        <i class="fas fa-chevron-down sidebar-arrow" style="font-size:10px;transition:transform .2s"></i>
+      </a>
+      <ul id="${groupId}" class="nav nav-treeview" style="padding:0 0 4px 0">
+        ${visibleItems.map(m => `
+        <li class="nav-item">
+          <a href="#" class="nav-link" data-module="${m.id}" style="padding:7px 16px 7px 42px">
+            <i class="nav-icon ${m.icon}" style="font-size:13px"></i>
+            <p style="font-size:13px">${m.name}</p>
+          </a>
+        </li>`).join('')}
+      </ul>
+    </li>`;
+  });
+  nav.innerHTML = html;
+
+  // Toggle groups
+  nav.querySelectorAll('.sidebar-group-toggle').forEach(toggle => {
+    const groupEl = document.getElementById(toggle.dataset.group);
+    const arrow   = toggle.querySelector('.sidebar-arrow');
+    // Start collapsed
+    groupEl.style.display = 'none';
+    toggle.addEventListener('click', e => {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      const open = groupEl.style.display !== 'none';
+      groupEl.style.display = open ? 'none' : 'block';
+      arrow.style.transform = open ? '' : 'rotate(180deg)';
+    });
+  });
+
+  // Auto-expand group that contains the active module
+  function expandGroupOf(moduleId) {
+    nav.querySelectorAll('.nav-link[data-module]').forEach(link => {
+      if (link.dataset.module === moduleId) {
+        const groupUl  = link.closest('ul.nav-treeview');
+        const groupLi  = groupUl?.closest('li.nav-item');
+        const toggle   = groupLi?.querySelector('.sidebar-group-toggle');
+        const arrow    = toggle?.querySelector('.sidebar-arrow');
+        if (groupUl)  groupUl.style.display = 'block';
+        if (arrow)    arrow.style.transform  = 'rotate(180deg)';
+      }
+    });
+  }
+  // Expose for goTo
+  window._sidebarExpandGroup = expandGroupOf;
+
+  // Bind module clicks
   nav.querySelectorAll('.nav-link[data-module]').forEach(link => {
     const handler = function(e) {
       e.preventDefault();
@@ -3047,32 +3148,46 @@ function closeSidebar() {
   document.getElementById('mob-overlay').classList.remove('open');
 }
 function renderSidebar() {
-  const allModules = [
-    { id: 'ventas',        icon: '📊', name: 'Ventas',                        bg: 'linear-gradient(135deg,#7c6bc9,#9b8de0)', adminOnly: false },
-    { id: 'stock',         icon: '📦', name: 'Añadir stock',                  bg: 'linear-gradient(135deg,#3aada8,#52c9c4)', adminOnly: false },
-    { id: 'inventario',    icon: '🗂️', name: 'Gestión de Clientes y Proveedor', bg: 'linear-gradient(135deg,#3d9e72,#52c98a)', adminOnly: false },
-    { id: 'registro-inv',  icon: '📋', name: 'Registro de Inventarios',       bg: 'linear-gradient(135deg,#5a7e3d,#7ab552)', adminOnly: false },
-    { id: 'cierres',       icon: '💰', name: 'Cierres de caja',               bg: 'linear-gradient(135deg,#d97b45,#f0975a)', adminOnly: false },
-    { id: 'pedidos',       icon: '🛒', name: 'Pedidos Helados',                       bg: 'linear-gradient(135deg,#b45309,#f59e0b)', adminOnly: false },
-    { id: 'pdf-upload',    icon: '📤', name: 'Añadir PDF',                    bg: 'linear-gradient(135deg,#2563b0,#3b82f6)', adminOnly: true  },
-    { id: 'pdf-view',      icon: '📄', name: 'Ver Manual',                    bg: 'linear-gradient(135deg,#0e7490,#06b6d4)', adminOnly: false },
-    { id: 'reuniones',     icon: '📋', name: 'Reuniones',                     bg: 'linear-gradient(135deg,#5b6af0,#7c8cf8)', adminOnly: false },
-    { id: 'gdd',           icon: '📦', name: 'Guías de Despacho',             bg: 'linear-gradient(135deg,#0e7490,#06b6d4)', adminOnly: false },
-    { id: 'margenes',      icon: '📐', name: 'Márgenes',                      bg: 'linear-gradient(135deg,#7c3aed,#a855f7)', adminOnly: false },
-    { id: 'orden-compra',  icon: '🛍️', name: 'Pedidos',                       bg: 'linear-gradient(135deg,#0f766e,#14b8a6)', adminOnly: false },
-    { id: 'eerr',          icon: '📊', name: 'EERR',                          bg: 'linear-gradient(135deg,#1d4ed8,#3b82f6)', adminOnly: false },
-    { id: 'usuarios',      icon: '👥', name: 'Usuarios',                      bg: 'linear-gradient(135deg,#c95e6b,#e07585)', adminOnly: true  },
+  const groups = [
+    { label: 'Operaciones', items: [
+      { id: 'ventas',       icon: '📊', name: 'Ventas',                bg: 'linear-gradient(135deg,#7c6bc9,#9b8de0)', adminOnly: false },
+      { id: 'cierres',      icon: '💰', name: 'Cierres de caja',       bg: 'linear-gradient(135deg,#d97b45,#f0975a)', adminOnly: false },
+      { id: 'pedidos',      icon: '🛒', name: 'Pedidos Helados',        bg: 'linear-gradient(135deg,#b45309,#f59e0b)', adminOnly: false },
+    ]},
+    { label: 'Inventario', items: [
+      { id: 'stock',        icon: '📦', name: 'Añadir stock',           bg: 'linear-gradient(135deg,#3aada8,#52c9c4)', adminOnly: false },
+      { id: 'registro-inv', icon: '📋', name: 'Registro de Inventarios',bg: 'linear-gradient(135deg,#5a7e3d,#7ab552)', adminOnly: false },
+      { id: 'gdd',          icon: '📦', name: 'Guías de Despacho',      bg: 'linear-gradient(135deg,#0e7490,#06b6d4)', adminOnly: false },
+      { id: 'orden-compra', icon: '🛍️', name: 'Pedidos de Compra',      bg: 'linear-gradient(135deg,#0f766e,#14b8a6)', adminOnly: false },
+    ]},
+    { label: 'Finanzas', items: [
+      { id: 'eerr',         icon: '📊', name: 'EERR',                   bg: 'linear-gradient(135deg,#1d4ed8,#3b82f6)', adminOnly: false },
+      { id: 'margenes',     icon: '📐', name: 'Márgenes',               bg: 'linear-gradient(135deg,#7c3aed,#a855f7)', adminOnly: false },
+    ]},
+    { label: 'Administración', items: [
+      { id: 'inventario',   icon: '🗂️', name: 'Clientes y Proveedores', bg: 'linear-gradient(135deg,#3d9e72,#52c98a)', adminOnly: false },
+      { id: 'reuniones',    icon: '📋', name: 'Reuniones',              bg: 'linear-gradient(135deg,#5b6af0,#7c8cf8)', adminOnly: false },
+      { id: 'usuarios',     icon: '👥', name: 'Usuarios',               bg: 'linear-gradient(135deg,#c95e6b,#e07585)', adminOnly: true  },
+    ]},
+    { label: 'Recursos', items: [
+      { id: 'pdf-upload',   icon: '📤', name: 'Añadir PDF',             bg: 'linear-gradient(135deg,#2563b0,#3b82f6)', adminOnly: true  },
+      { id: 'pdf-view',     icon: '📄', name: 'Ver Manual',             bg: 'linear-gradient(135deg,#0e7490,#06b6d4)', adminOnly: false },
+    ]},
   ];
-  const visible = allModules.filter(m => {
-    if (m.adminOnly) return userRole === 'superadmin';
-    return userRole === 'superadmin' || userModules.includes(m.id);
-  });
 
-  document.getElementById('mob-sidebar-nav').innerHTML = visible.map(m => `
+  let html = '';
+  groups.forEach(g => {
+    const items = g.items.filter(m => m.adminOnly ? userRole === 'superadmin' : userRole === 'superadmin' || userModules.includes(m.id));
+    if (!items.length) return;
+    html += `<div class="mob-nav-section">${g.label}</div>`;
+    html += items.map(m => `
     <button class="mob-nav-item" onclick="closeSidebar();goTo('${m.id}')">
       <div class="mob-nav-icon" style="background:${m.bg}">${m.icon}</div>
       <span class="mob-nav-label">${m.name}</span>
     </button>`).join('');
+  });
+
+  document.getElementById('mob-sidebar-nav').innerHTML = html;
 
   const rawName = (document.getElementById('hub-user-name') || {}).textContent || '';
   document.getElementById('mob-sidebar-user').textContent = rawName;
@@ -6065,6 +6180,9 @@ async function eerrInit() {
   }
   const restSel = document.getElementById('eerr-rest-sel');
   if (restSel.options.length === 0) {
+    const oAll = document.createElement('option');
+    oAll.value = '__all__'; oAll.textContent = 'Todos los locales';
+    restSel.appendChild(oAll);
     eerrRestaurants.forEach(r => {
       const o = document.createElement('option');
       o.value = r.id; o.textContent = r.name;
@@ -6108,9 +6226,15 @@ async function eerrInit() {
 
 function eerrOnRestChange() {
   const restaurantId = document.getElementById('eerr-rest-sel').value;
+  const chipaxRow    = document.getElementById('eerr-chipax-row');
   const chipaxSel    = document.getElementById('eerr-chipax-sel');
   const status       = document.getElementById('eerr-chipax-status');
-  const saved        = eerrMapping[restaurantId];
+  if (restaurantId === '__all__') {
+    if (chipaxRow) chipaxRow.style.display = 'none';
+    return;
+  }
+  if (chipaxRow) chipaxRow.style.display = 'flex';
+  const saved = eerrMapping[restaurantId];
   if (saved?.lineaNegocioId) {
     chipaxSel.value = saved.lineaNegocioId;
     if (status) status.textContent = '✓ Vinculado';
@@ -6139,6 +6263,7 @@ async function eerrLoad() {
   const restaurantId = document.getElementById('eerr-rest-sel').value;
   const year         = document.getElementById('eerr-year-sel').value;
   if (!year) return;
+  const isTodos = restaurantId === '__all__';
 
   const MESES     = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
   const loading   = document.getElementById('eerr-loading');
@@ -6152,38 +6277,109 @@ async function eerrLoad() {
   if (status) status.textContent = '';
 
   try {
-    // Obtener lineaNegocioId del mapping guardado
-    const saved = eerrMapping[restaurantId];
-    const lineaNegocioId = saved?.lineaNegocioId || null;
+    const eerrCfg = await apiFetch('/api/eerr/config').then(r=>r.json()).catch(()=>({ excluded:[] }));
+    const eerrExcludedSet = new Set((eerrCfg.excluded||[]));
+    eerrConfigExcluded = eerrExcludedSet;
 
-    // Fetch todo en paralelo
-    const restName = document.getElementById('eerr-rest-sel').selectedOptions[0]?.text || '';
-    const qs = `localName=${encodeURIComponent(restName)}&year=${year}`;
+    let byMonth = {}, grouped = {}, efectivoData = {}, scotiaData = {};
+    let gddResp = { sheetLines:{}, records:[], products:[], preparations:[], priceHistory:[], restaurants:[] };
+    let restName = '', isMonacoLocal = false;
 
-    const [cierresData, chipaxData, efectivoData, scotiaData] = await Promise.all([
-      restaurantId
-        ? apiFetch(`/api/cierres/${restaurantId}?all=true`).then(r=>r.json()).catch(()=>({ cierres:[] }))
-        : Promise.resolve({ cierres:[] }),
-      lineaNegocioId
-        ? apiFetch(`/api/chipax/ro-datos?lineaNegocioId=${lineaNegocioId}&fechaInicial=${year}-01-01&fechaFinal=${year}-12-31`).then(r=>r.json()).catch(()=>({ grouped:{} }))
-        : Promise.resolve({ grouped:{} }),
-      apiFetch(`/api/eerr/efectivo-pagado?${qs}`).then(r=>r.json()).catch(()=>({})),
-      apiFetch(`/api/eerr/scotiabank?${qs}`).then(r=>r.json()).catch(()=>({})),
-    ]);
+    const mergeSheetData = (arr) => {
+      const merged = {};
+      arr.forEach(data => {
+        Object.entries(data).forEach(([tipo, periodos]) => {
+          if (!merged[tipo]) merged[tipo] = {};
+          Object.entries(periodos||{}).forEach(([per, val]) => {
+            merged[tipo][per] = (merged[tipo][per]||0) + val;
+          });
+        });
+      });
+      return merged;
+    };
 
-    // ── Cierres: agrupar por mes ──
-    const cierres = (cierresData.cierres || []).filter(r => (r.fecha||'').startsWith(year));
-    const byMonth = {};
-    cierres.forEach(r => {
-      const m = parseInt((r.fecha||'').split('-')[1], 10);
-      if (!m) return;
-      if (!byMonth[m]) byMonth[m] = { transbank:0, efectivo:0 };
-      byMonth[m].transbank += r.transbank || 0;
-      byMonth[m].efectivo  += r.efectivo  || 0;
-    });
+    if (isTodos) {
+      restName = 'Todos los locales';
+      // Fetch cierres de todos los locales en paralelo
+      const allCierresArr = await Promise.all(
+        eerrRestaurants.map(r => apiFetch(`/api/cierres/${r.id}?all=true`).then(res=>res.json()).catch(()=>({cierres:[]})))
+      );
+      allCierresArr.forEach(data => {
+        (data.cierres||[]).filter(c=>(c.fecha||'').startsWith(year)).forEach(c => {
+          const m = parseInt((c.fecha||'').split('-')[1], 10);
+          if (!m) return;
+          if (!byMonth[m]) byMonth[m] = {transbank:0, efectivo:0};
+          byMonth[m].transbank += c.transbank||0;
+          byMonth[m].efectivo  += c.efectivo ||0;
+        });
+      });
+      // Chipax: fetch para cada lineaNegocioId único mapeado
+      const seenLineas = new Set();
+      const lineasToFetch = eerrRestaurants.map(r => eerrMapping[r.id]?.lineaNegocioId).filter(lid => lid && !seenLineas.has(lid) && seenLineas.add(lid));
+      // Lee desde Firestore (guardado al cargar cada local individual)
+      const chipaxTodos = await apiFetch(`/api/chipax/ro-datos-todos?year=${year}`).then(r=>r.json()).catch(() => ({ grouped:{}, lineasConDatos:0, lineasTotal:0 }));
+      grouped = chipaxTodos.grouped || {};
+      if (status) {
+        const con = chipaxTodos.lineasConDatos ?? 0;
+        const tot = chipaxTodos.lineasTotal ?? 0;
+        if (con === 0) status.textContent = '⚠ Sin datos Chipax — carga cada local primero';
+        else if (con < tot) status.textContent = `⚠ Chipax parcial (${con}/${tot} locales) — carga los que faltan`;
+        else status.textContent = '';
+      }
+      // Efectivo pagado y scotiabank de todos
+      const [allEpArr, allSbArr] = await Promise.all([
+        Promise.all(eerrRestaurants.map(r => apiFetch(`/api/eerr/efectivo-pagado?localName=${encodeURIComponent(r.name)}&year=${year}`).then(res=>res.json()).catch(()=>({})))),
+        Promise.all(eerrRestaurants.map(r => apiFetch(`/api/eerr/scotiabank?localName=${encodeURIComponent(r.name)}&year=${year}`).then(res=>res.json()).catch(()=>({})))),
+      ]);
+      efectivoData = mergeSheetData(allEpArr);
+      scotiaData   = mergeSheetData(allSbArr);
+      // GDD se omite (Monaco envía = otros reciben, neto = 0)
+      isMonacoLocal = false;
+
+    } else {
+      restName = document.getElementById('eerr-rest-sel').selectedOptions[0]?.text || '';
+      const saved = eerrMapping[restaurantId];
+      const lineaNegocioId = saved?.lineaNegocioId || null;
+      const qs = `localName=${encodeURIComponent(restName)}&year=${year}`;
+
+      const [cierresData, chipaxData, ep, sb, gdd] = await Promise.all([
+        restaurantId
+          ? apiFetch(`/api/cierres/${restaurantId}?all=true`).then(r=>r.json()).catch(()=>({ cierres:[] }))
+          : Promise.resolve({ cierres:[] }),
+        lineaNegocioId
+          ? apiFetch(`/api/chipax/ro-datos?lineaNegocioId=${lineaNegocioId}&fechaInicial=${year}-01-01&fechaFinal=${year}-12-31`).then(r=>r.json()).catch(e=>{ if(status) status.textContent='⚠ Chipax no disponible — reintenta'; return { grouped:{} }; })
+          : Promise.resolve({ grouped:{} }),
+        apiFetch(`/api/eerr/efectivo-pagado?${qs}`).then(r=>r.json()).catch(()=>({})),
+        apiFetch(`/api/eerr/scotiabank?${qs}`).then(r=>r.json()).catch(()=>({})),
+        apiFetch(`/api/eerr/gdd?year=${year}`).then(r=>r.json()).catch(()=>({ sheetLines:{}, records:[], products:[], preparations:[], priceHistory:[], restaurants:[] })),
+      ]);
+
+      const cierres = (cierresData.cierres||[]).filter(r=>(r.fecha||'').startsWith(year));
+      cierres.forEach(r => {
+        const m = parseInt((r.fecha||'').split('-')[1], 10);
+        if (!m) return;
+        if (!byMonth[m]) byMonth[m] = { transbank:0, efectivo:0 };
+        byMonth[m].transbank += r.transbank||0;
+        byMonth[m].efectivo  += r.efectivo ||0;
+      });
+      grouped      = chipaxData.grouped || {};
+      efectivoData = ep;
+      scotiaData   = sb;
+      gddResp      = gdd;
+      // Debug temporal: ver campos de las primeras transacciones
+      if (chipaxData.raw?.length) {
+        const mar = chipaxData.raw.filter(r => r.periodo === '2026-03');
+        const marTotal = mar.reduce((a,r)=>a+Math.abs(r.montoAsignado||r.montoNeto||0),0);
+        console.log('[debug] marzo periodo=2026-03:', mar.length, 'tx, total montoAsignado:', marTotal);
+        // Ver las 3 primeras de marzo para entender estructura
+        mar.slice(0,3).forEach((r,i) => console.log(`[debug] mar[${i}]`, JSON.stringify({periodo:r.periodo,cuentaId:r.cuentaId,montoAsignado:r.montoAsignado,montoNeto:r.montoNeto})));
+      }
+
+      const normStr2 = s => (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+      isMonacoLocal = normStr2(restName).includes('monaco') && normStr2(restName).includes('sports');
+    }
 
     // ── Chipax: meses con datos ──
-    const grouped = chipaxData.grouped || {};
     const chipaxMeses = new Set();
     Object.values(grouped).forEach(subs => Object.values(subs).forEach(periodos => Object.keys(periodos).forEach(p => {
       const m = parseInt(p.split('-')[1], 10);
@@ -6255,11 +6451,14 @@ async function eerrLoad() {
       return total;
     };
 
-    // Chipax helper: sumar todos los sub de una categoría
+    // Chipax helper: sumar todos los sub de una categoría (excluyendo los marcados en Config EERR)
     const chipaxCatMes = (cat, m) => {
       const per = `${year}-${String(m).padStart(2,'0')}`;
       const subs = grouped[cat] || {};
-      return -Object.values(subs).reduce((acc, periodos) => acc + (periodos[per] || 0), 0);
+      return -Object.entries(subs).reduce((acc, [subName, periodos]) => {
+        if (eerrExcludedSet.has(subName)) return acc;
+        return acc + (periodos[per] || 0);
+      }, 0);
     };
     const chipaxSubMes = (cat, sub, m) => {
       const per = `${year}-${String(m).padStart(2,'0')}`;
@@ -6273,6 +6472,7 @@ async function eerrLoad() {
     addRow('', null, { separator:true });
 
     // ── COSTOS ──
+    console.log('[EERR] Todas las categorías de Chipax:', Object.keys(grouped));
     const costCats = Object.keys(grouped).filter(c =>
       ['Costos de Insumos','Remodelación / Reparación','Remodelación/Reparación','Costos de Explotación'].some(x => c.includes(x.split('/')[0].trim()))
     );
@@ -6280,7 +6480,7 @@ async function eerrLoad() {
       addRow('Total Costos', m => costCats.reduce((s,c) => s + chipaxCatMes(c,m), 0), { bold:true, bg:'#fef2f2', color:'#991b1b' });
       costCats.forEach(cat => {
         addRow(cat, m => chipaxCatMes(cat, m), { bold:false, bg:'#fef2f2', color:'#b91c1c' });
-        const subs = Object.keys(grouped[cat] || {}).sort();
+        const subs = Object.keys(grouped[cat] || {}).sort().filter(s => !eerrExcludedSet.has(s));
         subs.forEach(sub => addRow(sub, m => chipaxSubMes(cat, sub, m), { indent:true, color:'#dc2626' }));
       });
       addRow('', null, { separator:true });
@@ -6294,7 +6494,7 @@ async function eerrLoad() {
       addRow('Total Gastos', m => gastoCats.reduce((s,c) => s + chipaxCatMes(c,m), 0), { bold:true, bg:'#fff7ed', color:'#9a3412' });
       gastoCats.forEach(cat => {
         addRow(cat, m => chipaxCatMes(cat, m), { bold:false, bg:'#fff7ed', color:'#c2410c' });
-        const subs = Object.keys(grouped[cat] || {}).sort();
+        const subs = Object.keys(grouped[cat] || {}).sort().filter(s => !eerrExcludedSet.has(s));
         subs.forEach(sub => addRow(sub, m => chipaxSubMes(cat, sub, m), { indent:true, color:'#ea580c' }));
       });
       addRow('', null, { separator:true });
@@ -6323,14 +6523,100 @@ async function eerrLoad() {
       addRow('', null, { separator:true });
     }
 
+    // ── GDD ──
+    const normStr = s => (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+    const isMonaco = isMonacoLocal;
+    // Construir líneas combinando hoja histórica + Firestore con cálculo completo de precios
+    const gddLines = gddResp.sheetLines || {};
+
+    // Calcular totales Firestore usando la misma lógica del módulo GDD
+    const { records: gddRecs=[], products: gddProds=[], preparations: gddPreps=[], priceHistory: gddPrices=[], restaurants: gddRests=[] } = gddResp;
+    const idToNorm = {};
+    gddProds.forEach(p => { if (p.id) idToNorm[p.id] = normStr(p.name); });
+    gddPreps.forEach(p => { if (p.id) idToNorm[p.id] = normStr(p.name); });
+    const pbName = {};
+    gddPrices.forEach(ph => {
+      const name = idToNorm[ph.productId]; if (!name) return;
+      if (!pbName[name]) pbName[name] = [];
+      pbName[name].push({ mes: ph.mes, precio: ph.precio||0, factor: ph.unidadesPorEnvase||1 });
+    });
+    Object.values(pbName).forEach(a => a.sort((a,b) => b.mes.localeCompare(a.mes)));
+    const bIdx = {};
+    Object.keys(pbName).forEach(fn => { const b=fn.split('(')[0].trim(); if (b&&b!==fn&&!bIdx[b]) bIdx[b]=fn; });
+    const gddPrecio = (itemName, mes) => {
+      const n = normStr(itemName);
+      let e = pbName[n];
+      if (!e?.length) { const m=bIdx[n]; if (m) e=pbName[m]; }
+      if (!e?.length) { const b=n.split('(')[0].trim(); const m=bIdx[b]||(pbName[b]?b:null); if (m) e=pbName[m]||pbName[b]; }
+      if (!e?.length) { const b=n.split('(')[0].trim(); const k=Object.keys(pbName).find(k=>{const kb=k.split('(')[0].trim();return kb.startsWith(b)||b.startsWith(kb);}); if (k) e=pbName[k]; }
+      if (!e?.length) {
+        const sw=new Set(['de','del','la','el','los','las','un','una','y','e','en','con','sin','por','a']);
+        const tok=w=>w.replace(/[()]/g,'').split(/\s+/).filter(t=>t.length>1&&!sw.has(t));
+        const qt=tok(n); let bk=null,bs=0;
+        Object.keys(pbName).forEach(k=>{const s=qt.filter(t=>tok(k).includes(t)).length/Math.max(qt.length,tok(k).length);if(s>bs&&s>=0.5){bs=s;bk=k;}});
+        if (bk) e=pbName[bk];
+      }
+      if (!e?.length) return 0;
+      const en=e.find(x=>x.mes===mes)||e.find(x=>x.mes<mes);
+      return en ? en.precio*en.factor : 0;
+    };
+    const restById = {};
+    gddRests.forEach(r => { restById[r.id] = r.name||r.id; });
+    gddRecs.forEach(rec => {
+      const mes = (rec.fecha||'').substring(0,7);
+      if (!mes.startsWith(year)) return;
+      // Para no-Monaco: solo los records destinados a ESTE restaurante
+      if (!isMonaco && rec.restaurantId !== restaurantId) return;
+      // Usar proveedor como label (ya contiene "GDD Cafetería Mónaco" etc.)
+      const label = (rec.proveedor||'').trim();
+      if (!label) return;
+      const total = (rec.items||[]).reduce((s,item) => {
+        if (item.cantidad==null) return s;
+        return s + gddPrecio(item.producto, mes) * (item.cantidad||0);
+      }, 0);
+      if (!total) return;
+      if (!gddLines[label]) gddLines[label] = {};
+      gddLines[label][mes] = (gddLines[label][mes]||0) + Math.round(total);
+    });
+    // Para Monaco: mostrar todas las líneas GDD (lo que envía a otros locales)
+    // Para otros locales: mostrar solo la línea que corresponde a este local
+    // Para "Todos": omitir GDD (se anulan entre sí)
+    const gddKeys = isTodos
+      ? []
+      : isMonaco
+        ? Object.keys(gddLines).sort()
+        : Object.keys(gddLines).filter(k => {
+            const dest = normStr(k.replace(/^GDD\s*/i,''));
+            const rn   = normStr(restName);
+            return dest.includes(rn) || rn.includes(dest);
+          });
+    // Para non-Monaco: valores negativos (costo). Para Monaco: positivos (referencia, no afecta RO).
+    const gddMes = (key, m) => {
+      const per = `${year}-${String(m).padStart(2,'0')}`;
+      const val = (gddLines[key]?.[per]) || 0;
+      return isMonaco ? val : -val;
+    };
+    const gddTotal = m => gddKeys.reduce((s,k) => s + gddMes(k,m), 0);
+    if (gddKeys.length) {
+      const gddLabel = isMonaco ? 'GDD Enviadas' : 'GDD Recibidas';
+      const gddColor = isMonaco ? '#92400e' : '#991b1b';
+      const gddBg    = isMonaco ? '#fffbeb' : '#fef2f2';
+      addRow(gddLabel, m => gddTotal(m), { bold:true, bg:gddBg, color:gddColor });
+      gddKeys.forEach(k => addRow(k, m => gddMes(k,m), { indent:true, color:gddColor }));
+      addRow('', null, { separator:true });
+    }
+
     // ── RESULTADO OPERACIONAL ──
-    const allCats = Object.keys(grouped);
+    // Solo usar categorías que se muestran en la tabla (costCats + gastoCats)
+    const visibleChipaxCats = [...costCats, ...gastoCats];
     addRow('Resultado Operacional', m => {
-      const ingrNeto   = (byMonth[m]?.transbank||0)/1.19 + (byMonth[m]?.efectivo||0);
-      const chipaxTotal = allCats.reduce((s,c) => s + chipaxCatMes(c,m), 0);
-      const epTotal    = sheetCatTotal(efectivoData, m);
-      const sbTotal    = sheetCatTotal(scotiaData, m);
-      return ingrNeto + chipaxTotal + epTotal + sbTotal;
+      const ingrNeto    = (byMonth[m]?.transbank||0)/1.19 + (byMonth[m]?.efectivo||0);
+      const chipaxTotal = visibleChipaxCats.reduce((s,c) => s + chipaxCatMes(c,m), 0);
+      const epTotal     = sheetCatTotal(efectivoData, m);
+      const sbTotal     = sheetCatTotal(scotiaData, m);
+      // Monaco: GDD positivo (ingreso por distribución). Otros: GDD negativo (costo recibido).
+      const gddImpact   = gddKeys.length ? gddTotal(m) : 0;
+      return ingrNeto + chipaxTotal + epTotal + sbTotal + gddImpact;
     }, { bold:true, bg:'#eff6ff', color:'#1e40af' });
 
     loading.style.display   = 'none';
@@ -6341,6 +6627,77 @@ async function eerrLoad() {
     loading.style.display = 'none';
     empty.textContent     = 'Error al cargar: ' + e.message;
     empty.style.display   = 'block';
+  }
+}
+
+// ── EERR Config ──────────────────────────────────────────
+let eerrConfigExcluded = new Set();
+
+async function eerrConfigInit() {
+  try {
+    const cfg = await apiFetch('/api/eerr/config').then(r=>r.json()).catch(()=>({excluded:[]}));
+    eerrConfigExcluded = new Set(cfg.excluded||[]);
+    // Si ya había checkboxes renderizados, re-renderizar para reflejar estado guardado
+    const existing = document.getElementById('eerr-config-checkboxes');
+    if (existing && existing.innerHTML) eerrConfigRender(window._eerrConfigSubsCache||[]);
+  } catch(e) { console.error('eerrConfigInit', e); }
+}
+
+async function eerrConfigSync() {
+  const btn     = document.getElementById('eerr-config-sync-btn');
+  const loading = document.getElementById('eerr-config-loading');
+  btn.disabled  = true;
+  loading.style.display = 'inline';
+  try {
+    const data = await apiFetch('/api/eerr/chipax-subs').then(r=>r.json());
+    window._eerrConfigSubsCache = data.subs||[];
+    eerrConfigRender(window._eerrConfigSubsCache);
+  } catch(e) {
+    alert('Error al sincronizar: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    loading.style.display = 'none';
+  }
+}
+
+function eerrConfigRender(subs) {
+  const container = document.getElementById('eerr-config-checkboxes');
+  const saveBtn   = document.getElementById('eerr-config-save-btn');
+  if (!subs.length) { container.innerHTML = '<p style="color:#6b7280;font-size:13px">No se encontraron subcategorías.</p>'; return; }
+  container.innerHTML = subs.map(({cat, subs: subList}) => `
+    <div style="margin-bottom:20px">
+      <div style="font-weight:700;font-size:12px;color:#374151;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid #e5e7eb">${cat}</div>
+      ${subList.map(sub => {
+        const id = 'ecb_' + sub.replace(/[^a-z0-9]/gi,'_');
+        const checked = !eerrConfigExcluded.has(sub) ? 'checked' : '';
+        return `<label style="display:flex;align-items:center;gap:8px;padding:3px 0;font-size:13px;color:#4b5563;cursor:pointer">
+          <input type="checkbox" id="${id}" ${checked} onchange="eerrConfigToggle(this,'${sub.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}')" style="width:14px;height:14px;accent-color:#1d4ed8">
+          ${sub}
+        </label>`;
+      }).join('')}
+    </div>
+  `).join('');
+  saveBtn.style.display = 'inline-block';
+}
+
+function eerrConfigToggle(el, sub) {
+  if (el.checked) eerrConfigExcluded.delete(sub);
+  else            eerrConfigExcluded.add(sub);
+}
+
+async function eerrConfigSave() {
+  const btn    = document.getElementById('eerr-config-save-btn');
+  const status = document.getElementById('eerr-config-status');
+  btn.disabled = true;
+  status.textContent = 'Guardando...';
+  try {
+    await apiFetch('/api/eerr/config', { method:'PUT', body: JSON.stringify({ excluded: [...eerrConfigExcluded] }) });
+    status.textContent = '✓ Guardado';
+    setTimeout(() => status.textContent = '', 2500);
+  } catch(e) {
+    status.textContent = 'Error: ' + e.message;
+  } finally {
+    btn.disabled = false;
   }
 }
 
