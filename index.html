@@ -3638,7 +3638,19 @@ function openModalProducto(id) {
         </div>
         <div>
           <div class="field-label">Categoría</div>
-          <input id="mprod-cat" class="inv-input" value="${p?.category||''}" placeholder="Ej: Lácteos">
+          ${(() => {
+            const existingCats = [...new Set(invProducts.map(x => x.category).filter(Boolean))].sort();
+            const curCat = p?.category || '';
+            const isNew = curCat && !existingCats.includes(curCat);
+            const opts = existingCats.map(c => `<option value="${c}" ${c===curCat?'selected':''}>${c}</option>`).join('');
+            return `<select id="mprod-cat" class="inv-input" onchange="if(this.value==='__nueva__'){document.getElementById('mprod-cat-nueva').style.display='block';document.getElementById('mprod-cat-nueva').focus();}else{document.getElementById('mprod-cat-nueva').style.display='none';}">
+              <option value="">— Sin categoría —</option>
+              ${opts}
+              ${isNew ? `<option value="${curCat}" selected>${curCat}</option>` : ''}
+              <option value="__nueva__">+ Nueva categoría...</option>
+            </select>
+            <input id="mprod-cat-nueva" class="inv-input" placeholder="Nombre nueva categoría" style="margin-top:6px;${isNew?'':'display:none'}" value="${isNew?curCat:''}">`;
+          })()}
         </div>
       </div>
 
@@ -4089,7 +4101,7 @@ async function saveProducto() {
   });
   const body = {
     name:          document.getElementById('mprod-name').value.trim(),
-    category:      document.getElementById('mprod-cat').value.trim(),
+    category:      (() => { const sel = document.getElementById('mprod-cat'); if (sel.value === '__nueva__') return (document.getElementById('mprod-cat-nueva')?.value || '').trim(); return sel.value.trim(); })(),
     unit:          document.getElementById('mprod-unit').value,
     tipoImpuesto:  document.getElementById('mprod-impuesto')?.value || 'alimento',
     capacidadCC:   Number(document.getElementById('mprod-cc')?.value) || 0,
