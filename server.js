@@ -917,6 +917,34 @@ app.get('/api/inv/categories', requireAuth, async (req, res) => {
 });
 
 // ── Inventario: Proveedores ───────────────────────────────
+// ── Inventario: Categorías ────────────────────────────────
+app.get('/api/inv/categories', requireAuth, async (req, res) => {
+  const snap = await db.collection('inv_categories').orderBy('name').get();
+  res.json({ categories: snap.docs.map(d => ({ id: d.id, ...d.data() })) });
+});
+
+app.post('/api/inv/categories', requireAuth, async (req, res) => {
+  if (!await isEditor(req.uid)) return res.status(403).json({ error: 'Sin permisos' });
+  const { name } = req.body;
+  if (!name) return res.status(400).json({ error: 'Nombre requerido' });
+  const ref = await db.collection('inv_categories').add({ name });
+  res.json({ id: ref.id });
+});
+
+app.put('/api/inv/categories/:id', requireAuth, async (req, res) => {
+  if (!await isEditor(req.uid)) return res.status(403).json({ error: 'Sin permisos' });
+  const { name } = req.body;
+  if (!name) return res.status(400).json({ error: 'Nombre requerido' });
+  await db.collection('inv_categories').doc(req.params.id).update({ name });
+  res.json({ ok: true });
+});
+
+app.delete('/api/inv/categories/:id', requireAuth, async (req, res) => {
+  if (!await isEditor(req.uid)) return res.status(403).json({ error: 'Sin permisos' });
+  await db.collection('inv_categories').doc(req.params.id).delete();
+  res.json({ ok: true });
+});
+
 app.get('/api/inv/suppliers', requireAuth, async (req, res) => {
   const snap = await db.collection('suppliers').orderBy('name').get();
   res.json({ suppliers: snap.docs.map(d => ({ id: d.id, ...d.data() })) });

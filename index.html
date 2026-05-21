@@ -1289,6 +1289,7 @@
       <button class="inv-tab"        id="itab-catalogo"    onclick="switchInvTab('catalogo')">Catálogo</button>
       <button class="inv-tab"        id="itab-productos"   onclick="switchInvTab('productos')">Ingredientes</button>
       <button class="inv-tab"        id="itab-proveedores" onclick="switchInvTab('proveedores')">Proveedores</button>
+      <button class="inv-tab"        id="itab-categorias"  onclick="switchInvTab('categorias')">Categorías</button>
       <button class="inv-tab"        id="itab-alertas"     onclick="switchInvTab('alertas')" style="display:none">Alertas</button>
     </div>
   </div>
@@ -1297,6 +1298,7 @@
     <div id="inv-catalogo"    style="display:none"></div>
     <div id="inv-productos"   style="display:none"></div>
     <div id="inv-proveedores" style="display:none"></div>
+    <div id="inv-categorias"  style="display:none"></div>
     <div id="inv-alertas"     style="display:none"></div>
   </div>
 </div>
@@ -1603,7 +1605,7 @@ function goTo(module) {
     document.getElementById('inventario').style.display = 'flex';
     invTab = 'clientes';
     document.getElementById('itab-alertas').style.display = userRole === 'superadmin' ? '' : 'none';
-    ['clientes','catalogo','productos','proveedores','alertas'].forEach(t => {
+    ['clientes','catalogo','productos','proveedores','categorias','alertas'].forEach(t => {
       document.getElementById(`itab-${t}`).classList.toggle('active', t === 'clientes');
       document.getElementById(`inv-${t}`).style.display = t === 'clientes' ? 'block' : 'none';
     });
@@ -2833,7 +2835,7 @@ async function savePermisosPage(uid) {
 
 // ── Inventario ─────────────────────────────────────────────
 let invTab = 'agregar';
-let invSuppliers = [], invProducts = [];
+let invSuppliers = [], invProducts = [], invCategories = [];
 
 const DEFAULT_UNITS = [
   { value:'unidad',  label:'Unidad' },
@@ -2987,9 +2989,71 @@ async function saveThresholds() {
   }
 }
 
+async function renderInvCategorias() {
+  const el = document.getElementById('inv-categorias');
+  el.innerHTML = `<div style="padding:24px;color:#555;font-size:13px">Cargando…</div>`;
+  try {
+    const res = await apiFetch('/api/inv/categories');
+    invCategories = (await res.json()).categories || [];
+  } catch(e) { invCategories = []; }
+
+  const rows = invCategories.map(c => `
+    <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid #f0f0f0">
+      <span style="flex:1;font-size:14px;color:#212529">${c.name}</span>
+      <button onclick="openCatForm('${c.id}')" style="background:none;border:1px solid #dee2e6;border-radius:6px;padding:5px 12px;font-size:12px;cursor:pointer;color:#495057">Editar</button>
+      <button onclick="deleteCategoria('${c.id}','${c.name.replace(/'/g,"\\'")}')" style="background:none;border:1px solid #fca5a5;border-radius:6px;padding:5px 12px;font-size:12px;cursor:pointer;color:#dc2626">Eliminar</button>
+    </div>`).join('');
+
+  el.innerHTML = `
+    <div style="max-width:560px;padding:24px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+        <div style="font-size:16px;font-weight:700;color:#212529">Categorías de ingredientes</div>
+        <button onclick="openCatForm(null)" style="background:#ff5023;color:#fff;border:none;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:600;cursor:pointer">+ Nueva categoría</button>
+      </div>
+      <div id="cat-form-wrap" style="display:none;background:#f8f9fa;border:1px solid #dee2e6;border-radius:10px;padding:16px;margin-bottom:20px">
+        <input type="hidden" id="cat-form-id">
+        <div class="field-label">Nombre</div>
+        <input id="cat-form-name" class="inv-input" placeholder="Ej: Lácteos" style="margin-bottom:12px">
+        <div style="display:flex;gap:8px">
+          <button onclick="saveCategoria()" style="background:#ff5023;color:#fff;border:none;border-radius:8px;padding:8px 20px;font-size:13px;font-weight:600;cursor:pointer">Guardar</button>
+          <button onclick="document.getElementById('cat-form-wrap').style.display='none'" style="background:none;border:1px solid #dee2e6;border-radius:8px;padding:8px 16px;font-size:13px;cursor:pointer;color:#495057">Cancelar</button>
+        </div>
+        <div id="cat-form-msg" style="font-size:12px;margin-top:8px;min-height:16px"></div>
+      </div>
+      ${invCategories.length ? rows : '<div style="color:#888;font-size:13px">Sin categorías creadas aún.</div>'}
+    </div>`;
+}
+
+function openCatForm(id) {
+  const c = id ? invCategories.find(x => x.id === id) : null;
+  document.getElementById('cat-form-id').value = id || '';
+  document.getElementById('cat-form-name').value = c?.name || '';
+  document.getElementById('cat-form-msg').textContent = '';
+  document.getElementById('cat-form-wrap').style.display = 'block';
+  document.getElementById('cat-form-name').focus();
+}
+
+async function saveCategoria() {
+  const id   = document.getElementById('cat-form-id').value;
+  const name = document.getElementById('cat-form-name').value.trim();
+  const msg  = document.getElementById('cat-form-msg');
+  if (!name) { msg.style.color = '#dc2626'; msg.textContent = 'El nombre es requerido.'; return; }
+  try {
+    await apiFetch(id ? `/api/inv/categories/${id}` : '/api/inv/categories',
+      { method: id ? 'PUT' : 'POST', body: JSON.stringify({ name }) });
+    renderInvCategorias();
+  } catch(e) { msg.style.color = '#dc2626'; msg.textContent = 'Error: ' + e.message; }
+}
+
+async function deleteCategoria(id, name) {
+  if (!confirm(`¿Eliminar la categoría "${name}"?`)) return;
+  await apiFetch(`/api/inv/categories/${id}`, { method: 'DELETE' });
+  renderInvCategorias();
+}
+
 function switchInvTab(tab) {
   invTab = tab;
-  ['clientes','catalogo','productos','proveedores','alertas'].forEach(t => {
+  ['clientes','catalogo','productos','proveedores','categorias','alertas'].forEach(t => {
     document.getElementById(`itab-${t}`).classList.toggle('active', t === tab);
     document.getElementById(`inv-${t}`).style.display = t === tab ? 'block' : 'none';
   });
@@ -2997,6 +3061,7 @@ function switchInvTab(tab) {
   if (tab === 'catalogo')    renderInvCatalogo();
   if (tab === 'productos')   renderInvProductos();
   if (tab === 'proveedores') renderInvProveedores();
+  if (tab === 'categorias')  renderInvCategorias();
   if (tab === 'alertas')     renderInvAlertas();
 }
 
@@ -3503,9 +3568,10 @@ let prodFilterRest = '';
 async function renderInvProductos() {
   const el = document.getElementById('inv-productos');
   el.innerHTML = '<div style="color:#555;font-size:13px">Cargando...</div>';
-  const [pr, sr] = await Promise.all([apiFetch('/api/inv/products'), apiFetch('/api/inv/suppliers'), loadCustomUnits()]);
-  invProducts  = (await pr.json()).products  || [];
-  invSuppliers = (await sr.json()).suppliers || [];
+  const [pr, sr, cr] = await Promise.all([apiFetch('/api/inv/products'), apiFetch('/api/inv/suppliers'), apiFetch('/api/inv/categories'), loadCustomUnits()]);
+  invProducts    = (await pr.json()).products   || [];
+  invSuppliers   = (await sr.json()).suppliers  || [];
+  invCategories  = (await cr.json()).categories || [];
   prodFilterCat = '';
   prodFilterSup = '';
   prodFilterSearch = '';
@@ -3639,17 +3705,14 @@ function openModalProducto(id) {
         <div>
           <div class="field-label">Categoría</div>
           ${(() => {
-            const existingCats = [...new Set(invProducts.map(x => x.category).filter(Boolean))].sort();
             const curCat = p?.category || '';
-            const isNew = curCat && !existingCats.includes(curCat);
-            const opts = existingCats.map(c => `<option value="${c}" ${c===curCat?'selected':''}>${c}</option>`).join('');
-            return `<select id="mprod-cat" class="inv-input" onchange="if(this.value==='__nueva__'){document.getElementById('mprod-cat-nueva').style.display='block';document.getElementById('mprod-cat-nueva').focus();}else{document.getElementById('mprod-cat-nueva').style.display='none';}">
+            const inList = invCategories.some(c => c.name === curCat);
+            const opts = invCategories.map(c => `<option value="${c.name}" ${c.name===curCat?'selected':''}>${c.name}</option>`).join('');
+            return `<select id="mprod-cat" class="inv-input">
               <option value="">— Sin categoría —</option>
               ${opts}
-              ${isNew ? `<option value="${curCat}" selected>${curCat}</option>` : ''}
-              <option value="__nueva__">+ Nueva categoría...</option>
-            </select>
-            <input id="mprod-cat-nueva" class="inv-input" placeholder="Nombre nueva categoría" style="margin-top:6px;${isNew?'':'display:none'}" value="${isNew?curCat:''}">`;
+              ${curCat && !inList ? `<option value="${curCat}" selected>${curCat}</option>` : ''}
+            </select>`;
           })()}
         </div>
       </div>
@@ -4101,7 +4164,7 @@ async function saveProducto() {
   });
   const body = {
     name:          document.getElementById('mprod-name').value.trim(),
-    category:      (() => { const sel = document.getElementById('mprod-cat'); if (sel.value === '__nueva__') return (document.getElementById('mprod-cat-nueva')?.value || '').trim(); return sel.value.trim(); })(),
+    category:      document.getElementById('mprod-cat').value.trim(),
     unit:          document.getElementById('mprod-unit').value,
     tipoImpuesto:  document.getElementById('mprod-impuesto')?.value || 'alimento',
     capacidadCC:   Number(document.getElementById('mprod-cc')?.value) || 0,
