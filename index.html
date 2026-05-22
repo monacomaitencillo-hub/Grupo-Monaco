@@ -533,6 +533,10 @@
       height: calc(100vh - 57px);
       overflow: hidden;
     }
+    #dashboard {
+      height: auto !important;
+      overflow: visible !important;
+    }
 
     /* Fix inv-topbar inside AdminLTE */
     .inv-topbar {
@@ -787,42 +791,31 @@
 <!-- ── DASHBOARD ── -->
 <div id="dashboard">
   <div class="topbar">
-    <div class="topbar-brand">Ventas</div>
-    <div class="rest-tabs" id="rest-tabs"></div>
+    <div class="topbar-brand">Ventas Fudo</div>
     <div class="topbar-right">
-      <div class="view-toggle">
-        <button class="view-btn" id="vbtn-individual" onclick="setView('individual')">Individual</button>
-        <button class="view-btn active" id="vbtn-resumen" onclick="setView('resumen')">Resumen</button>
-      </div>
       <button class="btn-admin" id="btn-admin" onclick="openAdmin()" title="Administración" style="display:none">⚙</button>
-      <button id="btn-clear-cache" onclick="clearCacheActivos()" title="Limpiar caché de ventas" style="display:none;padding:5px 10px;background:transparent;border:1px solid #2a2a2a;border-radius:8px;color:#555;font-size:11px;cursor:pointer;white-space:nowrap;transition:all .15s" onmouseover="this.style.borderColor='#444';this.style.color='#aaa'" onmouseout="this.style.borderColor='#2a2a2a';this.style.color='#555'">Limpiar caché</button>
       <button class="btn-logout" onclick="doLogout()">Salir</button>
     </div>
   </div>
 
   <div class="main">
-    <div class="filters">
-      <button class="filter-btn" data-range="today" onclick="setRange(this)">Hoy</button>
-      <button class="filter-btn" data-range="7d"    onclick="setRange(this)">7 días</button>
-      <button class="filter-btn" data-range="all"   onclick="setRange(this)">Todo</button>
-      <div class="date-sep"></div>
-      <input type="date" id="inp-from" onchange="setRange(null)">
-      <span style="color:#444">—</span>
-      <input type="date" id="inp-to" onchange="setRange(null)">
-    </div>
-    <!-- Año -->
-    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:6px" id="ventas-year-row">
-      <span style="font-size:11px;color:#6c757d;text-transform:uppercase;letter-spacing:.4px;min-width:40px">Año</span>
-    </div>
-    <!-- Mes (rendered by renderVentasMonthRow()) -->
-    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:20px" id="ventas-month-row">
-      <span style="font-size:11px;color:#6c757d;text-transform:uppercase;letter-spacing:.4px;min-width:40px">Mes</span>
+    <div class="filters" style="gap:6px;flex-wrap:wrap">
+      <button class="filter-btn active" id="ventas-hoy-btn" onclick="setVentasToday()">Hoy</button>
+      <div style="display:flex;align-items:center;gap:4px">
+        <button onclick="shiftVentasRange(-1)" style="width:28px;height:28px;border-radius:50%;border:1px solid #dee2e6;background:transparent;color:#6c757d;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center">‹</button>
+        <input type="date" id="ventas-date-from" onchange="loadVentas()" title="Desde">
+        <span style="color:#aaa;font-size:13px">—</span>
+        <input type="date" id="ventas-date-to" onchange="loadVentas()" title="Hasta">
+        <button onclick="shiftVentasRange(1)" style="width:28px;height:28px;border-radius:50%;border:1px solid #dee2e6;background:transparent;color:#6c757d;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center">›</button>
+      </div>
+      <button id="ventas-stop-btn" onclick="stopVentas()" style="display:none;align-items:center;gap:5px;padding:5px 12px;border-radius:20px;border:1px solid #dee2e6;background:transparent;color:#6c757d;font-size:13px;cursor:pointer">
+        <span style="width:8px;height:8px;background:#6c757d;border-radius:2px;display:inline-block"></span> Detener
+      </button>
     </div>
 
-    <div id="content" style="display:none">
+    <div id="ventas-content">
       <div class="loading"><div class="spinner"></div><span>Cargando...</span></div>
     </div>
-    <div id="resumen-content"></div>
   </div>
 </div>
 
@@ -835,6 +828,58 @@
   <div class="inv-main" style="max-width:700px">
     <div id="add-stock-rest-sel" class="stock-selector" style="margin-bottom:20px"></div>
     <div id="add-stock-form-wrap"></div>
+  </div>
+</div>
+
+<!-- ── GOKU ── -->
+<div id="goku-module" style="display:none;flex-direction:column;background:#f4f6f9;min-height:100vh">
+  <div style="background:#fff;border-bottom:1px solid #dee2e6;padding:0 28px;display:flex;align-items:center;gap:12px;height:52px;flex-shrink:0">
+    <span style="font-size:16px;font-weight:700;color:#212529">⚡ GOKU</span>
+    <div style="display:flex;align-items:center;gap:6px;margin-left:auto">
+      <button id="goku-stop-btn" onclick="stopGoku()" style="display:none;align-items:center;gap:5px;padding:5px 12px;border-radius:20px;border:1px solid #dee2e6;background:transparent;color:#6c757d;font-size:13px;cursor:pointer">
+        <span style="width:8px;height:8px;background:#6c757d;border-radius:2px;display:inline-block"></span> Detener
+      </button>
+    </div>
+  </div>
+  <div style="padding:24px 28px;max-width:900px;margin:0 auto;width:100%">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:20px">
+      <button onclick="shiftGokuWeek(-1)" style="background:none;border:1px solid #dee2e6;border-radius:6px;padding:3px 10px;font-size:16px;cursor:pointer;color:#374151;line-height:1">‹</button>
+      <span id="goku-week-label" style="font-size:13px;color:#6c757d"></span>
+      <button onclick="shiftGokuWeek(1)" style="background:none;border:1px solid #dee2e6;border-radius:6px;padding:3px 10px;font-size:16px;cursor:pointer;color:#374151;line-height:1">›</button>
+    </div>
+    <div id="goku-content"><div class="loading"><div class="spinner"></div><span>Cargando...</span></div></div>
+  </div>
+</div>
+
+<!-- ── VEGETA ── -->
+<div id="vegeta-module" style="display:none;flex-direction:column;background:#f4f6f9;min-height:100vh">
+  <div style="background:#fff;border-bottom:1px solid #dee2e6;padding:0 20px;display:flex;align-items:center;gap:10px;height:52px;flex-shrink:0;flex-wrap:wrap">
+    <span style="font-size:16px;font-weight:700;color:#212529">🔥 Vegeta</span>
+    <select id="vegeta-rest-sel" onchange="initVegeta()" style="border:1px solid #dee2e6;border-radius:8px;padding:4px 10px;font-size:13px;color:#212529;background:#fff;cursor:pointer"></select>
+    <div style="display:flex;align-items:center;gap:6px;margin-left:4px">
+      <button onclick="shiftVegetaWeek(-1)" style="background:none;border:1px solid #dee2e6;border-radius:6px;padding:3px 10px;font-size:16px;cursor:pointer;color:#374151;line-height:1">‹</button>
+      <span id="vegeta-week-label" style="font-size:13px;color:#6c757d;white-space:nowrap"></span>
+      <button onclick="shiftVegetaWeek(1)" style="background:none;border:1px solid #dee2e6;border-radius:6px;padding:3px 10px;font-size:16px;cursor:pointer;color:#374151;line-height:1">›</button>
+    </div>
+    <div style="margin-left:auto;display:flex;gap:8px">
+      <button onclick="toggleVegetaConfig()" style="display:flex;align-items:center;gap:5px;padding:5px 12px;border-radius:20px;border:1px solid #dee2e6;background:transparent;color:#6c757d;font-size:13px;cursor:pointer">⚙ Ítems</button>
+    </div>
+  </div>
+
+  <!-- Panel config ítems -->
+  <div id="vegeta-config-panel" style="display:none;background:#fff;border-bottom:1px solid #dee2e6;padding:16px 24px">
+    <div style="font-size:13px;font-weight:600;color:#374151;margin-bottom:12px">Ítems a calzar</div>
+    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+      <select id="vegeta-add-sel" style="border:1px solid #dee2e6;border-radius:8px;padding:6px 10px;font-size:13px;color:#212529;background:#fff;min-width:220px">
+        <option value="">— Seleccionar ítem —</option>
+      </select>
+      <button onclick="vegetaAddItem()" style="padding:6px 16px;background:#374151;color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer">+ Agregar</button>
+    </div>
+    <div id="vegeta-items-list" style="display:flex;flex-direction:column;gap:6px"></div>
+  </div>
+
+  <div style="padding:20px 24px;max-width:1000px;margin:0 auto;width:100%">
+    <div id="vegeta-content"><div class="loading"><div class="spinner"></div><span>Cargando...</span></div></div>
   </div>
 </div>
 
@@ -887,12 +932,7 @@
       <button class="cierres-tab active" id="ctab-registros" onclick="switchCierresTab('registros')">Registros</button>
       <button class="cierres-tab" id="ctab-analitica" onclick="switchCierresTab('analitica')">Analítica</button>
     </div>
-    <label id="btn-import-cierres" class="btn-new" style="margin-left:auto;cursor:pointer;display:flex;align-items:center;gap:6px" title="Importar Excel Ingresos Mónaco">
-      ↑ Importar Excel
-      <input type="file" accept=".xlsx,.xls" style="display:none" onchange="cierresImportExcel(this)">
-    </label>
-    <button class="btn-new" id="btn-sync-sheets" style="margin-left:8px" onclick="cierresSyncSheets(this)" title="Sincronizar desde Google Sheets">🔄 Sincronizar</button>
-    <button class="btn-new" style="margin-left:8px" id="btn-nuevo-cierre" onclick="openModalCierre()">+ Nuevo cierre</button>
+    <button class="btn-new" id="btn-sync-sheets" style="margin-left:auto" onclick="cierresSyncSheets(this)" title="Sincronizar desde Google Sheets">🔄 Sincronizar</button>
   </div>
   <div style="flex:1;padding:32px 28px;max-width:1100px;width:100%;margin:0 auto">
     <div id="cierres-rest-sel" style="display:flex;gap:8px;margin-bottom:24px;flex-wrap:wrap"></div>
@@ -917,64 +957,6 @@
   </div>
 </div>
 
-<!-- modal cierre -->
-<div class="inv-modal-overlay" id="modal-cierre" onclick="closeModalIfOutside(event,'modal-cierre')">
-  <div class="inv-modal" style="max-width:540px;max-height:90vh;overflow-y:auto">
-    <h3>Nuevo cierre de caja</h3>
-    <div class="admin-form">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-        <div>
-          <div class="field-label">Fecha *</div>
-          <input type="date" id="mc-fecha" style="width:100%;padding:9px 12px;background:#111;border:1px solid #222;border-radius:8px;color:#fff;font-size:13px;outline:none">
-        </div>
-        <div>
-          <div class="field-label">Local *</div>
-          <select id="mc-local" style="width:100%;padding:9px 12px;background:#111;border:1px solid #222;border-radius:8px;color:#fff;font-size:13px;outline:none;cursor:pointer"></select>
-        </div>
-      </div>
-      <div style="margin-top:16px;padding-top:16px;border-top:1px solid #1f1f1f">
-        <div style="font-size:11px;color:#444;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Ventas</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-          <div><div class="field-label">Total Programa</div><input type="number" id="mc-totalPrograma" class="cierre-input" placeholder="0"></div>
-          <div><div class="field-label">Propinas Programa</div><input type="number" id="mc-propinasPrograma" class="cierre-input" placeholder="0"></div>
-          <div><div class="field-label">Transbank (Total POS)</div><input type="number" id="mc-transbank" class="cierre-input" placeholder="0"></div>
-          <div><div class="field-label">Transbank Propinas</div><input type="number" id="mc-transbankPropinas" class="cierre-input" placeholder="0"></div>
-          <div><div class="field-label">Efectivo</div><input type="number" id="mc-efectivo" class="cierre-input" placeholder="0"></div>
-          <div><div class="field-label">Propina a Mano</div><input type="number" id="mc-propinaAMano" class="cierre-input" placeholder="0"></div>
-        </div>
-      </div>
-      <div style="margin-top:16px;padding-top:16px;border-top:1px solid #1f1f1f">
-        <div style="font-size:11px;color:#444;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Gastos y personal</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-          <div><div class="field-label">Gastos</div><input type="number" id="mc-gastos" class="cierre-input" placeholder="0"></div>
-          <div><div class="field-label">Garzones</div><input type="number" id="mc-garzones" class="cierre-input" placeholder="0"></div>
-          <div><div class="field-label">Propinas Pagadas</div><input type="number" id="mc-propnasPagadas" class="cierre-input" placeholder="0"></div>
-          <div><div class="field-label">Booking Total</div><input type="number" id="mc-bookingTotal" class="cierre-input" placeholder="0"></div>
-        </div>
-      </div>
-      <div style="margin-top:16px;padding-top:16px;border-top:1px solid #1f1f1f">
-        <div style="font-size:11px;color:#444;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Delivery</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-          <div><div class="field-label">Monto Delivery</div><input type="number" id="mc-montoDelivery" class="cierre-input" placeholder="0"></div>
-          <div><div class="field-label">Envío Delivery</div><input type="number" id="mc-envioDelivery" class="cierre-input" placeholder="0"></div>
-          <div><div class="field-label">Propinas Delivery</div><input type="number" id="mc-propinasDelivery" class="cierre-input" placeholder="0"></div>
-          <div><div class="field-label">Cantidad Delivery</div><input type="number" id="mc-cantidadDelivery" class="cierre-input" placeholder="0"></div>
-          <div><div class="field-label">Monto Retiro</div><input type="number" id="mc-montoRetiro" class="cierre-input" placeholder="0"></div>
-          <div><div class="field-label">Cantidad Retiro</div><input type="number" id="mc-cantidadRetiro" class="cierre-input" placeholder="0"></div>
-        </div>
-      </div>
-      <div style="margin-top:16px">
-        <div class="field-label">Comentarios</div>
-        <textarea id="mc-comentarios" rows="2" style="width:100%;padding:9px 12px;background:#111;border:1px solid #222;border-radius:8px;color:#fff;font-size:13px;outline:none;resize:vertical;font-family:inherit" placeholder="Observaciones del cierre..."></textarea>
-      </div>
-      <div id="mc-msg" style="margin-top:8px;font-size:13px"></div>
-    </div>
-    <div class="inv-modal-btns">
-      <button class="btn-new" onclick="saveCierre()">Guardar cierre</button>
-      <button class="btn-cancel" onclick="closeModal('modal-cierre')">Cancelar</button>
-    </div>
-  </div>
-</div>
 
 <!-- ── USUARIOS ── -->
 <div id="usuarios-module" style="display:none;flex-direction:column;min-height:100vh">
@@ -1086,6 +1068,104 @@
         <span id="eerr-config-status" style="font-size:13px;color:#6b7280"></span>
       </div>
       <div id="eerr-config-checkboxes" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:0 32px"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── FLUJO PROYECTADO MODULE ── -->
+<div id="flujo-module" style="display:none;flex-direction:column;min-height:100vh;background:#f4f6f9">
+  <div class="inv-topbar">
+    <span style="font-size:14px;font-weight:600;color:#fff">💰 Flujo de Caja Proyectado</span>
+    <div style="display:flex;align-items:center;gap:10px;margin-left:auto">
+      <select id="flujo-rest-sel" onchange="flujoLoad()" style="border:1px solid #dee2e6;border-radius:8px;padding:5px 10px;font-size:13px;color:#212529;background:#fff;cursor:pointer"></select>
+      <select id="flujo-year-sel" onchange="flujoLoad()" style="border:1px solid #dee2e6;border-radius:8px;padding:5px 10px;font-size:13px;color:#212529;background:#fff;cursor:pointer"></select>
+      <button id="flujo-btn-historico" onclick="flujoOpenHistoricoModal()" style="padding:5px 14px;background:transparent;border:1px solid #dee2e6;border-radius:8px;font-size:13px;color:#212529;cursor:pointer">📥 Cargar histórico</button>
+      <button id="flujo-btn-gasto" onclick="flujoOpenGastoModal(null)" style="padding:5px 14px;background:#ff5023;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">+ Gasto</button>
+      <button id="flujo-btn-margen" onclick="flujoOpenMargenModal()" style="padding:5px 14px;background:transparent;border:1px solid #dee2e6;border-radius:8px;font-size:13px;color:#212529;cursor:pointer">⚙ Margen</button>
+    </div>
+  </div>
+  <div style="padding:24px;overflow-x:auto">
+    <div id="flujo-content"><div class="loading"><div class="spinner"></div><span>Cargando...</span></div></div>
+  </div>
+</div>
+
+<!-- Modal gasto fijo -->
+<div class="inv-modal-overlay" id="modal-flujo-gasto" onclick="closeModalIfOutside(event,'modal-flujo-gasto')">
+  <div class="inv-modal" style="max-width:680px;max-height:90vh;overflow-y:auto">
+    <h3 id="flujo-gasto-modal-title">Nuevo gasto fijo</h3>
+    <div class="admin-form">
+      <div class="field-label">Tipo</div>
+      <div style="display:flex;gap:10px;margin-bottom:14px">
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
+          <input type="radio" name="flujo-gasto-tipo" value="gasto" checked onchange="flujoTogglePrevired()"> Gasto Fijo
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
+          <input type="radio" name="flujo-gasto-tipo" value="sueldo" onchange="flujoTogglePrevired()"> Sueldo
+        </label>
+      </div>
+      <div id="flujo-previred-wrap" style="display:none;margin-bottom:14px">
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px 14px">
+          <input type="checkbox" id="flujo-gasto-previred" style="width:16px;height:16px;cursor:pointer">
+          <span>Incluir en cálculo Previred</span>
+        </label>
+      </div>
+      <div class="field-label">Nombre</div>
+      <input id="flujo-gasto-name" class="inv-input" placeholder="Ej: Arriendo, Jennifer, Luz...">
+      <div style="margin-top:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div class="field-label" style="margin-bottom:0">Montos por mes ($)</div>
+          <button type="button" onclick="flujoReplicarEne()" style="padding:4px 12px;background:#f3f4f6;border:1px solid #dee2e6;border-radius:6px;font-size:12px;cursor:pointer;color:#374151">↔ Replicar Ene a todos</button>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px" id="flujo-gasto-montos-grid"></div>
+      </div>
+      <div id="flujo-gasto-msg" style="margin-top:8px;font-size:13px"></div>
+    </div>
+    <div class="inv-modal-btns">
+      <button class="btn-new" onclick="flujoSaveGasto()">Guardar</button>
+      <button class="btn-cancel" onclick="closeModal('modal-flujo-gasto')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal histórico -->
+<div class="inv-modal-overlay" id="modal-flujo-historico" onclick="closeModalIfOutside(event,'modal-flujo-historico')">
+  <div class="inv-modal" style="max-width:820px;max-height:90vh;overflow-y:auto">
+    <h3>Cargar ingresos históricos</h3>
+    <div id="flujo-historico-body" style="font-size:13px;color:#6c757d">Cargando...</div>
+    <div class="inv-modal-btns" style="margin-top:16px">
+      <button class="btn-new" onclick="flujoAplicarHistorico()">Aplicar</button>
+      <button class="btn-cancel" onclick="closeModal('modal-flujo-historico')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal margen -->
+<div class="inv-modal-overlay" id="modal-flujo-margen" onclick="closeModalIfOutside(event,'modal-flujo-margen')">
+  <div class="inv-modal" style="max-width:380px">
+    <h3>Margen operacional</h3>
+    <div class="admin-form">
+      <div class="field-label">% Margen sobre ingresos netos</div>
+      <input id="flujo-margen-input" type="number" min="0" max="100" step="0.1" class="inv-input" placeholder="Ej: 65">
+      <div style="font-size:12px;color:#9ca3af;margin-top:6px;margin-bottom:16px">Ingresos Netos × margen% = Margen Operacional</div>
+      <div class="field-label">% Previsión sobre sueldos</div>
+      <input id="flujo-prevision-input" type="number" min="0" max="100" step="0.1" class="inv-input" placeholder="Ej: 20.5">
+      <div style="font-size:12px;color:#9ca3af;margin-top:6px;margin-bottom:16px">Total Sueldos × prevision% = Costo previsión</div>
+      <div class="field-label">Días de apertura</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px">
+        <label style="display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;font-size:12px;color:#374151"><input type="checkbox" id="flujo-dia-0" style="width:16px;height:16px"> Dom</label>
+        <label style="display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;font-size:12px;color:#374151"><input type="checkbox" id="flujo-dia-1" style="width:16px;height:16px"> Lun</label>
+        <label style="display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;font-size:12px;color:#374151"><input type="checkbox" id="flujo-dia-2" style="width:16px;height:16px"> Mar</label>
+        <label style="display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;font-size:12px;color:#374151"><input type="checkbox" id="flujo-dia-3" style="width:16px;height:16px"> Mié</label>
+        <label style="display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;font-size:12px;color:#374151"><input type="checkbox" id="flujo-dia-4" style="width:16px;height:16px"> Jue</label>
+        <label style="display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;font-size:12px;color:#374151"><input type="checkbox" id="flujo-dia-5" style="width:16px;height:16px"> Vie</label>
+        <label style="display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;font-size:12px;color:#374151"><input type="checkbox" id="flujo-dia-6" style="width:16px;height:16px"> Sáb</label>
+      </div>
+      <div style="font-size:12px;color:#9ca3af;margin-top:8px">Calcula días disponibles por mes según año seleccionado</div>
+      <div id="flujo-margen-msg" style="margin-top:8px;font-size:13px"></div>
+    </div>
+    <div class="inv-modal-btns">
+      <button class="btn-new" onclick="flujoSaveMargen()">Guardar</button>
+      <button class="btn-cancel" onclick="closeModal('modal-flujo-margen')">Cancelar</button>
     </div>
   </div>
 </div>
@@ -1568,7 +1648,7 @@ async function doLogout() {
   document.getElementById('login-screen').style.display = 'flex';
 }
 
-const ALL_MODULES_EL = ['hub','dashboard','inventario','registro-inv-module','add-stock-module','cierres-module','pdf-upload-module','pdf-view-module','usuarios-module','pedidos-module','reuniones-module','gdd-module','margenes-module','orden-compra-module','eerr-module','eerr-config-module'];
+const ALL_MODULES_EL = ['hub','dashboard','inventario','registro-inv-module','add-stock-module','cierres-module','pdf-upload-module','pdf-view-module','usuarios-module','pedidos-module','reuniones-module','gdd-module','margenes-module','orden-compra-module','eerr-module','eerr-config-module','goku-module','vegeta-module','flujo-module'];
 function hideAll() { ALL_MODULES_EL.forEach(id => { const el = document.getElementById(id); if(el) el.style.display = 'none'; }); }
 // Note: hideAll() does NOT hide #admin-wrapper — goToHub() handles that separately
 
@@ -1583,9 +1663,11 @@ function goTo(module) {
   // Actualizar topbar título
   const moduleNames = {
     ventas: 'Ventas', stock: 'Añadir stock', inventario: 'Gestión de Clientes y Proveedor',
+    'b2b-clientes': 'Clientes B2B', 'b2b-catalogo': 'Catálogo B2B',
     'registro-inv': 'Registro de Inventarios', cierres: 'Cierres de caja', pedidos: 'Pedidos Helados',
     'pdf-upload': 'Añadir PDF', 'pdf-view': 'Ver Manual', usuarios: 'Usuarios', reuniones: 'Reuniones',
-    gdd: 'Guías de Despacho', margenes: 'Márgenes', 'orden-compra': 'Pedidos', eerr: 'EERR', 'eerr-config': 'Config EERR'
+    gdd: 'Guías de Despacho', margenes: 'Márgenes', 'orden-compra': 'Pedidos', eerr: 'EERR', 'eerr-config': 'Config EERR',
+    goku: 'GOKU', vegeta: 'Vegeta', flujo: 'Flujo de Caja Proyectado'
   };
   const titleEl = document.getElementById('admin-topbar-title');
   if (titleEl) titleEl.textContent = moduleNames[module] || module;
@@ -1595,21 +1677,40 @@ function goTo(module) {
   });
   if (module === 'ventas') {
     document.getElementById('dashboard').style.display = 'block';
-    applyDefaultRange();
-    renderTabs();
-    loadResumen();
+    if (!document.getElementById('ventas-date-from').value) setVentasToday();
+    else loadVentas();
   } else if (module === 'stock') {
     document.getElementById('add-stock-module').style.display = 'flex';
     initAddStockModule();
+  } else if (module === 'b2b-clientes' || module === 'b2b-catalogo') {
+    document.getElementById('inventario').style.display = 'flex';
+    const b2bTab = module === 'b2b-clientes' ? 'clientes' : 'catalogo';
+    document.getElementById('itab-alertas').style.display = 'none';
+    ['clientes','catalogo','productos','proveedores','categorias','alertas'].forEach(t => {
+      document.getElementById(`itab-${t}`).classList.toggle('active', t === b2bTab);
+      document.getElementById(`inv-${t}`).style.display = t === b2bTab ? 'block' : 'none';
+    });
+    // Ocultar pestañas que no pertenecen a B2B
+    ['productos','proveedores','categorias','alertas'].forEach(t => {
+      document.getElementById(`itab-${t}`).style.display = 'none';
+    });
+    document.getElementById('itab-clientes').style.display = '';
+    document.getElementById('itab-catalogo').style.display = '';
+    invTab = b2bTab;
+    if (b2bTab === 'clientes') renderInvClientes(); else renderInvCatalogo();
   } else if (module === 'inventario') {
     document.getElementById('inventario').style.display = 'flex';
     invTab = 'clientes';
     document.getElementById('itab-alertas').style.display = userRole === 'superadmin' ? '' : 'none';
+    // Ocultar pestañas B2B del módulo inventario
+    document.getElementById('itab-clientes').style.display = 'none';
+    document.getElementById('itab-catalogo').style.display = 'none';
     ['clientes','catalogo','productos','proveedores','categorias','alertas'].forEach(t => {
-      document.getElementById(`itab-${t}`).classList.toggle('active', t === 'clientes');
-      document.getElementById(`inv-${t}`).style.display = t === 'clientes' ? 'block' : 'none';
+      document.getElementById(`itab-${t}`).classList.toggle('active', t === 'productos');
+      document.getElementById(`inv-${t}`).style.display = t === 'productos' ? 'block' : 'none';
     });
-    renderInvClientes();
+    invTab = 'productos';
+    renderInvProductos();
   } else if (module === 'registro-inv') {
     document.getElementById('registro-inv-module').style.display = 'flex';
     renderInvHistorial();
@@ -1646,12 +1747,21 @@ function goTo(module) {
   } else if (module === 'orden-compra') {
     document.getElementById('orden-compra-module').style.display = 'flex';
     ocInit();
+  } else if (module === 'goku') {
+    document.getElementById('goku-module').style.display = 'flex';
+    initGoku();
+  } else if (module === 'vegeta') {
+    document.getElementById('vegeta-module').style.display = 'flex';
+    initVegetaModule();
   } else if (module === 'eerr') {
     document.getElementById('eerr-module').style.display = 'flex';
     eerrInit();
   } else if (module === 'eerr-config') {
     document.getElementById('eerr-config-module').style.display = 'flex';
     eerrConfigInit();
+  } else if (module === 'flujo') {
+    document.getElementById('flujo-module').style.display = 'flex';
+    flujoInit();
   }
 }
 
@@ -1684,7 +1794,6 @@ async function initDashboard() {
 
     document.getElementById('btn-admin').style.display = userRole === 'superadmin' ? 'flex' : 'none';
     document.getElementById('hub-btn-admin').style.display = userRole === 'superadmin' ? 'flex' : 'none';
-    document.getElementById('btn-clear-cache').style.display = userRole === 'superadmin' ? 'inline-block' : 'none';
     document.getElementById('agent-btn').style.display = userRole === 'superadmin' ? 'flex' : 'none';
     const rawName = data.name || data.email || '';
     const displayName = rawName.includes('@') ? rawName.split('@')[0] : rawName;
@@ -1714,9 +1823,8 @@ async function initDashboard() {
 
 // ── Tabs ───────────────────────────────────────────────────
 function renderTabs() {
-  document.getElementById('rest-tabs').style.display = currentView === 'individual' ? 'flex' : 'none';
   document.getElementById('rest-tabs').innerHTML = fudoRestaurants.map(r => `
-    <div class="rest-tab ${activeRestIds.includes(r.id) ? 'active' : ''}" onclick="toggleRestaurant('${r.id}')">
+    <div class="rest-tab ${activeRestId === r.id ? 'active' : ''}" onclick="toggleRestaurant('${r.id}')">
       <div class="dot"></div>
       <span>${r.name}</span>
     </div>
@@ -1724,613 +1832,988 @@ function renderTabs() {
 }
 
 function toggleRestaurant(id) {
-  if (currentView === 'resumen') {
-    // En resumen: selección única
-    activeRestId  = id;
-    activeRestIds = [id];
-  } else {
-    // En individual: multi-selección
-    if (activeRestIds.includes(id)) {
-      if (activeRestIds.length === 1) return; // al menos uno siempre seleccionado
-      activeRestIds = activeRestIds.filter(x => x !== id);
-    } else {
-      activeRestIds = [...activeRestIds, id];
-    }
-    activeRestId = activeRestIds[activeRestIds.length - 1];
-  }
+  activeRestId  = id;
+  activeRestIds = [id];
   renderTabs();
-  if (currentView === 'resumen') loadResumen();
-  else loadSummary();
+  loadVentas();
 }
 
 function switchRestaurant(id) { toggleRestaurant(id); }
 
-let ventasSelYears  = new Set();
-let ventasSelMonths = new Set();
-
-function applyDefaultRange() {
-  ventasSelYears.clear();
-  ventasSelMonths.clear();
-  // Por defecto: Hoy (más rápido — un solo día desde Firebase)
-  const today = getToday();
-  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-  document.querySelector('[data-range="today"]')?.classList.add('active');
-  document.getElementById('inp-from').value = today;
-  document.getElementById('inp-to').value   = today;
-  renderVentasYearRow();
-  renderVentasMonthRow();
-  // No llama loadResumen aquí — lo hace showModule para evitar doble carga
+// ── Ventas ─────────────────────────────────────────────────
+function getTodayClient() {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Santiago' }).format(new Date());
 }
 
-function renderVentasYearRow() {
-  const thisYear = new Date().getFullYear();
-  const years = [];
-  for (let y = thisYear; y >= thisYear - 3; y--) years.push(y.toString());
-  const row = document.getElementById('ventas-year-row');
-  const btns = years.map(y =>
-    `<button class="month-btn ${ventasSelYears.has(y) ? 'active' : ''}"
-      onclick="toggleVentasYear('${y}',this)">${y}</button>`).join('');
-  row.innerHTML = `<span style="font-size:11px;color:#444;text-transform:uppercase;letter-spacing:.4px;min-width:40px">Año</span>${btns}`;
+function setVentasToday() {
+  const today = getTodayClient();
+  document.getElementById('ventas-date-from').value = today;
+  document.getElementById('ventas-date-to').value   = today;
+  loadVentas();
+}
+function shiftVentasRange(delta) {
+  const fromInp = document.getElementById('ventas-date-from');
+  const toInp   = document.getElementById('ventas-date-to');
+  const today   = getTodayClient();
+  const from    = fromInp.value || today;
+  const to      = toInp.value   || today;
+  // Calculate range length in days
+  const days = Math.round((new Date(to + 'T12:00:00Z') - new Date(from + 'T12:00:00Z')) / 86400000) + 1;
+  const shift = days * delta;
+  const newFrom = new Date(new Date(from + 'T12:00:00Z').getTime() + shift * 86400000);
+  const newTo   = new Date(new Date(to   + 'T12:00:00Z').getTime() + shift * 86400000);
+  fromInp.value = newFrom.toISOString().slice(0, 10);
+  toInp.value   = newTo.toISOString().slice(0, 10);
+  loadVentas();
 }
 
-function renderVentasMonthRow() {
-  const MONTHS = [['Ene',1],['Feb',2],['Mar',3],['Abr',4],['May',5],['Jun',6],['Jul',7],['Ago',8],['Sep',9],['Oct',10],['Nov',11],['Dic',12]];
-  const row = document.getElementById('ventas-month-row');
-  const btns = MONTHS.map(([l,n]) =>
-    `<button class="month-btn ${ventasSelMonths.has(n) ? 'active' : ''}" onclick="toggleVentasMonth(${n},this)">${l}</button>`).join('');
-  row.innerHTML = `<span style="font-size:11px;color:#444;text-transform:uppercase;letter-spacing:.4px;min-width:40px">Mes</span>${btns}`;
+let ventasAbort = null;
+
+function stopVentas() {
+  if (ventasAbort) { ventasAbort.abort(); ventasAbort = null; }
+  ++loadId;
+  document.getElementById('ventas-content').innerHTML = '';
+  document.getElementById('ventas-stop-btn').style.display = 'none';
 }
 
-function toggleVentasYear(y, btn) {
-  ventasSelYears.has(y) ? ventasSelYears.delete(y) : ventasSelYears.add(y);
-  btn.classList.toggle('active', ventasSelYears.has(y));
-  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-  updateVentasDateRange();
-}
-
-function toggleVentasMonth(m, btn) {
-  ventasSelMonths.has(m) ? ventasSelMonths.delete(m) : ventasSelMonths.add(m);
-  btn.classList.toggle('active', ventasSelMonths.has(m));
-  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-  updateVentasDateRange();
-}
-
-function updateVentasDateRange() {
-  // Calcular from/to a partir de años+meses seleccionados
-  const years  = ventasSelYears.size  > 0 ? [...ventasSelYears].map(Number).sort()  : [new Date().getFullYear()];
-  const months = ventasSelMonths.size > 0 ? [...ventasSelMonths].map(Number).sort() : null;
-  const minYear = years[0], maxYear = years[years.length-1];
-  const minMonth = months ? months[0]         : 1;
-  const maxMonth = months ? months[months.length-1] : 12;
-  const from = `${minYear}-${String(minMonth).padStart(2,'0')}-01`;
-  const lastDay = new Date(maxYear, maxMonth, 0).getDate();
-  const to   = `${maxYear}-${String(maxMonth).padStart(2,'0')}-${String(lastDay).padStart(2,'0')}`;
-  document.getElementById('inp-from').value = from;
-  document.getElementById('inp-to').value   = to;
-  if (currentView === 'resumen') loadResumen(); else loadSummary();
-}
-
-
-// ── View toggle ────────────────────────────────────────────
-function setView(view) {
-  currentView = view;
-  document.getElementById('vbtn-individual').classList.toggle('active', view === 'individual');
-  document.getElementById('vbtn-resumen').classList.toggle('active',    view === 'resumen');
-  document.getElementById('content').style.display         = view === 'individual' ? 'block' : 'none';
-  document.getElementById('resumen-content').style.display = view === 'resumen'    ? 'block' : 'none';
-  if (view === 'individual') {
-    // Al entrar a individual, seleccionar solo el primer restaurante por defecto
-    if (fudoRestaurants.length) {
-      activeRestId  = fudoRestaurants[0].id;
-      activeRestIds = [activeRestId];
-    }
-  }
-  renderTabs();
-  if (view === 'resumen') loadResumen();
-  else loadSummary();
-}
-
-// ── Filters ────────────────────────────────────────────────
-function getToday()   { return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Santiago' }).format(new Date()); }
-function daysAgo(n)   { const d = new Date(); d.setDate(d.getDate()-n); return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Santiago' }).format(d); }
-function monthStart() { const t = getToday(); return t.substring(0,7) + '-01'; }
-
-function setRange(btn) {
-  if (btn) {
-    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-    ventasSelYears.clear(); ventasSelMonths.clear();
-    renderVentasYearRow();
-    renderVentasMonthRow();
-    btn.classList.add('active');
-    const r = btn.dataset.range, today = getToday();
-    const from = r === 'today' ? today : r === '7d' ? daysAgo(6) : '';
-    document.getElementById('inp-from').value = from;
-    document.getElementById('inp-to').value   = r === 'all' ? '' : r === 'today' ? today : daysAgo(1);
-  } else {
-    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-    ventasSelYears.clear(); ventasSelMonths.clear();
-    renderVentasYearRow(); renderVentasMonthRow();
-  }
-  currentView === 'resumen' ? loadResumen() : loadSummary();
-}
-
-// ── Merge summaries from multiple restaurants ──────────────
-function mergeSummaries(summaries) {
-  if (summaries.length === 1) return summaries[0];
-  let totalRevenue = 0, totalFromPayments = 0, totalTips = 0, totalOrders = 0;
-  const byDayMap = {}, byPayMethod = {}, byType = {}, byProductMap = {};
-  for (const s of summaries) {
-    totalRevenue      += s.totalRevenue      || 0;
-    totalFromPayments += s.totalFromPayments || 0;
-    totalTips         += s.totalTips         || 0;
-    totalOrders       += s.totalOrders       || 0;
-    for (const d of (s.byDay || [])) {
-      if (!byDayMap[d.date]) byDayMap[d.date] = { date: d.date, count: 0, revenue: 0, tips: 0 };
-      byDayMap[d.date].count   += d.count   || 0;
-      byDayMap[d.date].revenue += d.revenue || 0;
-      byDayMap[d.date].tips    += d.tips    || 0;
-    }
-    for (const [k, v] of Object.entries(s.byPayMethod || {})) byPayMethod[k] = (byPayMethod[k] || 0) + v;
-    for (const [k, v] of Object.entries(s.byType || {})) {
-      if (!byType[k]) byType[k] = { count: 0, revenue: 0 };
-      byType[k].count   += v.count   || 0;
-      byType[k].revenue += v.revenue || 0;
-    }
-    for (const p of (s.topProducts || [])) {
-      if (!byProductMap[p.name]) byProductMap[p.name] = { qty: 0, revenue: 0, category: p.category };
-      byProductMap[p.name].qty     += p.qty     || 0;
-      byProductMap[p.name].revenue += p.revenue || 0;
-    }
-  }
-  const byDay = Object.values(byDayMap).sort((a, b) => a.date.localeCompare(b.date));
-  const topProducts = Object.entries(byProductMap)
-    .map(([name, v]) => ({ name, qty: v.qty, revenue: v.revenue, category: v.category }))
-    .sort((a, b) => b.qty - a.qty);
-  return {
-    totalRevenue, totalFromPayments, totalTips, totalOrders,
-    avgTicket: totalOrders > 0 ? totalRevenue / totalOrders : 0,
-    dateRange: { from: byDay[0]?.date || null, to: byDay[byDay.length-1]?.date || null },
-    byDay, byPayMethod, byType, topProducts
-  };
-}
-
-// ── Load summary (individual) ──────────────────────────────
-async function loadSummary() {
+async function loadVentas() {
+  if (ventasAbort) ventasAbort.abort();
+  ventasAbort = new AbortController();
   const myId = ++loadId;
-  if (!activeRestIds.length) {
-    document.getElementById('content').innerHTML =
+  const myAbort = ventasAbort;
+
+  if (!fudoRestaurants.length) {
+    document.getElementById('ventas-content').innerHTML =
       '<div class="loading"><span style="color:#555">No hay locales asignados</span></div>';
     return;
   }
+  const today   = getTodayClient();
+  const dateFrom = document.getElementById('ventas-date-from').value || today;
+  const dateTo   = document.getElementById('ventas-date-to').value   || today;
+  // Ensure dateFrom <= dateTo
+  const from = dateFrom <= dateTo ? dateFrom : dateTo;
+  const to   = dateFrom <= dateTo ? dateTo   : dateFrom;
 
-  document.getElementById('content').innerHTML =
+  document.getElementById('ventas-stop-btn').style.display = 'inline-flex';
+  document.getElementById('ventas-content').innerHTML =
     '<div class="loading"><div class="spinner"></div><span>Cargando ventas...</span></div>';
-
-  const from = document.getElementById('inp-from').value;
-  const to   = document.getElementById('inp-to').value;
-  const qs   = new URLSearchParams();
-  if (from) qs.set('from', from);
-  if (to)   qs.set('to', to);
-  const qsStr = qs.toString() ? '?' + qs : '';
-
   try {
-    const settled = await Promise.allSettled(
-      activeRestIds.map(id => apiFetch(`/api/summary/${id}${qsStr}`).then(r => r.json()))
-    );
+    const results = [];
+    for (const r of fudoRestaurants) {
+      if (myAbort.signal.aborted) break;
+      const data = await apiFetch(`/api/ventas/${r.id}?from=${from}&to=${to}`, { signal: myAbort.signal })
+        .then(res => res.json())
+        .then(data => ({ ...data, restaurantName: r.name }))
+        .catch(e => myAbort.signal.aborted ? null : ({ error: e.message, restaurantName: r.name }));
+      if (data) results.push(data);
+      if (myId === loadId) renderVentas(from, to, results, true);
+      await new Promise(r => setTimeout(r, 300));
+    }
     if (myId !== loadId) return;
-    const results = settled
-      .filter(r => r.status === 'fulfilled' && !r.value.error && !r.value.noData)
-      .map(r => r.value);
-    if (!results.length) throw new Error('Sin datos disponibles para los locales seleccionados');
-    render(mergeSummaries(results));
+    document.getElementById('ventas-stop-btn').style.display = 'none';
+    renderVentas(from, to, results.filter(Boolean));
   } catch(e) {
     if (myId !== loadId) return;
-    document.getElementById('content').innerHTML =
-      `<div class="loading"><span style="color:#f87171">Error: ${e.message}</span></div>`;
+    document.getElementById('ventas-stop-btn').style.display = 'none';
+    if (!myAbort.signal.aborted)
+      document.getElementById('ventas-content').innerHTML =
+        `<div class="loading"><span style="color:#f87171">Error: ${e.message}</span></div>`;
   }
 }
 
-// ── Load resumen (one by one) ─────────────────────────────
-async function loadResumen() {
-  const myId = ++loadId;
-  const from  = document.getElementById('inp-from').value;
-  const to    = document.getElementById('inp-to').value;
-  const qs    = new URLSearchParams();
-  if (from) qs.set('from', from);
-  if (to)   qs.set('to', to);
-  const qsStr = qs.toString() ? '?' + qs : '';
+function fmt(n) { return '$' + Math.round(n).toLocaleString('es-CL'); }
 
-  // Render skeleton cards immediately
-  document.getElementById('resumen-content').innerHTML = `
-    <div class="resumen-grid">
-      ${fudoRestaurants.map(r => `
-        <div class="resumen-card" id="rcard-${r.id}">
-          <div class="resumen-card-name">${r.name}</div>
-          <div style="display:flex;align-items:center;gap:10px;padding:16px 0;color:#444">
-            <div class="spinner"></div><span style="font-size:13px">Cargando...</span>
-          </div>
-        </div>`).join('')}
-    </div>`;
+function renderVentas(from, to, results, partial = false) {
+  const fmt = n => '$' + Math.round(n || 0).toLocaleString('es-CL');
+  const fmtDate = d => new Date(d + 'T12:00:00Z').toLocaleDateString('es-CL', { day: 'numeric', month: 'short' });
+  const dateLabel = from === to
+    ? new Date(from + 'T12:00:00Z').toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' })
+    : `${fmtDate(from)} — ${fmtDate(to)}`;
 
-  // Load each restaurant sequentially
+  document.getElementById('ventas-content').innerHTML = results.map(data => {
+    if (data.noFudo) return '';
+    if (data.error) return `
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-title">${data.restaurantName}</div>
+        <div style="color:#f87171;font-size:13px">Error: ${data.error}</div>
+      </div>`;
+    if (data.noData) return `
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-title">${data.restaurantName}</div>
+        <div style="color:#888;font-size:13px">${data.message || 'Sin ventas para este período'}</div>
+      </div>`;
+
+    const methods = Object.entries(data.byPayMethod || {})
+      .sort((a, b) => b[1] - a[1])
+      .map(([m, v]) => `
+        <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #f0f0f0;font-size:14px">
+          <span style="color:#6c757d">${m}</span>
+          <span style="color:#212529;font-weight:600">${fmt(v)}</span>
+        </div>`).join('');
+
+    return `
+      <div class="card" style="margin-bottom:16px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div class="card-title" style="margin:0">${data.restaurantName}</div>
+          <span style="font-size:13px;color:#6c757d">${data.salesCount} ventas</span>
+        </div>
+        <div style="font-size:26px;font-weight:700;color:#ff5023;margin-bottom:12px">${fmt(data.total)}</div>
+        ${methods}
+      </div>`;
+  }).join('');
+}
+
+// ── GOKU ────────────────────────────────────────────────────
+let gokuAbort = null;
+let gokuWeekOffset = 0;
+
+function shiftGokuWeek(delta) {
+  gokuWeekOffset += delta;
+  initGoku();
+}
+
+function getWeekRangeChile() {
+  // Returns { from: 'YYYY-MM-DD', to: 'YYYY-MM-DD' } for Mon–Sun of current week + offset in Santiago
+  const today = getTodayClient(); // YYYY-MM-DD
+  const d = new Date(today + 'T12:00:00Z');
+  const dow = d.getUTCDay(); // 0=Sun,1=Mon,...,6=Sat
+  const mondayOffset = (dow === 0 ? -6 : 1 - dow) + gokuWeekOffset * 7;
+  const monday = new Date(d.getTime() + mondayOffset * 86400000);
+  const sunday = new Date(monday.getTime() + 6 * 86400000);
+  return { from: monday.toISOString().slice(0, 10), to: sunday.toISOString().slice(0, 10) };
+}
+
+function stopGoku() {
+  if (gokuAbort) { gokuAbort.abort(); gokuAbort = null; }
+  document.getElementById('goku-stop-btn').style.display = 'none';
+  document.getElementById('goku-content').innerHTML = '';
+}
+
+async function initGoku() {
+  if (gokuAbort) gokuAbort.abort();
+  gokuAbort = new AbortController();
+  const myAbort = gokuAbort;
+
+  const { from, to } = getWeekRangeChile();
+  const fmtDate = d => new Date(d + 'T12:00:00Z').toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' });
+  document.getElementById('goku-week-label').textContent =
+    `Semana: ${fmtDate(from)} → ${fmtDate(to)}`;
+  document.getElementById('goku-stop-btn').style.display = 'inline-flex';
+  document.getElementById('goku-content').innerHTML =
+    '<div class="loading"><div class="spinner"></div><span>Cargando...</span></div>';
+
+  const gokuState = { totalVentas: 0, byPayMethod: {}, totalSales: 0, ventasErrors: [],
+                      totalGastos: 0, totalGastosIva: 0, gastosCount: 0, byProveedor: {}, gastosLoaded: false, gastosError: null };
+
+  // Fetch gastos en paralelo (no bloquea ventas)
+  apiFetch(`/api/goku/gastos?from=${from}&to=${to}`, { signal: myAbort.signal })
+    .then(r => r.json())
+    .then(data => {
+      if (myAbort.signal.aborted) return;
+      gokuState.totalGastos    = data.total || 0;
+      gokuState.totalGastosIva = data.totalIva || 0;
+      gokuState.gastosCount    = data.count || 0;
+      gokuState.byProveedor    = data.byProveedor || {};
+      gokuState.gastosLoaded = true;
+      if (myAbort.signal.aborted) return;
+      renderGoku(gokuState, false);
+    })
+    .catch(e => { if (!myAbort.signal.aborted) { gokuState.gastosError = e.message; gokuState.gastosLoaded = true; } });
+
+  // Fetch ventas de a una
   for (const r of fudoRestaurants) {
-    if (myId !== loadId) return;
-    const cardEl = document.getElementById(`rcard-${r.id}`);
+    if (myAbort.signal.aborted) return;
     try {
-      const res  = await apiFetch(`/api/summary/${r.id}${qsStr}`);
-      if (myId !== loadId) return;
-      const data = await res.json();
-      if (data.error) throw new Error(data.error);
-      if (data.noData) throw new Error(data.reason || 'Sin datos');
-      cardEl.innerHTML = resumenCardHTML(r.name, data);
-    } catch(e) {
-      if (myId !== loadId) return;
-      cardEl.innerHTML = `
-        <div class="resumen-card-name">${r.name}</div>
-        <div style="color:#555;font-size:12px;margin-top:8px">⚠️ ${e.message}</div>`;
-    }
+      const data = await apiFetch(`/api/ventas/${r.id}?from=${from}&to=${to}`, { signal: myAbort.signal })
+        .then(res => res.json());
+      if (!data.noData && !data.noFudo && !data.error) {
+        gokuState.totalVentas += data.total || 0;
+        gokuState.totalSales  += data.salesCount || 0;
+        Object.entries(data.byPayMethod || {}).forEach(([m, v]) => {
+          gokuState.byPayMethod[m] = (gokuState.byPayMethod[m] || 0) + v;
+        });
+      } else if (data.error) gokuState.ventasErrors.push(r.name);
+    } catch(e) { if (!myAbort.signal.aborted) gokuState.ventasErrors.push(r.name); }
+    if (!myAbort.signal.aborted) renderGoku(gokuState, true);
+    await new Promise(r => setTimeout(r, 300));
+  }
+
+  if (!myAbort.signal.aborted) {
+    document.getElementById('goku-stop-btn').style.display = 'none';
+    renderGoku(gokuState, false);
   }
 }
 
-function resumenCardHTML(name, d) {
-  const payEntries = Object.entries(d.byPayMethod || {}).sort((a, b) => b[1] - a[1]);
-  const totalPay   = payEntries.reduce((s, [, v]) => s + v, 0) || 1;
-  return `
-    <div class="resumen-card-name">${name}</div>
-    <div class="resumen-card-total">${fmt(d.totalRevenue)}</div>
-    ${payEntries.length === 0
-      ? '<div style="color:#444;font-size:13px">Sin ventas en el período</div>'
-      : payEntries.map(([n, amt]) => `
-        <div class="pay-item">
-          <div class="pay-item-header">
-            <span class="pay-item-label">${n}</span>
-            <span>
-              <span class="pay-item-amount">${fmt(amt)}</span>
-              <span class="pay-item-pct">${Math.round(amt / totalPay * 100)}%</span>
-            </span>
-          </div>
-          <div class="bar-bg"><div class="bar-fill" style="width:${Math.round(amt / totalPay * 100)}%"></div></div>
-        </div>`).join('')}`;
+function renderGoku(state, loading) {
+  const fmt = n => '$' + Math.round(n || 0).toLocaleString('es-CL');
+  const { totalVentas, byPayMethod, totalSales, ventasErrors,
+          totalGastos, totalGastosIva, gastosCount, byProveedor, gastosLoaded, gastosError } = state;
+
+  const ventasMethods = Object.entries(byPayMethod).sort((a,b)=>b[1]-a[1])
+    .map(([m,v]) => `
+      <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f0f0f0;font-size:14px">
+        <span style="color:#6c757d">${m}</span><span style="color:#212529;font-weight:600">${fmt(v)}</span>
+      </div>`).join('');
+
+  const gastosRows = Object.entries(byProveedor).sort((a,b)=>b[1]-a[1])
+    .map(([proveedor, neto]) => `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid #f0f0f0;font-size:13px">
+        <span style="color:#6c757d;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:60%">${proveedor}</span>
+        <span style="color:#212529;font-weight:600;white-space:nowrap">${fmt(neto)}</span>
+      </div>`).join('');
+
+  const ventasNetas  = totalVentas / 1.19;
+  const utilidad     = ventasNetas - totalGastos;
+  const ratio        = ventasNetas > 0 ? (utilidad / ventasNetas * 100) : 0;
+  const flujoCaja    = totalVentas - (totalGastosIva || totalGastos * 1.19);
+  const utilColor    = utilidad  >= 0 ? '#16a34a' : '#dc2626';
+  const flujoColor   = flujoCaja >= 0 ? '#16a34a' : '#dc2626';
+
+  document.getElementById('goku-content').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+
+      <!-- Ventas -->
+      <div class="card" style="margin:0">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <span style="font-weight:600;color:#374151">Ventas Brutas</span>
+          <span style="font-size:12px;color:#9ca3af">${totalSales} ventas${loading ? ' · cargando...' : ''}</span>
+        </div>
+        <div style="font-size:30px;font-weight:800;color:#ff5023;margin-bottom:4px">${fmt(totalVentas)}</div>
+        <div style="font-size:12px;color:#6c757d;margin-bottom:10px">Neto: ${fmt(ventasNetas)}</div>
+        ${ventasMethods}
+        ${ventasErrors.length ? `<div style="font-size:11px;color:#f87171;margin-top:8px">Error: ${ventasErrors.join(', ')}</div>` : ''}
+      </div>
+
+      <!-- Gastos -->
+      <div class="card" style="margin:0">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <span style="font-weight:600;color:#374151">Gastos Neto</span>
+          <span style="font-size:12px;color:#9ca3af">${gastosLoaded ? `${gastosCount} facturas` : 'cargando...'}</span>
+        </div>
+        <div style="font-size:30px;font-weight:800;color:#1d4ed8;margin-bottom:4px">${fmt(totalGastos)}</div>
+        ${gastosLoaded && totalGastosIva ? `<div style="font-size:12px;color:#6c757d;margin-bottom:10px">Con IVA: ${fmt(totalGastosIva)}</div>` : '<div style="margin-bottom:10px"></div>'}
+        ${gastosError ? `<div style="font-size:12px;color:#f87171">Error: ${gastosError}</div>` : gastosRows}
+      </div>
+
+    </div>
+
+    <!-- KPIs fila -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+
+      <!-- Utilidad -->
+      <div class="card" style="margin:0">
+        <div style="font-size:12px;color:#6c757d;font-weight:600;text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">Utilidad Neta</div>
+        <div style="font-size:26px;font-weight:800;color:${utilColor};margin-bottom:4px">${utilidad >= 0 ? '+' : ''}${fmt(utilidad)}</div>
+        <div style="font-size:20px;font-weight:700;color:${utilColor}">${ratio >= 0 ? '+' : ''}${ratio.toFixed(1)}%</div>
+      </div>
+
+      <!-- Flujo de caja -->
+      <div class="card" style="margin:0">
+        <div style="font-size:12px;color:#6c757d;font-weight:600;text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">Flujo de Caja</div>
+        <div style="font-size:26px;font-weight:800;color:${flujoColor};margin-bottom:4px">${flujoCaja >= 0 ? '+' : ''}${fmt(flujoCaja)}</div>
+        <div style="font-size:12px;color:#9ca3af">Ventas brutas − gastos c/IVA</div>
+      </div>
+
+    </div>
+
+    <!-- Resultado semana -->
+    <div class="card" style="margin:0;display:flex;justify-content:space-between;align-items:center">
+      <span style="font-weight:600;color:#374151;font-size:15px">Resultado semana</span>
+      <span style="font-size:28px;font-weight:800;color:${utilColor}">${utilidad >= 0 ? '+' : ''}${fmt(utilidad)}</span>
+    </div>`;
 }
 
-// ── Render individual dashboard ────────────────────────────
-function fmt(n)  { return '$' + Math.round(n).toLocaleString('es-CL'); }
-function fmtD(d) { const [,m,day] = d.split('-'); return `${day}/${m}`; }
+// ── VEGETA ──────────────────────────────────────────────────
+let vegetaWeekOffset = 0;
+let vegetaItems      = [];   // ítems configurados
+let vegetaProducts   = [];   // todos los productos+preparaciones disponibles
 
-function render(d) {
-  const maxRev    = Math.max(...d.byDay.map(x => x.revenue), 1);
-  const typeLabel = { TAKEAWAY: 'Para llevar', 'EAT-IN': 'Salón', LOCAL: 'Salón', DELIVERY: 'Delivery', OTHER: 'Otro' };
+function shiftVegetaWeek(delta) { vegetaWeekOffset += delta; initVegeta(); }
 
-  document.getElementById('content').innerHTML = `
-    <div class="stats-grid">
-      <div class="stat-card">
-        <div class="stat-label">Ingresos totales</div>
-        <div class="stat-value">${fmt(d.totalRevenue)}</div>
-        <div class="stat-sub">${d.dateRange.from || ''} → ${d.dateRange.to || ''}</div>
-        ${d.totalFromPayments !== undefined ? `<div class="stat-sub" style="margin-top:4px;color:#666">Desde pagos: ${fmt(d.totalFromPayments)}</div>` : ''}
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">Ventas cerradas</div>
-        <div class="stat-value">${d.totalOrders.toLocaleString('es-CL')}</div>
-        <div class="stat-sub">en el período</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">Ticket promedio</div>
-        <div class="stat-value">${fmt(d.avgTicket)}</div>
-        <div class="stat-sub">por venta</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">Días activos</div>
-        <div class="stat-value">${d.byDay.length}</div>
-        <div class="stat-sub">con ventas</div>
-      </div>
-    </div>
+function getVegetaWeekRange() {
+  const today = getTodayClient();
+  const d = new Date(today + 'T12:00:00Z');
+  const dow = d.getUTCDay();
+  const mondayOffset = (dow === 0 ? -6 : 1 - dow) + vegetaWeekOffset * 7;
+  const monday = new Date(d.getTime() + mondayOffset * 86400000);
+  const sunday = new Date(monday.getTime() + 6 * 86400000);
+  return { from: monday.toISOString().slice(0, 10), to: sunday.toISOString().slice(0, 10) };
+}
 
-    <div class="charts-row">
-      <div class="card">
-        <div class="card-title">Ingresos por día</div>
-        <div class="chart-wrap"><canvas id="salesChart"></canvas></div>
-      </div>
-      <div class="card">
-        <div class="card-title">Medios de pago</div>
-        <div class="chart-wrap"><canvas id="payChart"></canvas></div>
-      </div>
-    </div>
+async function initVegetaModule() {
+  // Populate restaurant selector once
+  const sel = document.getElementById('vegeta-rest-sel');
+  if (sel.options.length <= 1) {
+    const rests = restaurants || [];
+    sel.innerHTML = rests.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
+  }
+  // Load products+preparations for config dropdown (once)
+  if (!vegetaProducts.length) {
+    try {
+      const [pRes, prepRes] = await Promise.all([
+        apiFetch('/api/inv/products').then(r => r.json()),
+        apiFetch('/api/preparations').then(r => r.json())
+      ]);
+      const prods  = (pRes.products || []).map(p => ({ id: p.id, name: p.name, type: 'product',      unit: p.unit || '' }));
+      const preps  = (prepRes.preparations || pRes.preparations || []).map(p => ({ id: p.id, name: p.name, type: 'preparation', unit: p.unit || '' }));
+      vegetaProducts = [...prods, ...preps].sort((a,b) => a.name.localeCompare(b.name));
+    } catch(e) { console.warn('vegeta load products:', e.message); }
+  }
+  initVegeta();
+}
 
-    <div class="charts-row" style="grid-template-columns:1fr 1fr">
-      <div class="card">
-        <div class="card-title">Tipo de venta</div>
-        ${Object.entries(d.byType).map(([type, v]) => `
-          <div style="margin-bottom:14px">
-            <div style="display:flex;justify-content:space-between;font-size:13px;color:#ccc;margin-bottom:4px">
-              <span>${typeLabel[type] || type}</span>
-              <span>${fmt(v.revenue)} · ${v.count} ventas</span>
-            </div>
-            <div class="bar-bg"><div class="bar-fill" style="width:${Math.round(v.revenue/d.totalRevenue*100)}%"></div></div>
-          </div>`).join('')}
-      </div>
-      <div class="card">
-        <div class="card-title">Medios de pago — detalle</div>
-        ${Object.entries(d.byPayMethod).sort((a,b)=>b[1]-a[1]).map(([name, amt]) => `
-          <div style="margin-bottom:14px">
-            <div style="display:flex;justify-content:space-between;font-size:13px;color:#ccc;margin-bottom:4px">
-              <span>${name}</span>
-              <span>${fmt(amt)}</span>
-            </div>
-            <div class="bar-bg"><div class="bar-fill" style="width:${Math.round(amt/d.totalRevenue*100)}%"></div></div>
-          </div>`).join('')}
-      </div>
-    </div>
+async function initVegeta() {
+  const restId = document.getElementById('vegeta-rest-sel')?.value;
+  if (!restId) return;
+  const { from, to } = getVegetaWeekRange();
+  const fmtD = d => new Date(d + 'T12:00:00Z').toLocaleDateString('es-CL', { day: 'numeric', month: 'short' });
+  document.getElementById('vegeta-week-label').textContent = `${fmtD(from)} → ${fmtD(to)}`;
+  document.getElementById('vegeta-content').innerHTML = '<div class="loading"><div class="spinner"></div><span>Cargando...</span></div>';
 
-    ${d.topProducts && d.topProducts.length ? `
-    <div class="card" style="margin-top:14px">
-      <div class="card-title">Productos más vendidos</div>
-      <div class="cat-filter" id="cat-filter"></div>
-      <table id="products-table">
-        <thead><tr>
-          <th>Producto</th><th>Categoría</th><th>Unidades</th><th>Ingresos</th>
-          <th style="text-align:left">Proporción</th>
-        </tr></thead>
-        <tbody id="products-tbody"></tbody>
+  try {
+    // Load items config + calce in parallel
+    const [cfgRes, calceRes] = await Promise.all([
+      apiFetch(`/api/vegeta/items/${restId}`).then(r => r.json()),
+      apiFetch(`/api/vegeta/calce/${restId}?from=${from}&to=${to}`).then(r => r.json())
+    ]);
+    vegetaItems = cfgRes.items || [];
+    renderVegetaConfig(vegetaItems);
+    renderVegetaCalce(calceRes);
+  } catch(e) {
+    document.getElementById('vegeta-content').innerHTML = `<div style="color:#dc2626;font-size:14px">Error: ${e.message}</div>`;
+  }
+}
+
+function toggleVegetaConfig() {
+  const panel = document.getElementById('vegeta-config-panel');
+  panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+  if (panel.style.display === 'block') renderVegetaConfig(vegetaItems);
+}
+
+function renderVegetaConfig(items) {
+  // Populate add dropdown
+  const sel = document.getElementById('vegeta-add-sel');
+  const existingIds = new Set(items.map(i => i.id));
+  sel.innerHTML = '<option value="">— Seleccionar ítem —</option>' +
+    vegetaProducts.filter(p => !existingIds.has(p.id))
+      .map(p => `<option value="${p.id}" data-name="${p.name}" data-type="${p.type}" data-unit="${p.unit}">${p.name}${p.type==='preparation'?' (prep)':''}</option>`).join('');
+
+  // List of current items
+  const list = document.getElementById('vegeta-items-list');
+  if (!items.length) { list.innerHTML = '<div style="font-size:13px;color:#9ca3af">Sin ítems configurados</div>'; return; }
+  list.innerHTML = items.map(item => `
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:#f8f9fa;border-radius:8px;font-size:13px">
+      <span style="flex:1;font-weight:500;color:#212529">${item.name}</span>
+      <span style="font-size:11px;color:#9ca3af;background:#e9ecef;padding:2px 6px;border-radius:10px">${item.type}</span>
+      <span style="font-size:11px;color:#6c757d">GDD: </span>
+      <input value="${item.gddKeyword || item.name}" onchange="vegetaUpdateKeyword('${item.id}',this.value)"
+        style="border:1px solid #dee2e6;border-radius:6px;padding:3px 7px;font-size:12px;width:150px;color:#374151">
+      <button onclick="vegetaRemoveItem('${item.id}')" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:16px;padding:0 4px">×</button>
+    </div>`).join('');
+}
+
+async function vegetaAddItem() {
+  const sel = document.getElementById('vegeta-add-sel');
+  const opt = sel.options[sel.selectedIndex];
+  if (!opt.value) return;
+  const restId = document.getElementById('vegeta-rest-sel').value;
+  try {
+    const res = await apiFetch(`/api/vegeta/items/${restId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: opt.value, name: opt.dataset.name, type: opt.dataset.type, unit: opt.dataset.unit })
+    }).then(r => r.json());
+    vegetaItems = res.items || [];
+    renderVegetaConfig(vegetaItems);
+    initVegeta();
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
+async function vegetaRemoveItem(itemId) {
+  const restId = document.getElementById('vegeta-rest-sel').value;
+  const res = await apiFetch(`/api/vegeta/items/${restId}/${itemId}`, { method: 'DELETE' }).then(r => r.json());
+  vegetaItems = res.items || [];
+  renderVegetaConfig(vegetaItems);
+  initVegeta();
+}
+
+async function vegetaUpdateKeyword(itemId, keyword) {
+  const restId = document.getElementById('vegeta-rest-sel').value;
+  await apiFetch(`/api/vegeta/items/${restId}/${itemId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ gddKeyword: keyword })
+  });
+  // reload calce silently
+  const { from, to } = getVegetaWeekRange();
+  const calceRes = await apiFetch(`/api/vegeta/calce/${restId}?from=${from}&to=${to}`).then(r => r.json());
+  renderVegetaCalce(calceRes);
+}
+
+function renderVegetaCalce(data) {
+  const { results = [], stockInicialDate, stockFinalDate } = data;
+  const fmt = n => n == null ? '—' : (Math.round(n * 100) / 100).toLocaleString('es-CL');
+  const fmtD = d => d ? new Date(d + 'T12:00:00Z').toLocaleDateString('es-CL', { day: 'numeric', month: 'short' }) : '—';
+
+  if (!results.length) {
+    document.getElementById('vegeta-content').innerHTML = `
+      <div style="text-align:center;padding:48px 16px;color:#9ca3af">
+        <div style="font-size:32px;margin-bottom:12px">🔥</div>
+        <div style="font-size:14px">Sin ítems configurados. Usa <strong>⚙ Ítems</strong> para agregar.</div>
+      </div>`;
+    return;
+  }
+
+  const dateNote = `<div style="font-size:11px;color:#9ca3af;margin-bottom:16px">
+    Stock inicial: inventario del ${fmtD(stockInicialDate)} · Stock final: inventario del ${fmtD(stockFinalDate)}
+  </div>`;
+
+  const thStyle = 'padding:10px 12px;font-size:12px;font-weight:600;color:#6c757d;text-transform:uppercase;letter-spacing:.3px;text-align:right;white-space:nowrap';
+  const tdStyle = 'padding:10px 12px;font-size:14px;color:#212529;text-align:right;border-bottom:1px solid #f0f0f0';
+  const tdName  = 'padding:10px 12px;font-size:14px;font-weight:500;color:#212529;border-bottom:1px solid #f0f0f0';
+
+  const rows = results.map(r => {
+    const mermaColor = r.consumoReal != null && r.consumoReal < 0 ? '#ef4444' : r.consumoReal != null && r.consumoReal > 0 ? '#212529' : '#9ca3af';
+    const gddDetail = r.gddMatches?.length
+      ? r.gddMatches.map(m => `<div style="font-size:11px;color:#6c757d">${m.fecha} · ${m.proveedor}: +${m.cantidad} ${m.unidad||''}</div>`).join('')
+      : '<div style="font-size:11px;color:#9ca3af">Sin entregas GDD</div>';
+
+    const recipeCount = (r.linkedRecipes || []).length;
+    const recipeBtn = recipeCount
+      ? `<button onclick='vegetaShowRecipes(${JSON.stringify(r.linkedRecipes).replace(/'/g,"&#39;")},"${r.name}")'
+           style="padding:3px 10px;background:#ede9fe;color:#6366f1;border:none;border-radius:12px;font-size:12px;cursor:pointer;white-space:nowrap">
+           📋 ${recipeCount} recetas
+         </button>`
+      : ``;
+
+    return `<tr>
+      <td style="${tdName}">${r.name}<div style="font-size:11px;color:#9ca3af">${r.unit}</div></td>
+      <td style="${tdStyle}">${fmt(r.stockInicial)}</td>
+      <td style="${tdStyle}">
+        <div style="color:#16a34a;font-weight:600">${r.entradasGDD > 0 ? '+'+fmt(r.entradasGDD) : fmt(r.entradasGDD)}</div>
+        ${gddDetail}
+      </td>
+      <td style="${tdStyle}">${fmt(r.stockFinal)}</td>
+      <td style="${tdStyle};font-weight:700;color:${mermaColor}">${fmt(r.consumoReal)}</td>
+      <td style="${tdStyle}">${recipeBtn}</td>
+      <td style="${tdStyle};color:#9ca3af">—</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('vegeta-content').innerHTML = `
+    ${dateNote}
+    <div style="background:#fff;border-radius:12px;border:1px solid #e9ecef;overflow:auto">
+      <table style="width:100%;border-collapse:collapse">
+        <thead>
+          <tr style="border-bottom:2px solid #e9ecef">
+            <th style="${thStyle};text-align:left">Ítem</th>
+            <th style="${thStyle}">Stock Inicial</th>
+            <th style="${thStyle}">Entradas GDD</th>
+            <th style="${thStyle}">Stock Final</th>
+            <th style="${thStyle}">Consumo Real</th>
+            <th style="${thStyle};text-align:left">Recetas vinculadas</th>
+            <th style="${thStyle}">Merma</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
       </table>
-    </div>` : ''}
+    </div>`;
+}
 
-    <div class="card" style="margin-top:14px">
-      <div class="card-title">Ventas por día — detalle</div>
-      <table>
-        <thead><tr>
-          <th>Fecha</th><th>N° ventas</th><th>Ingresos</th><th>Ticket prom.</th>
-          <th style="text-align:left">Proporción</th>
-        </tr></thead>
+function vegetaShowRecipes(recipes, itemName) {
+  // Remove existing popup
+  document.getElementById('vegeta-recipes-popup')?.remove();
+
+  const rows = recipes.map(r => `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f0f0f0">
+      <button onclick="goTo('margenes')" style="background:none;border:none;padding:0;font-size:13px;color:#6366f1;cursor:pointer;text-align:left;text-decoration:underline">${r.name}</button>
+      <span style="font-size:12px;color:#374151;font-weight:600;white-space:nowrap;margin-left:16px">${r.quantity} ${r.unit}</span>
+    </div>`).join('');
+
+  const popup = document.createElement('div');
+  popup.id = 'vegeta-recipes-popup';
+  popup.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:9999;display:flex;align-items:center;justify-content:center';
+  popup.innerHTML = `
+    <div style="background:#fff;border-radius:16px;padding:24px;width:460px;max-width:90vw;max-height:80vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.2)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <div>
+          <div style="font-size:16px;font-weight:700;color:#212529">Recetas vinculadas</div>
+          <div style="font-size:12px;color:#9ca3af">${itemName}</div>
+        </div>
+        <button onclick="document.getElementById('vegeta-recipes-popup').remove()"
+          style="background:none;border:none;font-size:20px;color:#9ca3af;cursor:pointer;line-height:1">×</button>
+      </div>
+      ${rows}
+    </div>`;
+  popup.addEventListener('click', e => { if (e.target === popup) popup.remove(); });
+  document.body.appendChild(popup);
+}
+
+function vegetaOpenRecipe(recipeId, recipeType) {
+  const row = document.querySelector(`[data-recipe-id="${recipeId}"]`) ||
+              document.querySelector(`[data-prep-id="${recipeId}"]`);
+  if (row) { row.scrollIntoView({ behavior: 'smooth', block: 'center' }); row.style.background = '#fef3c7'; setTimeout(() => row.style.background = '', 2000); }
+}
+
+// ── FLUJO DE CAJA PROYECTADO ─────────────────────────────────
+const FLUJO_MONTHS = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+let flujoData    = { margen: 0, prevision: 0, transbankBruto: Array(12).fill(0), efectivo: Array(12).fill(0), gastos: [] };
+let flujoByYear  = {};
+let flujoEditGastoId = null;
+
+function flujoInit() {
+  const restSel = document.getElementById('flujo-rest-sel');
+  const yearSel = document.getElementById('flujo-year-sel');
+  // Restaurantes
+  if (restSel.options.length === 0) {
+    restSel.innerHTML = '<option value="__consolidado__">Consolidado</option>' +
+      (restaurants || []).map(r => `<option value="${r.id}">${r.name}</option>`).join('');
+  }
+  // Años
+  if (yearSel.options.length === 0) {
+    const cur = new Date().getFullYear();
+    yearSel.innerHTML = [cur-1, cur, cur+1].map(y => `<option value="${y}" ${y===cur?'selected':''}>${y}</option>`).join('');
+  }
+  flujoLoad();
+}
+
+async function flujoLoad() {
+  const restId = document.getElementById('flujo-rest-sel').value;
+  const year   = document.getElementById('flujo-year-sel').value;
+  const isConsolidado = restId === '__consolidado__';
+  document.getElementById('flujo-btn-gasto').style.display     = isConsolidado ? 'none' : '';
+  document.getElementById('flujo-btn-margen').style.display    = isConsolidado ? 'none' : '';
+  document.getElementById('flujo-btn-historico').style.display = isConsolidado ? 'none' : '';
+  document.getElementById('flujo-content').innerHTML = '<div class="loading"><div class="spinner"></div><span>Cargando...</span></div>';
+  try {
+    if (isConsolidado) {
+      await flujoLoadConsolidado(year);
+    } else {
+      const [res, histRes] = await Promise.all([
+        apiFetch(`/api/flujo/${restId}/${year}`),
+        apiFetch(`/api/flujo/${restId}/historico`)
+      ]);
+      flujoData   = await res.json();
+      const { byYear } = await histRes.json();
+      flujoByYear = byYear || {};
+      flujoRender(flujoData, false, flujoByYear);
+    }
+  } catch(e) {
+    document.getElementById('flujo-content').innerHTML = `<div style="color:#dc2626;padding:24px">Error: ${e.message}</div>`;
+  }
+}
+
+async function flujoLoadConsolidado(year) {
+  const rests = restaurants || [];
+  const [results, histResults] = await Promise.all([
+    Promise.all(rests.map(r => apiFetch(`/api/flujo/${r.id}/${year}`).then(res => res.json()).catch(() => null))),
+    Promise.all(rests.map(r => apiFetch(`/api/flujo/${r.id}/historico`).then(res => res.json()).catch(() => null)))
+  ]);
+  const consolidated = {
+    margen: null,
+    prevision: null,
+    transbankBruto: Array(12).fill(0),
+    efectivo:       Array(12).fill(0),
+    gastos: []
+  };
+  const gastoMap = {};
+  results.forEach(d => {
+    if (!d) return;
+    (d.transbankBruto || []).forEach((v, i) => { consolidated.transbankBruto[i] += (v || 0); });
+    (d.efectivo       || []).forEach((v, i) => { consolidated.efectivo[i]       += (v || 0); });
+    (d.gastos || []).forEach(g => {
+      if (!gastoMap[g.name]) gastoMap[g.name] = { name: g.name, tipo: g.tipo, previred: g.previred, montos: Array(12).fill(0) };
+      g.montos.forEach((v, i) => { gastoMap[g.name].montos[i] += (v || 0); });
+    });
+    if (consolidated.margen === null && d.margen) consolidated.margen = d.margen;
+    if (consolidated.prevision === null && d.prevision) consolidated.prevision = d.prevision;
+  });
+  consolidated.gastos = Object.values(gastoMap);
+
+  // Consolidar histórico
+  const byYearConsolidado = {};
+  histResults.forEach(h => {
+    if (!h || !h.byYear) return;
+    Object.entries(h.byYear).forEach(([yr, yd]) => {
+      if (!byYearConsolidado[yr]) byYearConsolidado[yr] = { transbank: Array(12).fill(0), efectivo: Array(12).fill(0) };
+      (yd.transbank || []).forEach((v, i) => { byYearConsolidado[yr].transbank[i] += (v || 0); });
+      (yd.efectivo  || []).forEach((v, i) => { byYearConsolidado[yr].efectivo[i]  += (v || 0); });
+    });
+  });
+  flujoByYear = byYearConsolidado;
+  flujoRender(consolidated, true, flujoByYear);
+}
+
+function flujoRender(data, isConsolidado, byYear) {
+  const margen         = data.margen    || 0;
+  const prevision      = data.prevision || 0;
+  const diasSemana     = data.diasSemana || [];
+  const transbankBruto = data.transbankBruto || Array(12).fill(0);
+  const efectivo       = data.efectivo       || Array(12).fill(0);
+  const gastos         = data.gastos || [];
+
+  const fmt    = n => (!n || n === 0) ? '—' : '$' + Math.round(n).toLocaleString('es-CL');
+  const fmtNum = n => n === 0 ? '—' : String(n);
+  const sum    = arr => arr.reduce((a, b) => a + (b || 0), 0);
+
+  // Días disponibles por mes según días de apertura configurados
+  const year = parseInt(document.getElementById('flujo-year-sel')?.value) || new Date().getFullYear();
+  const diasDisponibles = Array.from({length: 12}, (_, m) => {
+    if (!diasSemana.length) return 0;
+    const daysInMonth = new Date(year, m + 1, 0).getDate();
+    let count = 0;
+    for (let d = 1; d <= daysInMonth; d++) {
+      if (diasSemana.includes(new Date(year, m, d).getDay())) count++;
+    }
+    return count;
+  });
+
+  // Separar gastos por tipo
+  const gastosFixed   = gastos.filter(g => g.tipo !== 'sueldo');
+  const gastosSueldos = gastos.filter(g => g.tipo === 'sueldo');
+
+  // Cálculos ingresos
+  const transbankNeto = transbankBruto.map(v => (v || 0) / 1.19);
+  const totalIngresos = transbankNeto.map((v, i) => v + (efectivo[i] || 0));
+  const margenOp      = totalIngresos.map(v => v * (margen / 100));
+
+  // Cálculos gastos fijos
+  const totFixed = Array(12).fill(0);
+  gastosFixed.forEach(g => g.montos.forEach((v, i) => { totFixed[i] += (v || 0); }));
+
+  // Cálculos sueldos
+  const totSueldos = Array(12).fill(0);
+  gastosSueldos.forEach(g => g.montos.forEach((v, i) => { totSueldos[i] += (v || 0); }));
+  // Previred solo sobre sueldos marcados
+  const totPreviredBase = Array(12).fill(0);
+  gastosSueldos.filter(g => g.previred).forEach(g => g.montos.forEach((v, i) => { totPreviredBase[i] += (v || 0); }));
+  const previsionRate = prevision || 28;
+  const totPrevision = totPreviredBase.map(v => v * (previsionRate / 100));
+  const totSueldosConPrev = totSueldos.map((v, i) => v + totPrevision[i]);
+
+  // Total gastos y resultado
+  const totalGastos = totFixed.map((v, i) => v + totSueldosConPrev[i]);
+  const resultado   = margenOp.map((v, i) => v - totalGastos[i]);
+  const totalResult = sum(resultado);
+
+  // Punto de equilibrio
+  const puntoEqNeto  = totalGastos.map(v => margen > 0 ? v / (margen / 100) : 0);
+  const puntoEqBruto = puntoEqNeto.map(v => v * 1.19);
+
+  const thStyle = 'padding:10px 8px;font-size:11px;font-weight:600;color:#6c757d;text-transform:uppercase;letter-spacing:.3px;text-align:right;white-space:nowrap;border-bottom:2px solid #e9ecef';
+  const thName  = 'padding:10px 12px;font-size:11px;font-weight:600;color:#6c757d;text-transform:uppercase;letter-spacing:.3px;text-align:left;white-space:nowrap;border-bottom:2px solid #e9ecef';
+  const td      = 'padding:9px 8px;font-size:13px;color:#374151;text-align:right;border-bottom:1px solid #f0f0f0;white-space:nowrap';
+  const tdN     = 'padding:9px 12px;font-size:13px;color:#212529;border-bottom:1px solid #f0f0f0;white-space:nowrap';
+  const tdS     = 'padding:9px 8px;font-size:13px;font-weight:700;color:#212529;text-align:right;border-bottom:1px solid #dee2e6;background:#f8f9fa;white-space:nowrap';
+  const tdSN    = 'padding:9px 12px;font-size:13px;font-weight:700;color:#212529;border-bottom:1px solid #dee2e6;background:#f8f9fa;white-space:nowrap';
+
+  const mkRow = (label, vals, style, nameStyle) => `<tr>
+    <td style="${nameStyle}">${label}</td>
+    ${vals.map(v => `<td style="${style}">${fmt(v)}</td>`).join('')}
+    <td style="${style};font-weight:700">${fmt(sum(vals))}</td>
+  </tr>`;
+
+  const mkGastoRows = (list) => list.map(g => {
+    const editBtns = isConsolidado ? '' : `
+      <button onclick="flujoOpenGastoModal('${g.id}')" style="background:none;border:none;color:#9ca3af;cursor:pointer;font-size:12px;padding:0 4px">✏️</button>
+      <button onclick="flujoDeleteGasto('${g.id}')" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:14px;padding:0 4px">×</button>`;
+    const previredTag = (g.tipo === 'sueldo' && g.previred)
+      ? `<span style="font-size:10px;background:#dcfce7;color:#16a34a;border-radius:8px;padding:1px 6px;margin-left:6px">Previred</span>` : '';
+    return `<tr>
+      <td style="${tdN}">${g.name}${previredTag}${editBtns}</td>
+      ${g.montos.map(v => `<td style="${td}">${fmt(v)}</td>`).join('')}
+      <td style="${td};font-weight:600">${fmt(sum(g.montos))}</td>
+    </tr>`;
+  }).join('');
+
+  const resColor = totalResult >= 0 ? '#16a34a' : '#dc2626';
+
+  const secHead = (label) => `<tr style="background:#e9ecef">
+    <td colspan="14" style="padding:6px 12px;font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.8px">${label}</td>
+  </tr>`;
+
+  document.getElementById('flujo-content').innerHTML = `
+    <div style="margin-bottom:12px;display:flex;align-items:center;gap:16px">
+      <div style="font-size:13px;color:#6c757d">Margen: <strong style="color:#212529">${margen}%</strong> &nbsp;|&nbsp; Previsión Previred: <strong style="color:#212529">${previsionRate}%</strong></div>
+      ${isConsolidado ? '<div style="font-size:12px;color:#9ca3af;background:#f3f4f6;padding:3px 10px;border-radius:10px">Vista consolidada</div>' : ''}
+    </div>
+    <div style="background:#fff;border-radius:12px;border:1px solid #e9ecef;overflow:auto">
+      <table style="width:100%;border-collapse:collapse;min-width:1200px">
+        <thead>
+          <tr style="background:#f9fafb">
+            <th style="${thName};min-width:210px">Concepto</th>
+            ${FLUJO_MONTHS.map(m => `<th style="${thStyle}">${m}</th>`).join('')}
+            <th style="${thStyle}">Total</th>
+          </tr>
+        </thead>
         <tbody>
-          ${d.byDay.map(row => `
-            <tr>
-              <td>${row.date}</td>
-              <td>${row.count}</td>
-              <td>${fmt(row.revenue)}</td>
-              <td>${fmt(row.revenue / row.count)}</td>
-              <td style="text-align:left;width:120px">
-                <div class="bar-bg"><div class="bar-fill" style="width:${Math.round(row.revenue/maxRev*100)}%"></div></div>
-              </td>
-            </tr>`).join('')}
+          ${mkRow('Transbank Bruto', transbankBruto, td, tdN)}
+          ${mkRow('Transbank Neto (÷1.19)', transbankNeto, td, tdN)}
+          ${mkRow('Efectivo', efectivo, td, tdN)}
+          ${mkRow('Total Ingresos', totalIngresos, tdS, tdSN)}
+          ${mkRow('Margen Operacional ('+margen+'%)', margenOp, tdS, tdSN)}
+          <tr><td colspan="14" style="padding:4px 0;background:#f0f4f8"></td></tr>
+
+          ${secHead('Gastos Fijos')}
+          ${mkGastoRows(gastosFixed)}
+          ${mkRow('Total Gastos Fijos', totFixed, tdS, tdSN)}
+          <tr><td colspan="14" style="padding:4px 0;background:#f0f4f8"></td></tr>
+
+          ${secHead('Sueldos')}
+          ${mkGastoRows(gastosSueldos)}
+          ${mkRow('Total Sueldos', totSueldos, tdS, tdSN)}
+          ${mkRow('Previred ('+previsionRate+'%)', totPrevision, td, tdN)}
+          ${mkRow('Total Sueldos + Previred', totSueldosConPrev, tdS, tdSN)}
+          <tr><td colspan="14" style="padding:4px 0;background:#f0f4f8"></td></tr>
+
+          ${mkRow('Total Gastos', totalGastos, tdS, tdSN)}
+          <tr>
+            <td style="${tdSN};color:${resColor};font-size:14px">RESULTADO</td>
+            ${resultado.map(v => `<td style="${tdS};color:${v>=0?'#16a34a':'#dc2626'}">${fmt(v)}</td>`).join('')}
+            <td style="${tdS};color:${resColor};font-size:14px">${fmt(totalResult)}</td>
+          </tr>
+          <tr><td colspan="14" style="padding:4px 0;background:#f0f4f8"></td></tr>
+          ${mkRow('Punto Equilibrio Neto', puntoEqNeto, td, tdN)}
+          ${mkRow('Punto Equilibrio Bruto (+IVA)', puntoEqBruto, td, tdN)}
+          ${diasSemana.length ? `<tr>
+            <td style="${tdN};color:#6c757d">Días disponibles</td>
+            ${diasDisponibles.map(v => `<td style="${td};color:#6c757d">${fmtNum(v)}</td>`).join('')}
+            <td style="${td};color:#6c757d;font-weight:700">${sum(diasDisponibles)}</td>
+          </tr>
+          <tr>
+            <td style="${tdN};color:#6c757d">Venta diaria necesaria (Bruto)</td>
+            ${diasDisponibles.map((dias, i) => {
+              const v = dias > 0 ? puntoEqBruto[i] / dias : 0;
+              return `<td style="${td};color:#6c757d">${v > 0 ? '$' + Math.round(v).toLocaleString('es-CL') : '—'}</td>`;
+            }).join('')}
+            <td style="${td};color:#6c757d;font-weight:700">${(()=>{ const t=sum(diasDisponibles); return t>0?'$'+Math.round(sum(puntoEqBruto)/t).toLocaleString('es-CL'):'—'; })()}</td>
+          </tr>` : ''}
+          ${byYear && Object.keys(byYear).length ? `
+          <tr><td colspan="14" style="padding:4px 0;background:#f0f4f8"></td></tr>
+          ${Object.keys(byYear).sort().map(yr => {
+            const yd = byYear[yr];
+            const ventas = (yd.transbank || Array(12).fill(0)).map((v, i) => v + (yd.efectivo[i] || 0));
+            const total = sum(ventas);
+            return `<tr>
+              <td style="${tdN};color:#374151">Ventas ${yr}</td>
+              ${ventas.map(v => `<td style="${td}">${v > 0 ? '$' + Math.round(v).toLocaleString('es-CL') : '—'}</td>`).join('')}
+              <td style="${td};font-weight:700">${total > 0 ? '$' + Math.round(total).toLocaleString('es-CL') : '—'}</td>
+            </tr>`;
+          }).join('')}` : ''}
         </tbody>
       </table>
-    </div>
-  `;
-
-  if (d.topProducts && d.topProducts.length) {
-    const allProducts = d.topProducts;
-    const cats = ['Todas', ...new Set(allProducts.map(p => p.category).filter(Boolean).sort())];
-    let activeCat = 'Todas';
-    function renderProducts() {
-      const filtered = activeCat === 'Todas' ? allProducts : allProducts.filter(p => p.category === activeCat);
-      const maxQty   = Math.max(...filtered.map(p => p.qty), 1);
-      document.getElementById('products-tbody').innerHTML = filtered.map(p => `
-        <tr>
-          <td>${p.name}</td>
-          <td style="color:#666">${p.category}</td>
-          <td>${p.qty.toLocaleString('es-CL')}</td>
-          <td>${fmt(p.revenue)}</td>
-          <td style="text-align:left;width:140px">
-            <div class="bar-bg"><div class="bar-fill" style="width:${Math.round(p.qty/maxQty*100)}%"></div></div>
-          </td>
-        </tr>`).join('');
-    }
-    const catFilter = document.getElementById('cat-filter');
-    if (catFilter) {
-      catFilter.innerHTML = cats.map(c => `
-        <button class="cat-btn ${c === 'Todas' ? 'active' : ''}" onclick="selectCat(this,'${c.replace(/'/g,"\\'")}')">
-          ${c}
-        </button>`).join('');
-      window.selectCat = function(btn, cat) {
-        activeCat = cat;
-        document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        renderProducts();
-      };
-      renderProducts();
-    }
-  }
-
-  if (salesChart) { salesChart.destroy(); salesChart = null; }
-  if (payChart)   { payChart.destroy();   payChart   = null; }
-
-  const salesCtx = document.getElementById('salesChart');
-  if (salesCtx && d.byDay.length) {
-    salesChart = new Chart(salesCtx, {
-      type: 'bar',
-      data: {
-        labels:   d.byDay.map(x => fmtD(x.date)),
-        datasets: [{ data: d.byDay.map(x => x.revenue), backgroundColor: '#ff5023bb', borderColor: '#ff5023', borderWidth: 1, borderRadius: 3 }]
-      },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: {
-          x: { grid: { color: '#1c1c1c' }, ticks: { color: '#444', font: { size: 11 } } },
-          y: { grid: { color: '#1c1c1c' }, ticks: { color: '#444', font: { size: 11 }, callback: v => '$' + (v/1000).toFixed(0) + 'k' } }
-        }
-      }
-    });
-  }
-
-  const payEntries = Object.entries(d.byPayMethod).sort((a,b) => b[1]-a[1]);
-  const payCtx     = document.getElementById('payChart');
-  if (payCtx && payEntries.length) {
-    payChart = new Chart(payCtx, {
-      type: 'doughnut',
-      data: {
-        labels:   payEntries.map(x => x[0]),
-        datasets: [{ data: payEntries.map(x => x[1]), backgroundColor: ['#ff5023','#3b82f6','#22c55e','#f59e0b','#a855f7','#ec4899'], borderWidth: 0 }]
-      },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { position: 'bottom', labels: { color: '#666', font: { size: 11 }, padding: 8 } } }
-      }
-    });
-  }
-}
-
-// ── Admin modal ────────────────────────────────────────────
-let adminTab = 'locales';
-
-function openAdmin() {
-  document.getElementById('admin-modal').classList.add('open');
-  switchAdminTab('locales');
-}
-function closeAdmin() {
-  document.getElementById('admin-modal').classList.remove('open');
-}
-function closeAdminIfOutside(e) {
-  if (e.target === document.getElementById('admin-modal')) closeAdmin();
-}
-
-function switchAdminTab(tab) {
-  adminTab = tab;
-  document.getElementById('atab-locales').classList.toggle('active',   tab === 'locales');
-  document.getElementById('atab-usuarios').classList.toggle('active',  tab === 'usuarios');
-  document.getElementById('atab-config').classList.toggle('active',    tab === 'config');
-  document.getElementById('admin-locales').style.display  = tab === 'locales'  ? 'block' : 'none';
-  document.getElementById('admin-usuarios').style.display = tab === 'usuarios' ? 'block' : 'none';
-  document.getElementById('admin-config').style.display   = tab === 'config'   ? 'block' : 'none';
-  if (tab === 'locales')  renderAdminLocales();
-  if (tab === 'usuarios') renderAdminUsuarios();
-  if (tab === 'config')   renderAdminConfig();
-}
-
-// ── Admin: Locales ─────────────────────────────────────────
-let adminRestList = [];
-
-async function renderAdminLocales() {
-  const el = document.getElementById('admin-locales');
-  el.innerHTML = '<div style="color:#555;font-size:13px">Cargando...</div>';
-  const res  = await apiFetch('/api/admin/restaurants');
-  const data = await res.json();
-  const list = data.restaurants || [];
-  adminRestList = list;
-
-  el.innerHTML = `
-    <div class="admin-section">
-      <h3>Agregar local</h3>
-      <div class="admin-form" id="form-local">
-        <input type="text"     id="fl-name"  placeholder="Nombre del local">
-        <label style="display:flex;align-items:center;gap:8px;color:#aaa;font-size:13px;cursor:pointer;margin:2px 0">
-          <input type="checkbox" id="fl-nofudo" onchange="toggleFudoFields(this.checked)" style="cursor:pointer">
-          Sin Fudo (local de producción)
-        </label>
-        <div id="fl-fudo-fields">
-          <input type="text"     id="fl-user"  placeholder="Usuario Fudo (email)">
-          <input type="password" id="fl-pass"  placeholder="Contraseña Fudo">
-        </div>
-        <button class="btn-add" onclick="addLocal()">Agregar</button>
-        <div id="fl-msg"></div>
-      </div>
-    </div>
-    <div class="admin-section">
-      <h3>Locales (${list.length})</h3>
-      <div class="admin-list">
-        ${list.length === 0
-          ? '<div style="color:#444;font-size:13px">Sin locales registrados</div>'
-          : list.map(r => {
-              const secs = r.sections || [];
-              const secsJson = JSON.stringify(secs).replace(/"/g,'&quot;');
-              const safeName = r.name.replace(/'/g,"\\'");
-              return `
-            <div class="admin-item" style="flex-direction:column;align-items:flex-start;gap:10px">
-              <div style="display:flex;width:100%;align-items:center">
-                <div class="admin-item-info" style="flex:1">
-                  <div class="admin-item-name">${r.name}${r.noFudo ? ' <span style="font-size:10px;background:#1a2a1a;color:#4ade80;border:1px solid #2a4a2a;border-radius:10px;padding:1px 7px;vertical-align:middle">Sin Fudo</span>' : ''}</div>
-                  <div class="admin-item-sub">${r.noFudo ? 'Local de producción' : (r.fudoUser || '')}</div>
-                </div>
-                <div style="display:flex;gap:6px;flex-wrap:wrap">
-                  ${!r.noFudo ? `<button class="btn-edit" onclick="fudoDiag('${r.id}','${safeName}')">Diagnosticar</button>
-                  <button class="btn-edit" style="color:#fbbf24" onclick="clearCacheLocal('${r.id}','${safeName}')">Limpiar caché</button>` : ''}
-                  <button class="btn-del"  onclick="delLocal('${r.id}','${safeName}')">Eliminar</button>
-                </div>
-              </div>
-              <div style="width:100%;padding-top:8px;border-top:1px solid #1e1e1e">
-                <div style="font-size:11px;color:#444;text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px">Secciones</div>
-                <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
-                  ${secs.map(s => `
-                    <span style="display:inline-flex;align-items:center;gap:4px;padding:3px 6px 3px 10px;background:#1a1a1a;border:1px solid #252525;border-radius:20px;font-size:12px;color:#aaa">
-                      <input
-                        value="${s.replace(/"/g,'&quot;')}"
-                        data-orig="${s.replace(/"/g,'&quot;')}"
-                        onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}"
-                        onblur="renameSection('${r.id}',this.dataset.orig,this.value.trim())"
-                        style="background:none;border:none;color:#aaa;font-size:12px;outline:none;width:${Math.max(40, s.length * 7.5)}px;padding:0;cursor:text">
-                      <button onclick="removeSection('${r.id}','${s.replace(/'/g,"\\'")}')"
-                        style="background:none;border:none;color:#555;cursor:pointer;padding:0 0 0 2px;font-size:14px;line-height:1">×</button>
-                    </span>`).join('')}
-                  <span style="display:inline-flex;align-items:center;gap:4px">
-                    <input id="new-sec-${r.id}" type="text" placeholder="Nueva sección"
-                      style="padding:4px 10px;background:#111;border:1px solid #222;border-radius:6px;color:#fff;font-size:12px;width:130px;outline:none"
-                      onkeydown="if(event.key==='Enter'){event.preventDefault();addSection('${r.id}');}">
-                    <button onclick="addSection('${r.id}')"
-                      style="padding:4px 10px;background:#1f1f1f;border:1px solid #2a2a2a;border-radius:6px;color:#aaa;font-size:12px;cursor:pointer">+</button>
-                  </span>
-                </div>
-              </div>
-            </div>`;}).join('')}
-      </div>
     </div>`;
 }
 
-async function clearCacheLocal(id, name) {
-  if (!confirm(`¿Limpiar caché de ventas de "${name}"?\nEsto forzará una recarga desde Fudo la próxima vez.`)) return;
-  const res  = await apiFetch(`/api/admin/sales-cache/${id}`, { method: 'DELETE' });
-  const data = await res.json();
-  if (data.error) { alert('Error: ' + data.error); return; }
-  alert(`Caché de "${name}" limpiado (${data.deleted} días eliminados). Recargá Ventas para ver datos frescos.`);
-}
+let flujoHistoricoData = {};
+let flujoHistoricoSel  = null; // año seleccionado o 'promedio'
 
-async function clearCacheActivos() {
-  const nombres = fudoRestaurants.map(r => r.name).join(', ');
-  if (!confirm(`¿Limpiar caché de ventas de todos los locales activos?\n\n${nombres}\n\nEsto forzará una recarga desde Fudo.`)) return;
-  const btn = document.getElementById('btn-clear-cache');
-  btn.textContent = 'Limpiando...'; btn.disabled = true;
-  let total = 0;
-  for (const r of fudoRestaurants) {
-    const res  = await apiFetch(`/api/admin/sales-cache/${r.id}`, { method: 'DELETE' });
-    const data = await res.json();
-    if (!data.error) total += data.deleted || 0;
-  }
-  btn.textContent = 'Limpiar caché'; btn.disabled = false;
-  alert(`Caché limpiado (${total} días eliminados). Los datos se recargarán desde Fudo.`);
-  loadResumen();
-}
-
-async function fudoDiag(id, name) {
-  const btn = event.target;
-  btn.disabled = true; btn.textContent = 'Probando...';
+async function flujoOpenHistoricoModal() {
+  const restId = document.getElementById('flujo-rest-sel').value;
+  document.getElementById('modal-flujo-historico').classList.add('open');
+  document.getElementById('flujo-historico-body').innerHTML = '<div style="padding:24px;text-align:center;color:#9ca3af">Cargando cierres...</div>';
   try {
-    const res  = await apiFetch(`/api/admin/fudo-test/${id}`);
-    const data = await res.json();
-    if (!data.authOk) {
-      alert(`❌ Error de conexión Fudo para "${name}":\n${data.error}`);
-      return;
-    }
-    const msg = [
-      `✅ Conexión Fudo OK para "${name}"`,
-      ``,
-      `Ventas recibidas (muestra 10): ${data.totalFetched}`,
-      `Estados encontrados: ${data.states.join(', ') || 'ninguno'}`,
-      ``,
-      data.sample.length
-        ? `Últimas ventas:\n` + data.sample.map(s => `  • ${s.createdAt?.substring(0,10)} | ${s.state} | $${s.total}`).join('\n')
-        : `Sin ventas en la muestra.`,
-      ``,
-      data.states.length && !data.states.includes('CLOSED')
-        ? `⚠️ PROBLEMA: Ninguna venta tiene estado CLOSED.\nEl sistema solo cuenta ventas CLOSED.\nEstados actuales: ${data.states.join(', ')}`
-        : data.totalFetched === 0
-          ? `⚠️ Fudo no retorna ventas para este local.\nVerificá que las credenciales sean del local correcto.`
-          : `✅ Todo parece correcto. Si ves 0 ventas, limpiá el caché.`
-    ].join('\n');
-    alert(msg);
-  } finally {
-    btn.disabled = false; btn.textContent = 'Diagnosticar';
+    const res = await apiFetch(`/api/flujo/${restId}/historico`);
+    const { byYear } = await res.json();
+    flujoHistoricoData = byYear;
+    flujoHistoricoSel  = 'promedio';
+    flujoRenderHistoricoModal();
+  } catch(e) {
+    document.getElementById('flujo-historico-body').innerHTML = `<div style="color:#dc2626">Error: ${e.message}</div>`;
   }
 }
+
+function flujoRenderHistoricoModal() {
+  const years = Object.keys(flujoHistoricoData).sort();
+  if (!years.length) {
+    document.getElementById('flujo-historico-body').innerHTML = '<div style="color:#9ca3af;padding:24px">No hay cierres registrados para este restaurante.</div>';
+    return;
+  }
+
+  const fmt = n => n ? '$' + Math.round(n).toLocaleString('es-CL') : '—';
+
+  // Calcular promedio por mes
+  const promedioTB  = Array(12).fill(0);
+  const promedioEf  = Array(12).fill(0);
+  years.forEach(y => {
+    (flujoHistoricoData[y].transbank || []).forEach((v, i) => { promedioTB[i] += v; });
+    (flujoHistoricoData[y].efectivo  || []).forEach((v, i) => { promedioEf[i] += v; });
+  });
+  promedioTB.forEach((_, i) => { promedioTB[i] = Math.round(promedioTB[i] / years.length); });
+  promedioEf.forEach((_, i) => { promedioEf[i] = Math.round(promedioEf[i] / years.length); });
+
+  const thStyle = 'padding:8px 10px;font-size:11px;font-weight:600;color:#6c757d;text-transform:uppercase;border-bottom:2px solid #e9ecef;text-align:right;white-space:nowrap';
+  const tdStyle = 'padding:7px 10px;font-size:12px;color:#374151;text-align:right;border-bottom:1px solid #f0f0f0;white-space:nowrap';
+  const tdName  = 'padding:7px 10px;font-size:12px;font-weight:600;color:#212529;border-bottom:1px solid #f0f0f0';
+
+  // Botones de selección
+  const allOptions = [...years, 'promedio'];
+  const btnsSel = allOptions.map(opt => `
+    <button onclick="flujoHistoricoSel='${opt}';flujoRenderHistoricoModal()"
+      style="padding:5px 14px;border-radius:20px;font-size:12px;cursor:pointer;border:1px solid ${flujoHistoricoSel===opt?'#ff5023':'#dee2e6'};background:${flujoHistoricoSel===opt?'#ff5023':'#fff'};color:${flujoHistoricoSel===opt?'#fff':'#374151'};font-weight:${flujoHistoricoSel===opt?'600':'400'}">
+      ${opt === 'promedio' ? 'Promedio' : opt}
+    </button>`).join('');
+
+  // Tabla: filas = meses, columnas = años + promedio
+  const colHeaders = [...years.map(y => `<th style="${thStyle}" colspan="2">${y}</th>`), `<th style="${thStyle};color:#ff5023" colspan="2">Promedio</th>`].join('');
+  const subHeaders = [...years.map(() => `<th style="${thStyle}">Transbank</th><th style="${thStyle}">Efectivo</th>`), `<th style="${thStyle}">Transbank</th><th style="${thStyle}">Efectivo</th>`].join('');
+
+  const rows = FLUJO_MONTHS.map((m, i) => {
+    const yearCols = years.map(y => `
+      <td style="${tdStyle}">${fmt((flujoHistoricoData[y].transbank||[])[i])}</td>
+      <td style="${tdStyle}">${fmt((flujoHistoricoData[y].efectivo||[])[i])}</td>`).join('');
+    const isSelected = flujoHistoricoSel === 'promedio'
+      ? true : years.indexOf(flujoHistoricoSel) >= 0;
+    return `<tr>
+      <td style="${tdName}">${m}</td>
+      ${yearCols}
+      <td style="${tdStyle};color:#ff5023;font-weight:600">${fmt(promedioTB[i])}</td>
+      <td style="${tdStyle};color:#ff5023;font-weight:600">${fmt(promedioEf[i])}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('flujo-historico-body').innerHTML = `
+    <div style="margin-bottom:16px">
+      <div style="font-size:12px;color:#9ca3af;margin-bottom:8px">Selecciona qué año usar como base:</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">${btnsSel}</div>
+    </div>
+    <div style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;min-width:500px">
+        <thead>
+          <tr style="background:#f9fafb"><th style="${thName}">Mes</th>${colHeaders}</tr>
+          <tr style="background:#f9fafb"><th></th>${subHeaders}</tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+    <div style="margin-top:12px;font-size:12px;color:#9ca3af">
+      Se aplicará: <strong style="color:#212529">${flujoHistoricoSel === 'promedio' ? 'Promedio de todos los años' : 'Año ' + flujoHistoricoSel}</strong>
+    </div>`;
+}
+
+async function flujoAplicarHistorico() {
+  const restId = document.getElementById('flujo-rest-sel').value;
+  const year   = document.getElementById('flujo-year-sel').value;
+  const years  = Object.keys(flujoHistoricoData).sort();
+
+  let transbankBruto, efectivo;
+  if (flujoHistoricoSel === 'promedio') {
+    transbankBruto = Array(12).fill(0);
+    efectivo       = Array(12).fill(0);
+    years.forEach(y => {
+      (flujoHistoricoData[y].transbank || []).forEach((v, i) => { transbankBruto[i] += v; });
+      (flujoHistoricoData[y].efectivo  || []).forEach((v, i) => { efectivo[i]       += v; });
+    });
+    transbankBruto = transbankBruto.map(v => Math.round(v / years.length));
+    efectivo       = efectivo.map(v => Math.round(v / years.length));
+  } else {
+    transbankBruto = (flujoHistoricoData[flujoHistoricoSel]?.transbank || Array(12).fill(0)).map(Math.round);
+    efectivo       = (flujoHistoricoData[flujoHistoricoSel]?.efectivo   || Array(12).fill(0)).map(Math.round);
+  }
+
+  const res = await apiFetch(`/api/flujo/${restId}/${year}/ingresos`, {
+    method: 'PUT', body: JSON.stringify({ transbankBruto, efectivo })
+  });
+  flujoData = await res.json();
+  closeModal('modal-flujo-historico');
+  flujoRender(flujoData, false, flujoByYear);
+}
+
+function flujoOpenMargenModal() {
+  document.getElementById('flujo-margen-input').value    = flujoData.margen    || '';
+  document.getElementById('flujo-prevision-input').value = flujoData.prevision || '';
+  document.getElementById('flujo-margen-msg').textContent = '';
+  const dias = flujoData.diasSemana || [];
+  [0,1,2,3,4,5,6].forEach(i => { document.getElementById('flujo-dia-'+i).checked = dias.includes(i); });
+  document.getElementById('modal-flujo-margen').classList.add('open');
+}
+
+async function flujoSaveMargen() {
+  const restId    = document.getElementById('flujo-rest-sel').value;
+  const year      = document.getElementById('flujo-year-sel').value;
+  const margen    = parseFloat(document.getElementById('flujo-margen-input').value);
+  const prevision = parseFloat(document.getElementById('flujo-prevision-input').value) || 0;
+  const diasSemana = [0,1,2,3,4,5,6].filter(i => document.getElementById('flujo-dia-'+i).checked);
+  const msg = document.getElementById('flujo-margen-msg');
+  if (isNaN(margen) || margen < 0 || margen > 100) { msg.style.color='#dc2626'; msg.textContent='Ingresa un % de margen válido (0-100)'; return; }
+  try {
+    await apiFetch(`/api/flujo/${restId}/${year}/margen`, { method:'PUT', body: JSON.stringify({ margen, prevision, diasSemana }) });
+    flujoData.margen     = margen;
+    flujoData.prevision  = prevision;
+    flujoData.diasSemana = diasSemana;
+    closeModal('modal-flujo-margen');
+    flujoRender(flujoData, false, flujoByYear);
+  } catch(e) { msg.style.color='#dc2626'; msg.textContent='Error: '+e.message; }
+}
+
+function flujoTogglePrevired() {
+  const tipo = document.querySelector('input[name="flujo-gasto-tipo"]:checked')?.value;
+  document.getElementById('flujo-previred-wrap').style.display = tipo === 'sueldo' ? 'block' : 'none';
+}
+
+function flujoOpenGastoModal(gastoId) {
+  flujoEditGastoId = gastoId;
+  const g = gastoId ? (flujoData.gastos || []).find(x => x.id === gastoId) : null;
+  document.getElementById('flujo-gasto-modal-title').textContent = g ? 'Editar gasto' : 'Nuevo gasto';
+  document.getElementById('flujo-gasto-name').value = g ? g.name : '';
+  document.getElementById('flujo-gasto-msg').textContent = '';
+  // Tipo radio
+  const tipo = g ? (g.tipo || 'gasto') : 'gasto';
+  document.querySelectorAll('input[name="flujo-gasto-tipo"]').forEach(r => { r.checked = r.value === tipo; });
+  // Previred checkbox
+  document.getElementById('flujo-gasto-previred').checked = g ? (g.previred || false) : false;
+  flujoTogglePrevired();
+  // Render 12 inputs
+  document.getElementById('flujo-gasto-montos-grid').innerHTML = FLUJO_MONTHS.map((m, i) => `
+    <div>
+      <div style="font-size:11px;color:#6c757d;margin-bottom:4px">${m}</div>
+      <input type="number" id="flujo-gasto-mes-${i}" class="inv-input" style="padding:7px 10px"
+        value="${g && g.montos[i] ? g.montos[i] : ''}" placeholder="0">
+    </div>`).join('');
+  document.getElementById('modal-flujo-gasto').classList.add('open');
+}
+
+function flujoReplicarEne() {
+  const val = document.getElementById('flujo-gasto-mes-0').value;
+  for (let i = 1; i < 12; i++) document.getElementById(`flujo-gasto-mes-${i}`).value = val;
+}
+
+async function flujoSaveGasto() {
+  const restId = document.getElementById('flujo-rest-sel').value;
+  const year   = document.getElementById('flujo-year-sel').value;
+  const name   = document.getElementById('flujo-gasto-name').value.trim();
+  const tipo    = document.querySelector('input[name="flujo-gasto-tipo"]:checked')?.value || 'gasto';
+  const previred = tipo === 'sueldo' ? document.getElementById('flujo-gasto-previred').checked : false;
+  const msg    = document.getElementById('flujo-gasto-msg');
+  if (!name) { msg.style.color='#dc2626'; msg.textContent='El nombre es requerido'; return; }
+  const montos = FLUJO_MONTHS.map((_, i) => {
+    const v = document.getElementById(`flujo-gasto-mes-${i}`).value;
+    return v !== '' ? Number(v) : 0;
+  });
+  try {
+    const url    = flujoEditGastoId ? `/api/flujo/${restId}/${year}/gastos/${flujoEditGastoId}` : `/api/flujo/${restId}/${year}/gastos`;
+    const method = flujoEditGastoId ? 'PUT' : 'POST';
+    const res  = await apiFetch(url, { method, body: JSON.stringify({ name, tipo, previred, montos }) });
+    flujoData  = await res.json();
+    closeModal('modal-flujo-gasto');
+    flujoRender(flujoData, false, flujoByYear);
+  } catch(e) { msg.style.color='#dc2626'; msg.textContent='Error: '+e.message; }
+}
+
+async function flujoDeleteGasto(gastoId) {
+  if (!confirm('¿Eliminar este gasto?')) return;
+  const restId = document.getElementById('flujo-rest-sel').value;
+  const year   = document.getElementById('flujo-year-sel').value;
+  const res  = await apiFetch(`/api/flujo/${restId}/${year}/gastos/${gastoId}`, { method:'DELETE' });
+  flujoData  = await res.json();
+  flujoRender(flujoData, false, flujoByYear);
+}
+
+// placeholders para compatibilidad
+let ventasSelYears  = new Set();
+let ventasSelMonths = new Set();
+
+
 
 function toggleFudoFields(noFudo) {
   document.getElementById('fl-fudo-fields').style.display = noFudo ? 'none' : '';
@@ -3071,9 +3554,8 @@ function renderAdminSidebar() {
     {
       label: 'Operaciones', icon: 'fas fa-store',
       items: [
-        { id: 'ventas',       icon: 'fas fa-chart-bar',     name: 'Ventas',               adminOnly: false },
+        { id: 'ventas',       icon: 'fas fa-chart-bar',     name: 'Ventas Fudo',          adminOnly: false },
         { id: 'cierres',      icon: 'fas fa-cash-register', name: 'Cierres de caja',      adminOnly: false },
-        { id: 'pedidos',      icon: 'fas fa-shopping-cart', name: 'Pedidos Helados',      adminOnly: false },
       ]
     },
     {
@@ -3082,14 +3564,25 @@ function renderAdminSidebar() {
         { id: 'stock',        icon: 'fas fa-boxes',          name: 'Añadir stock',            adminOnly: false },
         { id: 'registro-inv', icon: 'fas fa-clipboard-list', name: 'Registro de Inventarios', adminOnly: false },
         { id: 'gdd',          icon: 'fas fa-file-invoice',   name: 'Guías de Despacho',       adminOnly: false },
-        { id: 'orden-compra', icon: 'fas fa-cart-plus',      name: 'Pedidos de Compra',       adminOnly: false },
       ]
     },
     {
       label: 'Finanzas', icon: 'fas fa-chart-line',
       items: [
-        { id: 'eerr',         icon: 'fas fa-chart-line',    name: 'EERR',                 adminOnly: false },
-        { id: 'margenes',     icon: 'fas fa-percentage',    name: 'Márgenes',             adminOnly: false },
+        { id: 'goku',         icon: 'fas fa-bolt',          name: 'GOKU',                        adminOnly: false },
+        { id: 'vegeta',       icon: 'fas fa-fire',          name: 'Vegeta',                      adminOnly: false },
+        { id: 'eerr',         icon: 'fas fa-chart-line',    name: 'EERR',                        adminOnly: false },
+        { id: 'flujo',        icon: 'fas fa-stream',        name: 'Flujo de Caja Proyectado',    adminOnly: false },
+        { id: 'margenes',     icon: 'fas fa-percentage',    name: 'Márgenes',                    adminOnly: false },
+      ]
+    },
+    {
+      label: 'Venta Helados B2B', icon: 'fas fa-ice-cream',
+      items: [
+        { id: 'b2b-clientes', icon: 'fas fa-users',         name: 'Clientes',               adminOnly: false },
+        { id: 'b2b-catalogo', icon: 'fas fa-box-open',      name: 'Catálogo',               adminOnly: false },
+        { id: 'pedidos',      icon: 'fas fa-shopping-cart', name: 'Pedidos Helados',        adminOnly: false },
+        { id: 'orden-compra', icon: 'fas fa-cart-plus',     name: 'Pedidos de Compra',      adminOnly: false },
       ]
     },
     {
@@ -3215,19 +3708,26 @@ function closeSidebar() {
 function renderSidebar() {
   const groups = [
     { label: 'Operaciones', items: [
-      { id: 'ventas',       icon: '📊', name: 'Ventas',                bg: 'linear-gradient(135deg,#7c6bc9,#9b8de0)', adminOnly: false },
+      { id: 'ventas',       icon: '📊', name: 'Ventas Fudo',            bg: 'linear-gradient(135deg,#7c6bc9,#9b8de0)', adminOnly: false },
       { id: 'cierres',      icon: '💰', name: 'Cierres de caja',       bg: 'linear-gradient(135deg,#d97b45,#f0975a)', adminOnly: false },
-      { id: 'pedidos',      icon: '🛒', name: 'Pedidos Helados',        bg: 'linear-gradient(135deg,#b45309,#f59e0b)', adminOnly: false },
     ]},
     { label: 'Inventario', items: [
       { id: 'stock',        icon: '📦', name: 'Añadir stock',           bg: 'linear-gradient(135deg,#3aada8,#52c9c4)', adminOnly: false },
       { id: 'registro-inv', icon: '📋', name: 'Registro de Inventarios',bg: 'linear-gradient(135deg,#5a7e3d,#7ab552)', adminOnly: false },
       { id: 'gdd',          icon: '📦', name: 'Guías de Despacho',      bg: 'linear-gradient(135deg,#0e7490,#06b6d4)', adminOnly: false },
-      { id: 'orden-compra', icon: '🛍️', name: 'Pedidos de Compra',      bg: 'linear-gradient(135deg,#0f766e,#14b8a6)', adminOnly: false },
     ]},
     { label: 'Finanzas', items: [
-      { id: 'eerr',         icon: '📊', name: 'EERR',                   bg: 'linear-gradient(135deg,#1d4ed8,#3b82f6)', adminOnly: false },
-      { id: 'margenes',     icon: '📐', name: 'Márgenes',               bg: 'linear-gradient(135deg,#7c3aed,#a855f7)', adminOnly: false },
+      { id: 'goku',         icon: '⚡', name: 'GOKU',                        bg: 'linear-gradient(135deg,#f59e0b,#f97316)', adminOnly: false },
+      { id: 'vegeta',       icon: '🔥', name: 'Vegeta',                      bg: 'linear-gradient(135deg,#b91c1c,#ef4444)', adminOnly: false },
+      { id: 'eerr',         icon: '📊', name: 'EERR',                        bg: 'linear-gradient(135deg,#1d4ed8,#3b82f6)', adminOnly: false },
+      { id: 'flujo',        icon: '💰', name: 'Flujo de Caja Proyectado',    bg: 'linear-gradient(135deg,#065f46,#10b981)', adminOnly: false },
+      { id: 'margenes',     icon: '📐', name: 'Márgenes',                    bg: 'linear-gradient(135deg,#7c3aed,#a855f7)', adminOnly: false },
+    ]},
+    { label: 'Venta Helados B2B', items: [
+      { id: 'b2b-clientes', icon: '👥', name: 'Clientes',               bg: 'linear-gradient(135deg,#0f766e,#10b981)', adminOnly: false },
+      { id: 'b2b-catalogo', icon: '📦', name: 'Catálogo',               bg: 'linear-gradient(135deg,#0369a1,#0ea5e9)', adminOnly: false },
+      { id: 'pedidos',      icon: '🛒', name: 'Pedidos Helados',        bg: 'linear-gradient(135deg,#b45309,#f59e0b)', adminOnly: false },
+      { id: 'orden-compra', icon: '🛍️', name: 'Pedidos de Compra',      bg: 'linear-gradient(135deg,#0f766e,#14b8a6)', adminOnly: false },
     ]},
     { label: 'Administración', items: [
       { id: 'inventario',   icon: '🗂️', name: 'Clientes y Proveedores', bg: 'linear-gradient(135deg,#3d9e72,#52c98a)', adminOnly: false },
@@ -3265,7 +3765,7 @@ function setSidebarVisibility(onHub) {
 // ── Hub dinámico ────────────────────────────────────────────
 function renderHub() {
   const allModules = [
-    { id: 'ventas',        icon: '📊', name: 'Ventas',                        bg: 'linear-gradient(135deg,#7c6bc9,#9b8de0)', adminOnly: false },
+    { id: 'ventas',        icon: '📊', name: 'Ventas Fudo',                   bg: 'linear-gradient(135deg,#7c6bc9,#9b8de0)', adminOnly: false },
     { id: 'stock',         icon: '📦', name: 'Añadir stock',                  bg: 'linear-gradient(135deg,#3aada8,#52c9c4)', adminOnly: false },
     { id: 'inventario',    icon: '🗂️', name: 'Gestión de Clientes y Proveedor', bg: 'linear-gradient(135deg,#3d9e72,#52c98a)', adminOnly: false },
     { id: 'registro-inv',  icon: '📋', name: 'Registro de Inventarios',       bg: 'linear-gradient(135deg,#5a7e3d,#7ab552)', adminOnly: false },
@@ -5021,7 +5521,6 @@ function renderCierresTable() {
             <td style="font-weight:600">${fmt(ingresoReal)}</td>
             <td class="${diffClass}" style="font-weight:600">${diff != null ? fmt(diff) : '—'}</td>
             ${(userRole==='admin'||userRole==='superadmin')?`<td style="white-space:nowrap">
-              <button class="btn-edit" onclick="openModalCierre('${c.id}')">Editar</button>
               <button class="btn-del"  onclick="delCierre('${c.id}')">Eliminar</button>
             </td>`:''}
           </tr>`;
@@ -5030,69 +5529,6 @@ function renderCierresTable() {
     </table>`;
 }
 
-function openModalCierre(editId) {
-  const c = editId ? cierresData.find(x => x.id === editId) : null;
-  document.getElementById('modal-cierre').dataset.editId = editId || '';
-  document.querySelector('#modal-cierre h3').textContent = c ? 'Editar cierre' : 'Nuevo cierre de caja';
-
-  const sel = document.getElementById('mc-local');
-  sel.innerHTML = restaurants.map(r => `<option value="${r.id}" ${(c?c.restaurantId:cierresRestId)===r.id?'selected':''}>${r.name}</option>`).join('');
-
-  const fields = ['totalPrograma','propinasPrograma','transbank','transbankPropinas','efectivo','propinaAMano',
-    'gastos','garzones','propnasPagadas','bookingTotal','montoDelivery','envioDelivery',
-    'propinasDelivery','cantidadDelivery','montoRetiro','cantidadRetiro'];
-
-  document.getElementById('mc-fecha').value = c ? c.fecha : getToday();
-  fields.forEach(f => {
-    const v = c?.[f];
-    document.getElementById(`mc-${f}`).value = v != null ? v : '';
-  });
-  document.getElementById('mc-comentarios').value = c?.comentarios || '';
-  document.getElementById('mc-msg').textContent = '';
-  document.getElementById('modal-cierre').classList.add('open');
-}
-
-async function saveCierre() {
-  const msg      = document.getElementById('mc-msg');
-  const editId   = document.getElementById('modal-cierre').dataset.editId;
-  const fecha    = document.getElementById('mc-fecha').value;
-  const localSel = document.getElementById('mc-local');
-  const restaurantId = localSel.value;
-  const localName    = localSel.options[localSel.selectedIndex]?.text || '';
-  if (!fecha) { msg.className='inline-error'; msg.textContent='Fecha requerida'; return; }
-
-  const num = id => { const v = document.getElementById(id).value; return v !== '' ? Number(v) : null; };
-  const body = {
-    fecha, restaurantId, local: localName,
-    totalPrograma:    num('mc-totalPrograma'),
-    propinasPrograma: num('mc-propinasPrograma'),
-    transbank:        num('mc-transbank'),
-    transbankPropinas:num('mc-transbankPropinas'),
-    efectivo:         num('mc-efectivo'),
-    propinaAMano:     num('mc-propinaAMano'),
-    gastos:           num('mc-gastos'),
-    garzones:         num('mc-garzones'),
-    propnasPagadas:   num('mc-propnasPagadas'),
-    bookingTotal:     num('mc-bookingTotal'),
-    montoDelivery:    num('mc-montoDelivery'),
-    envioDelivery:    num('mc-envioDelivery'),
-    propinasDelivery: num('mc-propinasDelivery'),
-    cantidadDelivery: num('mc-cantidadDelivery'),
-    montoRetiro:      num('mc-montoRetiro'),
-    cantidadRetiro:   num('mc-cantidadRetiro'),
-    comentarios:      document.getElementById('mc-comentarios').value.trim() || null,
-  };
-  try {
-    const url    = editId ? `/api/cierres/${editId}` : '/api/cierres';
-    const method = editId ? 'PUT' : 'POST';
-    const res    = await apiFetch(url, { method, body: JSON.stringify(body) });
-    const data   = await res.json();
-    if (data.error) throw new Error(data.error);
-    closeModal('modal-cierre');
-    cierresRestId = restaurantId;
-    loadCierresList();
-  } catch(e) { msg.className='inline-error'; msg.textContent=e.message; }
-}
 
 async function delCierre(id) {
   if (!confirm('¿Eliminar este cierre?')) return;
@@ -5100,29 +5536,6 @@ async function delCierre(id) {
   loadCierresList();
 }
 
-async function cierresImportExcel(input) {
-  const file = input.files[0];
-  if (!file) return;
-  input.value = '';
-  const btn = document.getElementById('btn-import-cierres');
-  const origText = btn.childNodes[0].textContent;
-  btn.childNodes[0].textContent = 'Importando...';
-  btn.style.pointerEvents = 'none';
-  try {
-    const form = new FormData();
-    form.append('file', file);
-    const res  = await apiFetch('/api/cierres/import-excel', { method: 'POST', body: form });
-    const data = await res.json();
-    if (data.error) throw new Error(data.error);
-    alert(`✓ Importación completada:\n• ${data.inserted} filas nuevas\n• ${data.updated} filas actualizadas\n• ${data.skipped} filas omitidas (local no encontrado o sin fecha)`);
-    loadCierresList();
-  } catch(e) {
-    alert('Error al importar: ' + e.message);
-  } finally {
-    btn.childNodes[0].textContent = origText;
-    btn.style.pointerEvents = '';
-  }
-}
 
 async function cierresSyncSheets(btn) {
   const orig = btn.textContent;
@@ -5151,7 +5564,6 @@ function switchCierresTab(tab) {
   cierresTab = tab;
   document.getElementById('cierres-tab-registros').style.display = tab === 'registros' ? 'block' : 'none';
   document.getElementById('cierres-tab-analitica').style.display = tab === 'analitica'  ? 'block' : 'none';
-  document.getElementById('btn-nuevo-cierre').style.display       = tab === 'registros' ? '' : 'none';
   document.getElementById('btn-sync-sheets').style.display        = tab === 'registros' ? '' : 'none';
   document.getElementById('ctab-registros').classList.toggle('active', tab === 'registros');
   document.getElementById('ctab-analitica').classList.toggle('active', tab === 'analitica');
