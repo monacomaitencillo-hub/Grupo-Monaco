@@ -3070,6 +3070,25 @@ async function flujoSave(restaurantId, year, data) {
   await db.collection('flujo_proyectado').doc(flujoDocId(restaurantId, year)).set(data, { merge: true });
 }
 
+// GET histórico de cierres por restaurante (agrupa por año/mes) — DEBE ir antes de /:year
+app.get('/api/flujo/:restaurantId/historico', requireAuth, async (req, res) => {
+  try {
+    const { restaurantId } = req.params;
+    const cierres = await getCierresForRest(restaurantId);
+    const byYear = {};
+    cierres.forEach(c => {
+      if (!c.fecha) return;
+      const year  = c.fecha.slice(0, 4);
+      const month = parseInt(c.fecha.slice(5, 7)) - 1;
+      if (month < 0 || month > 11) return;
+      if (!byYear[year]) byYear[year] = { transbank: Array(12).fill(0), efectivo: Array(12).fill(0) };
+      byYear[year].transbank[month] += Number(c.transbank || 0);
+      byYear[year].efectivo[month]  += Number(c.efectivo  || 0);
+    });
+    res.json({ byYear });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // GET datos completos
 app.get('/api/flujo/:restaurantId/:year', requireAuth, async (req, res) => {
   try {
@@ -3099,25 +3118,6 @@ app.put('/api/flujo/:restaurantId/:year/ingresos', requireAuth, async (req, res)
     data.efectivo       = (efectivo       || Array(12).fill(0)).map(Number);
     await flujoSave(req.params.restaurantId, req.params.year, data);
     res.json(data);
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// GET histórico de cierres por restaurante (agrupa por año/mes)
-app.get('/api/flujo/:restaurantId/historico', requireAuth, async (req, res) => {
-  try {
-    const { restaurantId } = req.params;
-    const cierres = await getCierresForRest(restaurantId);
-    const byYear = {};
-    cierres.forEach(c => {
-      if (!c.fecha) return;
-      const year  = c.fecha.slice(0, 4);
-      const month = parseInt(c.fecha.slice(5, 7)) - 1; // 0-indexed
-      if (month < 0 || month > 11) return;
-      if (!byYear[year]) byYear[year] = { transbank: Array(12).fill(0), efectivo: Array(12).fill(0) };
-      byYear[year].transbank[month] += Number(c.transbank || 0);
-      byYear[year].efectivo[month]  += Number(c.efectivo  || 0);
-    });
-    res.json({ byYear });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
