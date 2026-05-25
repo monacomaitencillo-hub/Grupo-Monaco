@@ -1024,7 +1024,7 @@
       </div>
       <div style="display:flex;align-items:center;gap:12px">
         <button onclick="ocAnalizar()" id="oc-btn"
-          style="background:#ff5023;color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:14px;font-weight:600;cursor:pointer">
+          style="background:#374151;color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:14px;font-weight:600;cursor:pointer">
           Analizar pedido
         </button>
         <span id="oc-msg" style="font-size:13px;color:#6c757d"></span>
@@ -1080,7 +1080,7 @@
       <select id="flujo-rest-sel" onchange="flujoLoad()" style="border:1px solid #dee2e6;border-radius:8px;padding:5px 10px;font-size:13px;color:#212529;background:#fff;cursor:pointer"></select>
       <select id="flujo-year-sel" onchange="flujoLoad()" style="border:1px solid #dee2e6;border-radius:8px;padding:5px 10px;font-size:13px;color:#212529;background:#fff;cursor:pointer"></select>
       <button id="flujo-btn-historico" onclick="flujoOpenHistoricoModal()" style="padding:5px 14px;background:transparent;border:1px solid #dee2e6;border-radius:8px;font-size:13px;color:#212529;cursor:pointer">📥 Cargar histórico</button>
-      <button id="flujo-btn-gasto" onclick="flujoOpenGastoModal(null)" style="padding:5px 14px;background:#ff5023;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">+ Gasto</button>
+      <button id="flujo-btn-gasto" onclick="flujoOpenGastoModal(null)" style="padding:5px 14px;background:#374151;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">+ Gasto</button>
       <button id="flujo-btn-margen" onclick="flujoOpenMargenModal()" style="padding:5px 14px;background:transparent;border:1px solid #dee2e6;border-radius:8px;font-size:13px;color:#212529;cursor:pointer">⚙ Margen</button>
     </div>
   </div>
@@ -1227,7 +1227,7 @@
             <option value="">— Seleccionar local —</option>
           </select>
           <button onclick="gddReset()" style="padding:8px 16px;background:transparent;border:1px solid #dee2e6;border-radius:8px;font-size:13px;cursor:pointer;color:#6c757d">Nueva guía</button>
-          <button onclick="gddSave()" id="gdd-save-btn" style="padding:8px 20px;background:#ff5023;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;color:#fff">Guardar en BD</button>
+          <button onclick="gddSave()" id="gdd-save-btn" style="padding:8px 20px;background:#374151;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;color:#fff">Guardar en BD</button>
         </div>
       </div>
       <div style="font-size:12px;color:#6c757d;margin-bottom:12px">Revisá y editá las cantidades antes de guardar.</div>
@@ -2472,9 +2472,23 @@ function flujoRender(data, isConsolidado, byYear) {
   const gastosFixed   = gastos.filter(g => g.tipo !== 'sueldo');
   const gastosSueldos = gastos.filter(g => g.tipo === 'sueldo');
 
-  // Cálculos ingresos
-  const transbankNeto = transbankBruto.map(v => (v || 0) / 1.19);
-  const totalIngresos = transbankNeto.map((v, i) => v + (efectivo[i] || 0));
+  // Promedio histórico de los 2 años anteriores (se calcula antes para usarlo en ingresos)
+  const prevYears = [String(year - 1), String(year - 2)].filter(y => byYear && byYear[y]);
+  const promedioTransbank = Array(12).fill(0).map((_, m) => {
+    if (!prevYears.length) return 0;
+    return prevYears.reduce((s, y) => s + ((byYear[y].transbank || [])[m] || 0), 0) / prevYears.length;
+  });
+  const promedioEfectivo = Array(12).fill(0).map((_, m) => {
+    if (!prevYears.length) return 0;
+    return prevYears.reduce((s, y) => s + ((byYear[y].efectivo || [])[m] || 0), 0) / prevYears.length;
+  });
+  const prevYearsLabel = prevYears.length ? prevYears.sort().join('-') : null;
+
+  // Cálculos ingresos — usa promedio si existe, si no usa transbankBruto cargado
+  const tbBase        = prevYearsLabel ? promedioTransbank : transbankBruto;
+  const efBase        = prevYearsLabel ? promedioEfectivo  : efectivo;
+  const transbankNeto = tbBase.map(v => (v || 0) / 1.19);
+  const totalIngresos = transbankNeto.map((v, i) => v + (efBase[i] || 0));
   const margenOp      = totalIngresos.map(v => v * (margen / 100));
 
   // Cálculos gastos fijos
@@ -2547,10 +2561,29 @@ function flujoRender(data, isConsolidado, byYear) {
           </tr>
         </thead>
         <tbody>
-          ${mkRow('Transbank Bruto', transbankBruto, td, tdN)}
+          <tr><td colspan="14" style="padding:10px 14px;font-size:13px;font-weight:700;color:#fff !important;background:#374151;text-transform:uppercase;letter-spacing:1.2px;border:none">Flujo de Caja Proyectado</td></tr>
+          ${prevYearsLabel ? mkRow('Transbank Promedio', promedioTransbank, td+';color:#6c757d;font-style:italic;', tdN+';color:#6c757d;font-style:italic;') : ''}
           ${mkRow('Transbank Neto (÷1.19)', transbankNeto, td, tdN)}
-          ${mkRow('Efectivo', efectivo, td, tdN)}
-          ${mkRow('Total Ingresos', totalIngresos, tdS, tdSN)}
+          ${prevYearsLabel ? mkRow('Efectivo Promedio', promedioEfectivo, td+';color:#6c757d;font-style:italic;', tdN+';color:#6c757d;font-style:italic;') : ''}
+          ${(()=>{
+            const yrStr = String(year);
+            const hasReal = byYear && byYear[yrStr];
+            const tbReal = hasReal ? (byYear[yrStr].transbank || Array(12).fill(0)) : null;
+            const efReal = hasReal ? (byYear[yrStr].efectivo  || Array(12).fill(0)) : null;
+            const totalReal = hasReal ? tbReal.map((v,i) => (v||0)/1.19 + (efReal[i]||0)) : null;
+            const difs = totalReal ? totalReal.map((v,i) => v > 0 ? v - totalIngresos[i] : null) : null;
+            return mkRow('Total Ingresos Promedio Neto', totalIngresos, tdS, tdSN) +
+              (hasReal ? mkRow('Total Ingresos Real Neto ('+yrStr+')', totalReal, tdS+';color:#0369a1;', tdSN+';color:#0369a1;') : '') +
+              (difs ? `<tr>
+                <td style="${tdN};font-size:12px;color:#6c757d">Real vs Promedio</td>
+                ${difs.map(d => {
+                  if (d === null) return `<td style="${td};font-size:12px;color:#9ca3af">—</td>`;
+                  const c = d >= 0 ? '#16a34a' : '#dc2626';
+                  return `<td style="${td};font-size:12px;color:${c}">${d>=0?'+':''}$${Math.round(d).toLocaleString('es-CL')}</td>`;
+                }).join('')}
+                <td style="${td};font-size:12px;font-weight:700;color:${sum(difs.filter(d=>d!==null))>=0?'#16a34a':'#dc2626'}">${(()=>{const t=sum(difs.filter(d=>d!==null));return(t>=0?'+':'')+'$'+Math.round(t).toLocaleString('es-CL');})()}</td>
+              </tr>` : '');
+          })()}
           ${mkRow('Margen Operacional ('+margen+'%)', margenOp, tdS, tdSN)}
           <tr><td colspan="14" style="padding:4px 0;background:#f0f4f8"></td></tr>
 
@@ -2572,7 +2605,9 @@ function flujoRender(data, isConsolidado, byYear) {
             ${resultado.map(v => `<td style="${tdS};color:${v>=0?'#16a34a':'#dc2626'}">${fmt(v)}</td>`).join('')}
             <td style="${tdS};color:${resColor};font-size:14px">${fmt(totalResult)}</td>
           </tr>
-          <tr><td colspan="14" style="padding:4px 0;background:#f0f4f8"></td></tr>
+          <tr><td colspan="14" style="padding:16px 0;background:#e9ecef"></td></tr>
+          <tr><td colspan="14" style="padding:10px 14px;font-size:13px;font-weight:700;color:#fff !important;background:#374151;text-transform:uppercase;letter-spacing:1.2px;border:none">Análisis de Ventas</td></tr>
+          ${secHead('Punto de Equilibrio')}
           ${mkRow('Punto Equilibrio Neto', puntoEqNeto, td, tdN)}
           ${mkRow('Punto Equilibrio Bruto (+IVA)', puntoEqBruto, td, tdN)}
           ${diasSemana.length ? `<tr>
@@ -2589,17 +2624,74 @@ function flujoRender(data, isConsolidado, byYear) {
             <td style="${td};color:#6c757d;font-weight:700">${(()=>{ const t=sum(diasDisponibles); return t>0?'$'+Math.round(sum(puntoEqBruto)/t).toLocaleString('es-CL'):'—'; })()}</td>
           </tr>` : ''}
           ${byYear && Object.keys(byYear).length ? `
-          <tr><td colspan="14" style="padding:4px 0;background:#f0f4f8"></td></tr>
+          ${secHead('Ventas Históricas')}
           ${Object.keys(byYear).sort().map(yr => {
             const yd = byYear[yr];
             const ventas = (yd.transbank || Array(12).fill(0)).map((v, i) => v + (yd.efectivo[i] || 0));
             const total = sum(ventas);
+            const diffs = ventas.map((v, i) => v > 0 ? v - puntoEqBruto[i] : null);
+            const totalDiff = sum(diffs.filter(d => d !== null));
             return `<tr>
               <td style="${tdN};color:#374151">Ventas ${yr}</td>
-              ${ventas.map(v => `<td style="${td}">${v > 0 ? '$' + Math.round(v).toLocaleString('es-CL') : '—'}</td>`).join('')}
-              <td style="${td};font-weight:700">${total > 0 ? '$' + Math.round(total).toLocaleString('es-CL') : '—'}</td>
+              ${ventas.map((v, i) => {
+                const bajo = v > 0 && puntoEqBruto[i] > v;
+                const color = bajo ? '#dc2626' : '#374151';
+                const bg    = bajo ? 'background:#fff5f5;' : '';
+                return `<td style="${td};${bg}color:${color}">${v > 0 ? '$' + Math.round(v).toLocaleString('es-CL') : '—'}</td>`;
+              }).join('')}
+              <td style="${td};font-weight:700;color:${sum(puntoEqBruto)>total?'#dc2626':'#374151'}">${total > 0 ? '$' + Math.round(total).toLocaleString('es-CL') : '—'}</td>
+            </tr>
+            <tr>
+              <td style="${tdN};color:#6c757d;font-size:12px">Diferencia vs P.Eq. ${yr}</td>
+              ${diffs.map(d => {
+                if (d === null) return `<td style="${td};font-size:12px;color:#9ca3af">—</td>`;
+                const color = d >= 0 ? '#16a34a' : '#dc2626';
+                const bg    = d < 0  ? 'background:#fff5f5;' : '';
+                return `<td style="${td};font-size:12px;${bg}color:${color}">${d >= 0 ? '+' : ''}$${Math.round(d).toLocaleString('es-CL')}</td>`;
+              }).join('')}
+              <td style="${td};font-size:12px;font-weight:700;color:${totalDiff >= 0 ? '#16a34a' : '#dc2626'}">${totalDiff >= 0 ? '+' : ''}$${Math.round(totalDiff).toLocaleString('es-CL')}</td>
             </tr>`;
           }).join('')}` : ''}
+          ${prevYearsLabel ? `
+          ${secHead('Análisis vs Punto de Equilibrio (Prom. ' + prevYearsLabel + ')')}
+          <tr>
+            <td style="${tdN};color:#374151">Transbank Promedio</td>
+            ${promedioTransbank.map(v => `<td style="${td}">${v > 0 ? '$' + Math.round(v).toLocaleString('es-CL') : '—'}</td>`).join('')}
+            <td style="${td};font-weight:700">$${Math.round(sum(promedioTransbank)).toLocaleString('es-CL')}</td>
+          </tr>
+          <tr>
+            <td style="${tdN};color:#374151">Efectivo Promedio</td>
+            ${promedioEfectivo.map(v => `<td style="${td}">${v > 0 ? '$' + Math.round(v).toLocaleString('es-CL') : '—'}</td>`).join('')}
+            <td style="${td};font-weight:700">$${Math.round(sum(promedioEfectivo)).toLocaleString('es-CL')}</td>
+          </tr>
+          ${(()=>{
+            const totalProm = promedioTransbank.map((v,i) => v + promedioEfectivo[i]);
+            const difProm   = totalProm.map((v,i) => v > 0 ? v - puntoEqBruto[i] : null);
+            const totalDifProm = sum(difProm.filter(d => d !== null));
+            return `
+            ${mkRow('Total Ventas Promedio', totalProm, tdS, tdSN)}
+            <tr>
+              <td style="${tdN};color:#374151">Diferencia vs P.Eq. Bruto</td>
+              ${difProm.map(d => {
+                if (d === null) return `<td style="${td};color:#9ca3af">—</td>`;
+                const color = d >= 0 ? '#16a34a' : '#dc2626';
+                const bg    = d < 0 ? 'background:#fff5f5;' : '';
+                return `<td style="${td};${bg}color:${color}">${d >= 0?'+':''}$${Math.round(d).toLocaleString('es-CL')}</td>`;
+              }).join('')}
+              <td style="${td};font-weight:700;color:${totalDifProm>=0?'#16a34a':'#dc2626'}">${totalDifProm>=0?'+':''}$${Math.round(totalDifProm).toLocaleString('es-CL')}</td>
+            </tr>
+            <tr>
+              <td style="${tdN};color:#374151">% Cumplimiento</td>
+              ${totalProm.map((v,i) => {
+                const pct = puntoEqBruto[i] > 0 ? (v / puntoEqBruto[i]) * 100 : 0;
+                const color = pct >= 100 ? '#16a34a' : '#dc2626';
+                const bg    = pct < 100 && v > 0 ? 'background:#fff5f5;' : '';
+                return `<td style="${td};${bg}color:${color}">${v > 0 ? Math.round(pct) + '%' : '—'}</td>`;
+              }).join('')}
+              <td style="${td};font-weight:700;color:${(sum(totalProm)/sum(puntoEqBruto)*100)>=100?'#16a34a':'#dc2626'}">${Math.round(sum(totalProm)/sum(puntoEqBruto)*100)}%</td>
+            </tr>`;
+          })()}
+          ` : ''}
         </tbody>
       </table>
     </div>`;
@@ -3430,7 +3522,7 @@ async function renderInvAlertas() {
           <div style="font-size:16px;font-weight:600;color:#fff;margin-bottom:4px">Alertas de inventario</div>
           <div style="font-size:12px;color:#555">Define los umbrales por categoría. 🔴 0 hasta umbral bajo · 🟡 entre ambos · 🟢 sobre umbral alto.</div>
         </div>
-        <button onclick="saveThresholds()" style="background:#ff5023;border:none;color:#fff;padding:8px 18px;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600">Guardar</button>
+        <button onclick="saveThresholds()" style="background:#374151;border:none;color:#fff;padding:8px 18px;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600">Guardar</button>
       </div>
       <div style="display:flex;align-items:center;padding:0 0 12px;border-bottom:1px solid #1f1f1f;margin-bottom:4px;gap:0">
         <div style="width:180px;font-size:11px;color:#333;text-transform:uppercase;letter-spacing:.5px">Categoría</div>
@@ -3491,14 +3583,14 @@ async function renderInvCategorias() {
     <div style="max-width:560px;padding:24px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
         <div style="font-size:16px;font-weight:700;color:#212529">Categorías de ingredientes</div>
-        <button onclick="openCatForm(null)" style="background:#ff5023;color:#fff;border:none;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:600;cursor:pointer">+ Nueva categoría</button>
+        <button onclick="openCatForm(null)" style="background:#374151;color:#fff;border:none;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:600;cursor:pointer">+ Nueva categoría</button>
       </div>
       <div id="cat-form-wrap" style="display:none;background:#f8f9fa;border:1px solid #dee2e6;border-radius:10px;padding:16px;margin-bottom:20px">
         <input type="hidden" id="cat-form-id">
         <div class="field-label">Nombre</div>
         <input id="cat-form-name" class="inv-input" placeholder="Ej: Lácteos" style="margin-bottom:12px">
         <div style="display:flex;gap:8px">
-          <button onclick="saveCategoria()" style="background:#ff5023;color:#fff;border:none;border-radius:8px;padding:8px 20px;font-size:13px;font-weight:600;cursor:pointer">Guardar</button>
+          <button onclick="saveCategoria()" style="background:#374151;color:#fff;border:none;border-radius:8px;padding:8px 20px;font-size:13px;font-weight:600;cursor:pointer">Guardar</button>
           <button onclick="document.getElementById('cat-form-wrap').style.display='none'" style="background:none;border:1px solid #dee2e6;border-radius:8px;padding:8px 16px;font-size:13px;cursor:pointer;color:#495057">Cancelar</button>
         </div>
         <div id="cat-form-msg" style="font-size:12px;margin-top:8px;min-height:16px"></div>
@@ -3897,7 +3989,7 @@ async function loadAddStockForm() {
       <div style="display:flex;align-items:center;gap:16px;margin-bottom:24px;padding-bottom:20px;border-bottom:1px solid #1f1f1f">
         <div style="flex:1">
           <div class="field-label" style="font-size:11px;color:#555;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Fecha del inventario</div>
-          <input type="date" id="inv-date" value="${getToday()}"
+          <input type="date" id="inv-date" value="${getTodayClient()}"
             style="padding:9px 14px;background:#161616;border:1px solid #222;border-radius:8px;color:#fff;font-size:14px;outline:none;cursor:pointer;"
             onfocus="this.style.borderColor='#ff5023'" onblur="this.style.borderColor='#222'">
         </div>
@@ -4266,7 +4358,7 @@ function openModalProducto(id) {
       <div id="mprod-msg" style="font-size:13px;min-height:18px;margin-bottom:12px"></div>
 
       <div style="display:flex;gap:10px;margin-bottom:32px">
-        <button onclick="saveProducto()" style="background:#ff5023;color:#fff;border:none;border-radius:8px;padding:11px 28px;font-size:14px;font-weight:600;cursor:pointer">Guardar</button>
+        <button onclick="saveProducto()" style="background:#374151;color:#fff;border:none;border-radius:8px;padding:11px 28px;font-size:14px;font-weight:600;cursor:pointer">Guardar</button>
         <button onclick="renderProdTable()" style="background:transparent;border:1px solid #dee2e6;border-radius:8px;padding:11px 20px;font-size:14px;color:#6c757d;cursor:pointer">Cancelar</button>
         ${p?.id ? `<button onclick="convertirAPreparacion('${p.id}','${(p.name||'').replace(/'/g,"\\'")}')" style="background:transparent;border:1px solid #7c3aed;color:#7c3aed;border-radius:8px;padding:11px 18px;font-size:13px;font-weight:500;cursor:pointer">Convertir a preparación</button>` : ''}
       </div>
@@ -4351,7 +4443,7 @@ function openModalProducto(id) {
           <div style="font-size:12px;color:#6c757d;flex:1">Unidades por envase GDD <span style="color:#aaa">(ej: caja 5kg → 5)</span></div>
           <input type="number" id="pp-envase" min="0.01" step="0.01" value="1" style="width:80px;padding:6px 10px;border:1px solid #dee2e6;border-radius:8px;font-size:13px;text-align:center">
         </div>` : ''}
-        <button onclick="ppAgregarPrecio()" style="background:#ff5023;color:#fff;border:none;border-radius:8px;padding:9px 22px;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:14px">Agregar</button>
+        <button onclick="ppAgregarPrecio()" style="background:#374151;color:#fff;border:none;border-radius:8px;padding:9px 22px;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:14px">Agregar</button>
         <div id="pp-msg" style="font-size:12px;min-height:16px;margin-bottom:8px"></div>
         <div id="pp-list" style="color:#888;font-size:13px">Cargando...</div>
       </div>` : ''}
@@ -4757,7 +4849,7 @@ function renderPriceHistoryList() {
             onkeydown="if(event.key==='Enter'){event.preventDefault();savePrecioInline('${p.id}','${p.mes}')}">
         </div>
         <button onclick="savePrecioInline('${p.id}','${p.mes}')"
-          style="flex-shrink:0;background:#ff5023;color:#fff;border:none;border-radius:8px;padding:9px 14px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap">
+          style="flex-shrink:0;background:#374151;color:#fff;border:none;border-radius:8px;padding:9px 14px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap">
           Guardar
         </button>
       </div>
@@ -8755,7 +8847,7 @@ function margenOpenPrepDetail(id) {
         <span style="font-size:16px;font-weight:800;color:#212529;margin-left:16px">${prepCost > 0 ? '$'+Math.round(prepCost).toLocaleString('es-CL') : '—'}</span>
       </div>
       <button id="prep-snapshot-btn" onclick="margenSavePrepCostSnapshot('${id}')"
-        style="background:#ff5023;color:#fff;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap">
+        style="background:#374151;color:#fff;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap">
         Registrar costo ${mesLabel}
       </button>
     </div>
@@ -9144,7 +9236,7 @@ function margenPromoUpdatePreview() {
   if (!chips) return;
   chips.innerHTML = selectedItems.map(r => `
     <span style="display:inline-flex;align-items:center;gap:4px;background:#fff0eb;border:1px solid #ffcdb8;border-radius:20px;padding:3px 8px 3px 10px;font-size:12px;color:#cc3a0d;font-weight:500">
-      ${r.qty > 1 ? `<span style="background:#ff5023;color:#fff;border-radius:10px;padding:0 5px;font-size:10px;font-weight:700">${r.qty}×</span> ` : ''}${r.name}${r.sellingPrice > 0 ? ` <span style="color:#e07050;font-weight:400">$${Math.round(r.sellingPrice * r.qty).toLocaleString('es-CL')}</span>` : ''}
+      ${r.qty > 1 ? `<span style="background:#374151;color:#fff;border-radius:10px;padding:0 5px;font-size:10px;font-weight:700">${r.qty}×</span> ` : ''}${r.name}${r.sellingPrice > 0 ? ` <span style="color:#e07050;font-weight:400">$${Math.round(r.sellingPrice * r.qty).toLocaleString('es-CL')}</span>` : ''}
       <button onclick="margenPromoRemoveRecipe('${r.id}')"
         style="background:none;border:none;cursor:pointer;color:#cc3a0d;font-size:14px;line-height:1;padding:0;margin:0;display:flex;align-items:center">×</button>
     </span>`).join('');
@@ -10049,7 +10141,7 @@ async function margenDeleteRecipe(id, name) {
       <button onclick="document.getElementById('marg-promo-modal').style.display='none'"
         style="padding:9px 20px;border:1px solid #dee2e6;border-radius:8px;background:#fff;color:#495057;font-size:14px;cursor:pointer">Cancelar</button>
       <button id="marg-promo-save-btn" onclick="margenSavePromo()"
-        style="padding:9px 20px;background:#ff5023;border:none;border-radius:8px;color:#fff;font-size:14px;font-weight:600;cursor:pointer">Guardar</button>
+        style="padding:9px 20px;background:#374151;border:none;border-radius:8px;color:#fff;font-size:14px;font-weight:600;cursor:pointer">Guardar</button>
     </div>
   </div>
 </div>
@@ -10276,7 +10368,7 @@ async function margenDeleteRecipe(id, name) {
       <div style="font-size:12px;color:#6c757d;flex:1">Unidades por envase GDD <span style="color:#aaa">(ej: caja de 5kg → 5)</span></div>
       <input type="number" id="gdd-prep-price-envase" min="0.01" step="0.01" value="1" style="width:80px;padding:6px 10px;border:1px solid #dee2e6;border-radius:8px;font-size:13px;text-align:center">
     </div>
-    <button onclick="gddPrepPricesAdd()" style="background:#ff5023;color:#fff;border:none;border-radius:8px;padding:9px 20px;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:16px">Agregar precio</button>
+    <button onclick="gddPrepPricesAdd()" style="background:#374151;color:#fff;border:none;border-radius:8px;padding:9px 20px;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:16px">Agregar precio</button>
     <div id="gdd-prep-prices-msg" style="font-size:12px;min-height:16px;margin-bottom:8px"></div>
     <div id="gdd-prep-prices-list" style="font-size:13px;color:#6c757d">Cargando...</div>
   </div>
@@ -10327,7 +10419,7 @@ async function margenDeleteRecipe(id, name) {
       <input id="units-new-label" placeholder="Nombre (ej: Tarro)" type="text"
         style="flex:1;padding:8px 10px;border:1px solid #dee2e6;border-radius:8px;font-size:13px;color:#212529"
         onkeydown="if(event.key==='Enter')unitsAgregar()">
-      <button onclick="unitsAgregar()" style="background:#ff5023;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer">Agregar</button>
+      <button onclick="unitsAgregar()" style="background:#374151;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer">Agregar</button>
     </div>
     <div id="units-msg" style="font-size:12px;min-height:16px;margin-top:6px"></div>
   </div>
@@ -10389,7 +10481,7 @@ async function unitsEliminar(value) {
 <div id="agent-btn" style="display:none;position:fixed;bottom:24px;right:24px;z-index:2000">
   <button onclick="agentToggle()"
     title="Asistente Monaco"
-    style="width:52px;height:52px;border-radius:50%;background:#ff5023;border:none;cursor:pointer;box-shadow:0 4px 20px rgba(255,80,35,.45);display:flex;align-items:center;justify-content:center;font-size:22px;transition:transform .2s,box-shadow .2s"
+    style="width:52px;height:52px;border-radius:50%;background:#374151;border:none;cursor:pointer;box-shadow:0 4px 20px rgba(255,80,35,.45);display:flex;align-items:center;justify-content:center;font-size:22px;transition:transform .2s,box-shadow .2s"
     onmouseover="this.style.transform='scale(1.1)';this.style.boxShadow='0 6px 28px rgba(255,80,35,.6)'"
     onmouseout="this.style.transform='scale(1)';this.style.boxShadow='0 4px 20px rgba(255,80,35,.45)'">✦</button>
 </div>
@@ -10424,7 +10516,7 @@ async function unitsEliminar(value) {
       onfocus="this.style.borderColor='#ff5023'" onblur="this.style.borderColor='#2a2a2a'"
       oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,100)+'px'"></textarea>
     <button onclick="agentSend()" id="agent-send-btn"
-      style="background:#ff5023;border:none;border-radius:12px;color:#fff;width:38px;height:38px;font-size:18px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:opacity .15s"
+      style="background:#374151;border:none;border-radius:12px;color:#fff;width:38px;height:38px;font-size:18px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:opacity .15s"
       onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">↑</button>
   </div>
 </div>
