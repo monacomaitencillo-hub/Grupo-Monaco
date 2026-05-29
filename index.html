@@ -1363,7 +1363,7 @@
 <!-- ── INVENTARIO ── -->
 <div id="inventario">
   <div class="inv-topbar">
-    <div class="topbar-brand" style="margin-right:24px">Gestión de Clientes y Proveedor</div>
+    <div class="topbar-brand" style="margin-right:24px">Ingredientes</div>
     <div class="inv-tabs">
       <button class="inv-tab active" id="itab-clientes"    onclick="switchInvTab('clientes')">Clientes</button>
       <button class="inv-tab"        id="itab-catalogo"    onclick="switchInvTab('catalogo')">Catálogo</button>
@@ -1662,7 +1662,7 @@ function goTo(module) {
   document.getElementById('admin-wrapper').style.display = 'block';
   // Actualizar topbar título
   const moduleNames = {
-    ventas: 'Ventas', stock: 'Añadir stock', inventario: 'Gestión de Clientes y Proveedor',
+    ventas: 'Ventas', stock: 'Añadir stock', inventario: 'Ingredientes',
     'b2b-clientes': 'Clientes B2B', 'b2b-catalogo': 'Catálogo B2B',
     'registro-inv': 'Registro de Inventarios', cierres: 'Cierres de caja', pedidos: 'Pedidos Helados',
     'pdf-upload': 'Añadir PDF', 'pdf-view': 'Ver Manual', usuarios: 'Usuarios', reuniones: 'Reuniones',
@@ -3027,7 +3027,7 @@ async function renderAdminUsuarios() {
           <div class="rest-checkboxes">
             <label><input type="checkbox" class="nu-module" value="ventas" checked> Ventas</label>
             <label><input type="checkbox" class="nu-module" value="stock"> Añadir stock</label>
-            <label><input type="checkbox" class="nu-module" value="inventario"> Gestión de Clientes y Proveedor</label>
+            <label><input type="checkbox" class="nu-module" value="inventario"> Ingredientes</label>
             <label><input type="checkbox" class="nu-module" value="registro-inv"> Registro de Inventarios</label>
             <label><input type="checkbox" class="nu-module" value="cierres"> Cierres de caja</label>
             <label><input type="checkbox" class="nu-module" value="pedidos"> Pedidos Helados</label>
@@ -3136,7 +3136,7 @@ async function editPermisos(uid, name) {
         <div class="rest-checkboxes">
           <label><input type="checkbox" class="ep-module" value="ventas"        ${currentMods.includes('ventas')?'checked':''}> Ventas</label>
           <label><input type="checkbox" class="ep-module" value="stock"         ${currentMods.includes('stock')?'checked':''}> Añadir stock</label>
-          <label><input type="checkbox" class="ep-module" value="inventario"    ${currentMods.includes('inventario')?'checked':''}> Gestión de Clientes y Proveedor</label>
+          <label><input type="checkbox" class="ep-module" value="inventario"    ${currentMods.includes('inventario')?'checked':''}> Ingredientes</label>
           <label><input type="checkbox" class="ep-module" value="registro-inv"  ${currentMods.includes('registro-inv')?'checked':''}> Registro de Inventarios</label>
           <label><input type="checkbox" class="ep-module" value="cierres"       ${currentMods.includes('cierres')?'checked':''}> Cierres de caja</label>
           <label><input type="checkbox" class="ep-module" value="pedidos"       ${currentMods.includes('pedidos')?'checked':''}> Pedidos</label>
@@ -3200,7 +3200,7 @@ function renderUsuariosPage() {
   const listEl = document.getElementById('usuarios-list');
   const restMap = Object.fromEntries(_upRests.map(r => [r.id, r.name]));
   const MODULE_NAMES = {
-    ventas: 'Ventas', stock: 'Añadir stock', inventario: 'Gestión de Clientes y Proveedor',
+    ventas: 'Ventas', stock: 'Añadir stock', inventario: 'Ingredientes',
     'registro-inv': 'Registro de Inventarios',
     cierres: 'Cierres de caja', pedidos: 'Pedidos Helados', 'pdf-view': 'Ver Manual', reuniones: 'Reuniones', usuarios: 'Usuarios'
   };
@@ -3288,7 +3288,7 @@ async function usuariosShowForm() {
           <div class="rest-checkboxes">
             <label><input type="checkbox" class="nu-module" value="ventas" checked> Ventas</label>
             <label><input type="checkbox" class="nu-module" value="stock"> Añadir stock</label>
-            <label><input type="checkbox" class="nu-module" value="inventario"> Gestión de Clientes y Proveedor</label>
+            <label><input type="checkbox" class="nu-module" value="inventario"> Ingredientes</label>
             <label><input type="checkbox" class="nu-module" value="registro-inv"> Registro de Inventarios</label>
             <label><input type="checkbox" class="nu-module" value="cierres"> Cierres de caja</label>
             <label><input type="checkbox" class="nu-module" value="pedidos"> Pedidos Helados</label>
@@ -3369,7 +3369,7 @@ async function usuariosEditUser(uid, name) {
         <div class="rest-checkboxes">
           <label><input type="checkbox" class="ep-module" value="ventas"        ${currentMods.includes('ventas')?'checked':''}> Ventas</label>
           <label><input type="checkbox" class="ep-module" value="stock"         ${currentMods.includes('stock')?'checked':''}> Añadir stock</label>
-          <label><input type="checkbox" class="ep-module" value="inventario"    ${currentMods.includes('inventario')?'checked':''}> Gestión de Clientes y Proveedor</label>
+          <label><input type="checkbox" class="ep-module" value="inventario"    ${currentMods.includes('inventario')?'checked':''}> Ingredientes</label>
           <label><input type="checkbox" class="ep-module" value="registro-inv"  ${currentMods.includes('registro-inv')?'checked':''}> Registro de Inventarios</label>
           <label><input type="checkbox" class="ep-module" value="cierres"       ${currentMods.includes('cierres')?'checked':''}> Cierres de caja</label>
           <label><input type="checkbox" class="ep-module" value="pedidos"       ${currentMods.includes('pedidos')?'checked':''}> Pedidos</label>
@@ -3656,6 +3656,7 @@ function renderAdminSidebar() {
         { id: 'stock',        icon: 'fas fa-boxes',          name: 'Añadir stock',            adminOnly: false },
         { id: 'registro-inv', icon: 'fas fa-clipboard-list', name: 'Registro de Inventarios', adminOnly: false },
         { id: 'gdd',          icon: 'fas fa-file-invoice',   name: 'Guías de Despacho',       adminOnly: false },
+        { id: 'inventario',   icon: 'fas fa-carrot',         name: 'Ingredientes',            adminOnly: false },
       ]
     },
     {
@@ -3680,7 +3681,6 @@ function renderAdminSidebar() {
     {
       label: 'Administración', icon: 'fas fa-cog',
       items: [
-        { id: 'inventario',   icon: 'fas fa-address-book',  name: 'Clientes y Proveedores', adminOnly: false },
         { id: 'reuniones',    icon: 'fas fa-users',         name: 'Reuniones',              adminOnly: false },
         { id: 'usuarios',     icon: 'fas fa-user-cog',      name: 'Usuarios',               adminOnly: true  },
       ]
@@ -3807,6 +3807,7 @@ function renderSidebar() {
       { id: 'stock',        icon: '📦', name: 'Añadir stock',           bg: 'linear-gradient(135deg,#3aada8,#52c9c4)', adminOnly: false },
       { id: 'registro-inv', icon: '📋', name: 'Registro de Inventarios',bg: 'linear-gradient(135deg,#5a7e3d,#7ab552)', adminOnly: false },
       { id: 'gdd',          icon: '📦', name: 'Guías de Despacho',      bg: 'linear-gradient(135deg,#0e7490,#06b6d4)', adminOnly: false },
+      { id: 'inventario',   icon: '🥕', name: 'Ingredientes',           bg: 'linear-gradient(135deg,#3d9e72,#52c98a)', adminOnly: false },
     ]},
     { label: 'Finanzas', items: [
       { id: 'goku',         icon: '⚡', name: 'GOKU',                        bg: 'linear-gradient(135deg,#f59e0b,#f97316)', adminOnly: false },
@@ -3822,7 +3823,6 @@ function renderSidebar() {
       { id: 'orden-compra', icon: '🛍️', name: 'Pedidos de Compra',      bg: 'linear-gradient(135deg,#0f766e,#14b8a6)', adminOnly: false },
     ]},
     { label: 'Administración', items: [
-      { id: 'inventario',   icon: '🗂️', name: 'Clientes y Proveedores', bg: 'linear-gradient(135deg,#3d9e72,#52c98a)', adminOnly: false },
       { id: 'reuniones',    icon: '📋', name: 'Reuniones',              bg: 'linear-gradient(135deg,#5b6af0,#7c8cf8)', adminOnly: false },
       { id: 'usuarios',     icon: '👥', name: 'Usuarios',               bg: 'linear-gradient(135deg,#c95e6b,#e07585)', adminOnly: true  },
     ]},
@@ -3859,7 +3859,7 @@ function renderHub() {
   const allModules = [
     { id: 'ventas',        icon: '📊', name: 'Ventas Fudo',                   bg: 'linear-gradient(135deg,#7c6bc9,#9b8de0)', adminOnly: false },
     { id: 'stock',         icon: '📦', name: 'Añadir stock',                  bg: 'linear-gradient(135deg,#3aada8,#52c9c4)', adminOnly: false },
-    { id: 'inventario',    icon: '🗂️', name: 'Gestión de Clientes y Proveedor', bg: 'linear-gradient(135deg,#3d9e72,#52c98a)', adminOnly: false },
+    { id: 'inventario',    icon: '🗂️', name: 'Ingredientes', bg: 'linear-gradient(135deg,#3d9e72,#52c98a)', adminOnly: false },
     { id: 'registro-inv',  icon: '📋', name: 'Registro de Inventarios',       bg: 'linear-gradient(135deg,#5a7e3d,#7ab552)', adminOnly: false },
     { id: 'cierres',       icon: '💰', name: 'Cierres de caja',               bg: 'linear-gradient(135deg,#d97b45,#f0975a)', adminOnly: false },
     { id: 'pedidos',       icon: '🛒', name: 'Pedidos Helados',                       bg: 'linear-gradient(135deg,#b45309,#f59e0b)', adminOnly: false },
