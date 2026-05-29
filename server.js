@@ -3025,10 +3025,12 @@ app.get('/api/goku/gastos', requireAuth, async (req, res) => {
 
     // Log all items before filtering
     console.log(`GOKU gastos raw ${allItems.length} items:`);
-    allItems.forEach(i => console.log(`  [${i.anulado ? 'ANULADO' : 'OK'}] ${i.razonSocial || 'Sin nombre'} | tipo:${i.tipoDocumento} | neto:${i.montoNeto} | fechaEmision:${i.fechaEmision} | estado:${i.estado}`));
+    allItems.forEach(i => console.log(`  [${i.anulado ? 'ANULADO' : 'OK'}] ${i.razonSocial || 'Sin nombre'} | tipo:${i.tipo} | neto:${i.montoNeto} | fechaEmision:${i.fechaEmision} | estado:${i.estado}`));
 
     // NC types: 61 = Nota de Crédito electrónica, 56 = NC no electrónica
+    // Chipax usa el campo "tipo" (no "tipoDocumento")
     const NC_TIPOS = [61, 56, '61', '56'];
+    const isNC = (i) => NC_TIPOS.includes(i.tipo ?? i.tipoDocumento);
 
     // Exclude anulados
     const docs = allItems.filter(i => !i.anulado);
@@ -3036,11 +3038,11 @@ app.get('/api/goku/gastos', requireAuth, async (req, res) => {
     // For NC documents, amount is NEGATIVE (reduces expense)
     const signedAmount = (i) => {
       const neto = i.montoNeto || 0;
-      return NC_TIPOS.includes(i.tipoDocumento) ? -Math.abs(neto) : neto;
+      return isNC(i) ? -Math.abs(neto) : neto;
     };
     const signedIva = (i) => {
       const total = i.montoTotal || 0;
-      return NC_TIPOS.includes(i.tipoDocumento) ? -Math.abs(total) : total;
+      return isNC(i) ? -Math.abs(total) : total;
     };
 
     const total    = docs.reduce((s, i) => s + signedAmount(i), 0);
@@ -3054,7 +3056,7 @@ app.get('/api/goku/gastos', requireAuth, async (req, res) => {
     });
 
     // Count only facturas (not NCs) for display
-    const nFacturas = docs.filter(i => !NC_TIPOS.includes(i.tipoDocumento)).length;
+    const nFacturas = docs.filter(i => !isNC(i)).length;
 
     console.log(`GOKU gastos ${from}→${to}: ${nFacturas} facturas, neto $${total.toLocaleString('es-CL')}`);
     res.json({ from, to, total, totalIva, count: nFacturas, byProveedor });
