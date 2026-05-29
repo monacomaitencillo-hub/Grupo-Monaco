@@ -3025,22 +3025,39 @@ app.get('/api/goku/gastos', requireAuth, async (req, res) => {
 
     // Log all items before filtering
     console.log(`GOKU gastos raw ${allItems.length} items:`);
-    allItems.forEach(i => console.log(`  [${i.anulado ? 'ANULADO' : 'OK'}] ${i.razonSocial || 'Sin nombre'} | neto:${i.montoNeto} | fechaEmision:${i.fechaEmision} | estado:${i.estado}`));
+    allItems.forEach(i => console.log(`  [${i.anulado ? 'ANULADO' : 'OK'}] ${i.razonSocial || 'Sin nombre'} | tipo:${i.tipoDocumento} | neto:${i.montoNeto} | fechaEmision:${i.fechaEmision} | estado:${i.estado}`));
+
+    // NC types: 61 = Nota de Crédito electrónica, 56 = NC no electrónica
+    const NC_TIPOS = [61, 56, '61', '56'];
 
     // Exclude anulados
-    const facturas = allItems.filter(i => !i.anulado);
-    const total    = facturas.reduce((s, i) => s + (i.montoNeto || 0), 0);
-    const totalIva = facturas.reduce((s, i) => s + (i.montoTotal || 0), 0);
+    const docs = allItems.filter(i => !i.anulado);
 
-    // Group by proveedor (razón social)
+    // For NC documents, amount is NEGATIVE (reduces expense)
+    const signedAmount = (i) => {
+      const neto = i.montoNeto || 0;
+      return NC_TIPOS.includes(i.tipoDocumento) ? -Math.abs(neto) : neto;
+    };
+    const signedIva = (i) => {
+      const total = i.montoTotal || 0;
+      return NC_TIPOS.includes(i.tipoDocumento) ? -Math.abs(total) : total;
+    };
+
+    const total    = docs.reduce((s, i) => s + signedAmount(i), 0);
+    const totalIva = docs.reduce((s, i) => s + signedIva(i), 0);
+
+    // Group by proveedor — NCs reduce the proveedor's total
     const byProveedor = {};
-    facturas.forEach(i => {
+    docs.forEach(i => {
       const nombre = i.razonSocial || 'Sin nombre';
-      byProveedor[nombre] = (byProveedor[nombre] || 0) + (i.montoNeto || 0);
+      byProveedor[nombre] = (byProveedor[nombre] || 0) + signedAmount(i);
     });
 
-    console.log(`GOKU gastos ${from}→${to}: ${facturas.length} facturas, neto $${total.toLocaleString('es-CL')}`);
-    res.json({ from, to, total, totalIva, count: facturas.length, byProveedor });
+    // Count only facturas (not NCs) for display
+    const nFacturas = docs.filter(i => !NC_TIPOS.includes(i.tipoDocumento)).length;
+
+    console.log(`GOKU gastos ${from}→${to}: ${nFacturas} facturas, neto $${total.toLocaleString('es-CL')}`);
+    res.json({ from, to, total, totalIva, count: nFacturas, byProveedor });
   } catch(e) {
     console.error('goku gastos error:', e.message);
     res.status(500).json({ error: e.message });
