@@ -246,7 +246,7 @@ app.get('/api/restaurants', requireAuth, async (req, res) => {
 
     const userData = userDoc.data();
     let restaurants;
-    if (userData.role === 'admin') {
+    if (userData.role === 'admin' || userData.role === 'superadmin') {
       const snap = await db.collection('restaurants').get();
       restaurants = snap.docs.map(d => ({ id: d.id, name: d.data().name, sections: d.data().sections || [], noFudo: !!d.data().noFudo }));
     } else {
