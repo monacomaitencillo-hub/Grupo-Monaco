@@ -958,6 +958,16 @@
 </div>
 
 
+<!-- ── LOCALES ── -->
+<div id="locales-module" style="display:none;flex-direction:column;min-height:100vh">
+  <div class="inv-topbar">
+    <span style="font-size:14px;font-weight:600;color:#fff">Locales</span>
+  </div>
+  <div style="flex:1;padding:32px 28px;max-width:900px;width:100%;margin:0 auto">
+    <div id="locales-module-content"></div>
+  </div>
+</div>
+
 <!-- ── USUARIOS ── -->
 <div id="usuarios-module" style="display:none;flex-direction:column;min-height:100vh">
   <div class="inv-topbar">
@@ -1648,7 +1658,7 @@ async function doLogout() {
   document.getElementById('login-screen').style.display = 'flex';
 }
 
-const ALL_MODULES_EL = ['hub','dashboard','inventario','registro-inv-module','add-stock-module','cierres-module','pdf-upload-module','pdf-view-module','usuarios-module','pedidos-module','reuniones-module','gdd-module','margenes-module','orden-compra-module','eerr-module','eerr-config-module','goku-module','vegeta-module','flujo-module'];
+const ALL_MODULES_EL = ['hub','dashboard','inventario','registro-inv-module','add-stock-module','cierres-module','pdf-upload-module','pdf-view-module','usuarios-module','locales-module','pedidos-module','reuniones-module','gdd-module','margenes-module','orden-compra-module','eerr-module','eerr-config-module','goku-module','vegeta-module','flujo-module'];
 function hideAll() { ALL_MODULES_EL.forEach(id => { const el = document.getElementById(id); if(el) el.style.display = 'none'; }); }
 // Note: hideAll() does NOT hide #admin-wrapper — goToHub() handles that separately
 
@@ -1714,6 +1724,10 @@ function goTo(module) {
   } else if (module === 'registro-inv') {
     document.getElementById('registro-inv-module').style.display = 'flex';
     renderInvHistorial();
+  } else if (module === 'locales') {
+    hideAll();
+    document.getElementById('locales-module').style.display = 'flex';
+    renderAdminLocales();
   } else if (module === 'usuarios') {
     hideAll();
     document.getElementById('usuarios-module').style.display = 'flex';
@@ -2907,6 +2921,74 @@ let ventasSelMonths = new Set();
 
 
 
+// ── Admin: Locales ────────────────────────────────────────
+let adminRestList = [];
+
+async function renderAdminLocales() {
+  const el = document.getElementById('locales-module-content');
+  if (!el) return;
+  el.innerHTML = '<div style="color:#555;font-size:13px">Cargando...</div>';
+  try {
+    const res = await apiFetch('/api/admin/restaurants');
+    const data = await res.json();
+    adminRestList = data.restaurants || [];
+  } catch(e) {
+    el.innerHTML = `<div style="color:#f87171;font-size:13px">Error: ${e.message}</div>`;
+    return;
+  }
+
+  el.innerHTML = `
+    <div class="admin-section" style="margin-bottom:28px">
+      <h3 style="font-size:15px;font-weight:700;color:#212529;margin-bottom:14px">Agregar local</h3>
+      <div class="admin-form" id="form-local">
+        <div class="form-row">
+          <input type="text" id="fl-name" placeholder="Nombre del local" style="flex:1">
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+          <input type="checkbox" id="fl-nofudo" onchange="toggleFudoFields(this.checked)">
+          <label for="fl-nofudo" style="font-size:13px;color:#495057;cursor:pointer">Sin integración Fudo</label>
+        </div>
+        <div id="fl-fudo-fields">
+          <div class="form-row">
+            <input type="text"     id="fl-user" placeholder="Usuario Fudo">
+            <input type="password" id="fl-pass" placeholder="Contraseña Fudo">
+          </div>
+        </div>
+        <button class="btn-add" onclick="addLocal()">Agregar</button>
+        <div id="fl-msg" style="font-size:12px;min-height:16px;margin-top:4px"></div>
+      </div>
+    </div>
+    <div class="admin-section">
+      <h3 style="font-size:15px;font-weight:700;color:#212529;margin-bottom:14px">Locales (${adminRestList.length})</h3>
+      <div class="admin-list">
+        ${adminRestList.map(r => `
+          <div class="admin-item">
+            <div style="flex:1">
+              <div style="font-weight:600;color:#212529;font-size:14px">${r.name}</div>
+              <div style="font-size:11px;color:#6c757d;margin-top:2px">${r.noFudo ? 'Sin Fudo' : (r.fudoUser || '—')}</div>
+              ${(r.sections && r.sections.length) ? `
+                <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px">
+                  ${r.sections.map(s => `
+                    <span style="background:#f1f3f5;border:1px solid #dee2e6;border-radius:12px;padding:2px 10px;font-size:11px;color:#495057;display:inline-flex;align-items:center;gap:4px">
+                      ${s}
+                      <button onclick="removeSection('${r.id}','${s.replace(/'/g,"\\'")}'))" title="Eliminar sección"
+                        style="background:none;border:none;color:#adb5bd;cursor:pointer;font-size:13px;line-height:1;padding:0">×</button>
+                    </span>`).join('')}
+                </div>` : ''}
+              <div style="display:flex;align-items:center;gap:6px;margin-top:8px">
+                <input type="text" id="new-sec-${r.id}" placeholder="Nueva sección..."
+                  style="padding:4px 8px;border:1px solid #dee2e6;border-radius:6px;font-size:12px;width:160px"
+                  onkeydown="if(event.key==='Enter')addSection('${r.id}')">
+                <button onclick="addSection('${r.id}')"
+                  style="background:#374151;color:#fff;border:none;border-radius:6px;padding:4px 12px;font-size:12px;cursor:pointer">+ Sección</button>
+              </div>
+            </div>
+            <button class="btn-del" onclick="delLocal('${r.id}','${r.name.replace(/'/g,"\\'")}')">Eliminar</button>
+          </div>`).join('')}
+      </div>
+    </div>`;
+}
+
 function toggleFudoFields(noFudo) {
   document.getElementById('fl-fudo-fields').style.display = noFudo ? 'none' : '';
 }
@@ -3681,6 +3763,7 @@ function renderAdminSidebar() {
     {
       label: 'Administración', icon: 'fas fa-cog',
       items: [
+        { id: 'locales',      icon: 'fas fa-store',         name: 'Locales',                adminOnly: true  },
         { id: 'reuniones',    icon: 'fas fa-users',         name: 'Reuniones',              adminOnly: false },
         { id: 'usuarios',     icon: 'fas fa-user-cog',      name: 'Usuarios',               adminOnly: true  },
       ]
@@ -3823,6 +3906,7 @@ function renderSidebar() {
       { id: 'orden-compra', icon: '🛍️', name: 'Pedidos de Compra',      bg: 'linear-gradient(135deg,#0f766e,#14b8a6)', adminOnly: false },
     ]},
     { label: 'Administración', items: [
+      { id: 'locales',      icon: '🏪', name: 'Locales',                bg: 'linear-gradient(135deg,#374151,#6b7280)', adminOnly: true  },
       { id: 'reuniones',    icon: '📋', name: 'Reuniones',              bg: 'linear-gradient(135deg,#5b6af0,#7c8cf8)', adminOnly: false },
       { id: 'usuarios',     icon: '👥', name: 'Usuarios',               bg: 'linear-gradient(135deg,#c95e6b,#e07585)', adminOnly: true  },
     ]},
