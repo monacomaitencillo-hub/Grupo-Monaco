@@ -1094,6 +1094,10 @@
       <button id="flujo-btn-margen" onclick="flujoOpenMargenModal()" style="padding:5px 14px;background:transparent;border:1px solid #dee2e6;border-radius:8px;font-size:13px;color:#212529;cursor:pointer">⚙ Margen</button>
     </div>
   </div>
+  <div id="flujo-rest-filter" style="display:none;padding:8px 20px;background:#1f2937;border-top:1px solid #374151;flex-wrap:wrap;gap:8px;align-items:center">
+    <span style="font-size:11px;color:#9ca3af;text-transform:uppercase;letter-spacing:.5px;flex-shrink:0">Incluir en consolidado:</span>
+    <div id="flujo-rest-checkboxes" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+  </div>
   <div style="padding:24px;overflow-x:auto">
     <div id="flujo-content"><div class="loading"><div class="spinner"></div><span>Cargando...</span></div></div>
   </div>
@@ -2374,6 +2378,53 @@ const FLUJO_MONTHS = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct
 let flujoData    = { margen: 0, prevision: 0, transbankBruto: Array(12).fill(0), efectivo: Array(12).fill(0), gastos: [] };
 let flujoByYear  = {};
 let flujoEditGastoId = null;
+let flujoSaldoInicial   = Number(localStorage.getItem('flujoSaldoInicial')) || 0;
+let flujoSaldoMes       = localStorage.getItem('flujoSaldoMes') !== null ? Number(localStorage.getItem('flujoSaldoMes')) : new Date().getMonth();
+let flujoResultadoCache    = Array(12).fill(0); // resultado mensual guardado del último render
+let flujoConsolidadoRests  = null; // null = todos; Set de IDs cuando hay selección manual
+
+function flujoActualizarProyeccion() {
+  const flujoRow = document.getElementById('flujo-proy-mensual');
+  const saldoRow = document.getElementById('flujo-proy-saldo');
+  if (!flujoRow || !saldoRow) return;
+
+  const resultado    = flujoResultadoCache;
+  const cajaInicial  = flujoSaldoInicial || 0;
+  const mesInicio    = flujoSaldoMes || 0;
+  const MONTHS       = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  const fmtP = n => '$' + Math.round(n).toLocaleString('es-CL');
+  const sum  = arr => arr.reduce((a,b) => a+(b||0), 0);
+
+  let saldo = cajaInicial;
+  const saldos = resultado.map((v, i) => { if (i < mesInicio) return null; saldo += v; return saldo; });
+
+  flujoRow.innerHTML = `<td style="padding:9px 12px;font-size:13px;border-bottom:1px solid #dbeafe;background:#eff6ff;color:#1e40af;font-weight:600">Resultado mensual</td>` +
+    resultado.map(v => `<td style="padding:9px 8px;font-size:13px;text-align:right;border-bottom:1px solid #dbeafe;background:#eff6ff;color:${v>=0?'#16a34a':'#dc2626'}">${v>=0?'+':''}${fmtP(v)}</td>`).join('') +
+    `<td style="padding:9px 8px;font-size:13px;font-weight:700;text-align:right;border-bottom:1px solid #dbeafe;background:#eff6ff;color:${sum(resultado)>=0?'#16a34a':'#dc2626'}">${sum(resultado)>=0?'+':''}${fmtP(sum(resultado))}</td>`;
+
+  // Fila "Caja inicial" — aparece solo si hay monto ingresado
+  let inicialRow = document.getElementById('flujo-proy-inicial');
+  if (cajaInicial > 0) {
+    if (!inicialRow) {
+      inicialRow = document.createElement('tr');
+      inicialRow.id = 'flujo-proy-inicial';
+      flujoRow.after(inicialRow);
+    }
+    inicialRow.innerHTML = `<td style="padding:9px 12px;font-size:13px;border-bottom:1px solid #dbeafe;background:#eff6ff;color:#60a5fa;font-style:italic">Caja inicial (${MONTHS[mesInicio]})</td>` +
+      Array(12).fill(0).map((_,i) => i === mesInicio
+        ? `<td style="padding:9px 8px;font-size:13px;text-align:right;border-bottom:1px solid #dbeafe;background:#eff6ff;color:#60a5fa;font-weight:700">${fmtP(cajaInicial)}</td>`
+        : `<td style="padding:9px 8px;font-size:13px;text-align:right;border-bottom:1px solid #e5e7eb;background:#f8fafc;color:#9ca3af">—</td>`).join('') +
+      `<td style="padding:9px 8px;background:#f8fafc;color:#9ca3af">—</td>`;
+  } else if (inicialRow) {
+    inicialRow.remove();
+  }
+
+  saldoRow.innerHTML = `<td style="padding:9px 12px;font-size:13px;font-weight:700;border-bottom:2px solid #93c5fd;background:#dbeafe;color:#1e40af">Saldo Proyectado de Caja</td>` +
+    saldos.map(v => v === null
+      ? `<td style="padding:9px 8px;font-size:13px;text-align:right;border-bottom:2px solid #93c5fd;background:#f8fafc;color:#9ca3af">—</td>`
+      : `<td style="padding:9px 8px;font-size:14px;font-weight:700;text-align:right;border-bottom:2px solid #93c5fd;background:#dbeafe;color:${v>=0?'#1e40af':'#dc2626'}">${fmtP(v)}</td>`).join('') +
+    `<td style="padding:9px 8px;font-size:11px;text-align:right;border-bottom:2px solid #93c5fd;background:#dbeafe;color:#6c757d">—</td>`;
+}
 
 function flujoInit() {
   const restSel = document.getElementById('flujo-rest-sel');
@@ -2398,6 +2449,28 @@ async function flujoLoad() {
   document.getElementById('flujo-btn-gasto').style.display     = isConsolidado ? 'none' : '';
   document.getElementById('flujo-btn-margen').style.display    = isConsolidado ? 'none' : '';
   document.getElementById('flujo-btn-historico').style.display = isConsolidado ? 'none' : '';
+
+  // Mostrar/ocultar checkboxes de locales para consolidado
+  const filterEl = document.getElementById('flujo-rest-filter');
+  const chkBox   = document.getElementById('flujo-rest-checkboxes');
+  if (isConsolidado) {
+    filterEl.style.display = 'flex';
+    if (chkBox.children.length === 0) {
+      // Inicializar: todos seleccionados
+      flujoConsolidadoRests = new Set((restaurants||[]).map(r => r.id));
+      chkBox.innerHTML = (restaurants||[]).map(r => `
+        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600;background:#374151;color:#e5e7eb;border:1px solid #4b5563;transition:all .15s"
+          id="flujo-chk-lbl-${r.id}">
+          <input type="checkbox" checked value="${r.id}" style="accent-color:#ff5023;width:13px;height:13px"
+            onchange="flujoToggleConsolidadoRest('${r.id}',this.checked)"> ${r.name}
+        </label>`).join('');
+    }
+  } else {
+    filterEl.style.display = 'none';
+    chkBox.innerHTML = '';
+    flujoConsolidadoRests = null;
+  }
+
   document.getElementById('flujo-content').innerHTML = '<div class="loading"><div class="spinner"></div><span>Cargando...</span></div>';
   try {
     if (isConsolidado) {
@@ -2417,8 +2490,19 @@ async function flujoLoad() {
   }
 }
 
+function flujoToggleConsolidadoRest(restId, checked) {
+  if (!flujoConsolidadoRests) flujoConsolidadoRests = new Set((restaurants||[]).map(r => r.id));
+  if (checked) flujoConsolidadoRests.add(restId); else flujoConsolidadoRests.delete(restId);
+  const lbl = document.getElementById('flujo-chk-lbl-' + restId);
+  if (lbl) { lbl.style.background = checked ? '#374151' : '#111827'; lbl.style.color = checked ? '#e5e7eb' : '#6b7280'; }
+  const year = document.getElementById('flujo-year-sel').value;
+  document.getElementById('flujo-content').innerHTML = '<div class="loading"><div class="spinner"></div><span>Cargando...</span></div>';
+  flujoLoadConsolidado(year);
+}
+
 async function flujoLoadConsolidado(year) {
-  const rests = restaurants || [];
+  const allRests = restaurants || [];
+  const rests = flujoConsolidadoRests ? allRests.filter(r => flujoConsolidadoRests.has(r.id)) : allRests;
   const [results, histResults] = await Promise.all([
     Promise.all(rests.map(r => apiFetch(`/api/flujo/${r.id}/${year}`).then(res => res.json()).catch(() => null))),
     Promise.all(rests.map(r => apiFetch(`/api/flujo/${r.id}/historico`).then(res => res.json()).catch(() => null)))
@@ -2523,6 +2607,7 @@ function flujoRender(data, isConsolidado, byYear) {
   const totalGastos = totFixed.map((v, i) => v + totSueldosConPrev[i]);
   const resultado   = margenOp.map((v, i) => v - totalGastos[i]);
   const totalResult = sum(resultado);
+  flujoResultadoCache = resultado; // guardar para proyección de caja
 
   // Punto de equilibrio
   const puntoEqNeto  = totalGastos.map(v => margen > 0 ? v / (margen / 100) : 0);
@@ -2561,9 +2646,24 @@ function flujoRender(data, isConsolidado, byYear) {
   </tr>`;
 
   document.getElementById('flujo-content').innerHTML = `
-    <div style="margin-bottom:12px;display:flex;align-items:center;gap:16px">
+    <div style="margin-bottom:12px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
       <div style="font-size:13px;color:#6c757d">Margen: <strong style="color:#212529">${margen}%</strong> &nbsp;|&nbsp; Previsión Previred: <strong style="color:#212529">${previsionRate}%</strong></div>
       ${isConsolidado ? '<div style="font-size:12px;color:#9ca3af;background:#f3f4f6;padding:3px 10px;border-radius:10px">Vista consolidada</div>' : ''}
+      <div style="display:flex;align-items:center;gap:8px;margin-left:auto;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:8px 14px;flex-wrap:wrap">
+        <span style="font-size:13px;color:#1e40af;font-weight:600">💰 Caja actual:</span>
+        <select id="flujo-saldo-mes" style="border:1px solid #93c5fd;border-radius:7px;padding:6px 8px;font-size:13px;color:#1e3a8a;background:#fff;font-weight:600;cursor:pointer"
+          onchange="flujoSaldoMes=Number(this.value);localStorage.setItem('flujoSaldoMes',flujoSaldoMes);flujoActualizarProyeccion()">
+          ${['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'].map((m,i) =>
+            `<option value="${i}" ${i===flujoSaldoMes?'selected':''}>${m}</option>`).join('')}
+        </select>
+        <div style="display:flex;align-items:center;border:1px solid #93c5fd;border-radius:7px;overflow:hidden;background:#fff">
+          <span style="padding:0 8px;font-size:13px;color:#1e40af;background:#eff6ff;border-right:1px solid #93c5fd">$</span>
+          <input type="number" id="flujo-saldo-input" value="${flujoSaldoInicial || ''}" min="0" placeholder="0"
+            style="border:none;outline:none;padding:6px 10px;font-size:13px;width:130px;color:#1e3a8a;font-weight:600"
+            oninput="flujoSaldoInicial=Number(this.value)||0;localStorage.setItem('flujoSaldoInicial',flujoSaldoInicial);flujoActualizarProyeccion()">
+        </div>
+        <span style="font-size:11px;color:#60a5fa">Proyecta desde ese mes</span>
+      </div>
     </div>
     <div style="background:#fff;border-radius:12px;border:1px solid #e9ecef;overflow:auto">
       <table style="width:100%;border-collapse:collapse;min-width:1200px">
@@ -2619,6 +2719,43 @@ function flujoRender(data, isConsolidado, byYear) {
             ${resultado.map(v => `<td style="${tdS};color:${v>=0?'#16a34a':'#dc2626'}">${fmt(v)}</td>`).join('')}
             <td style="${tdS};color:${resColor};font-size:14px">${fmt(totalResult)}</td>
           </tr>
+
+          <!-- PROYECCIÓN DE CAJA -->
+          <tr style="background:#1e3a8a"><td colspan="14" style="padding:10px 14px;font-size:13px;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:1.2px;border:none">📊 Proyección de Saldo de Caja</td></tr>
+          ${(()=>{
+            const mesInicio0 = flujoSaldoMes || 0;
+            const cajaInicial = flujoSaldoInicial || 0;
+            // saldo acumulado: parte desde cajaInicial en el mes elegido
+            let saldo0 = cajaInicial;
+            const saldos0 = resultado.map((v,i) => { if(i<mesInicio0) return null; saldo0+=v; return saldo0; });
+            const tdP  = 'padding:9px 8px;font-size:13px;text-align:right;border-bottom:1px solid #dbeafe;white-space:nowrap;background:#eff6ff';
+            const tdPN = 'padding:9px 12px;font-size:13px;border-bottom:1px solid #dbeafe;white-space:nowrap;background:#eff6ff;color:#1e40af;font-weight:600';
+            const tdPS = 'padding:9px 8px;font-size:13px;font-weight:700;text-align:right;border-bottom:2px solid #93c5fd;white-space:nowrap;background:#dbeafe';
+            const tdPSN= 'padding:9px 12px;font-size:13px;font-weight:700;border-bottom:2px solid #93c5fd;white-space:nowrap;background:#dbeafe;color:#1e40af';
+            const tdGray = 'padding:9px 8px;font-size:13px;text-align:right;border-bottom:1px solid #e5e7eb;white-space:nowrap;background:#f8fafc;color:#9ca3af';
+            const fmtP = n => '$' + Math.round(n).toLocaleString('es-CL');
+            const MONTHS = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+            return `
+            <tr id="flujo-proy-mensual">
+              <td style="${tdPN}">Resultado mensual</td>
+              ${resultado.map(v => `<td style="${tdP};color:${v>=0?'#16a34a':'#dc2626'}">${v>=0?'+':''}${fmtP(v)}</td>`).join('')}
+              <td style="${tdP};font-weight:700;color:${sum(resultado)>=0?'#16a34a':'#dc2626'}">${sum(resultado)>=0?'+':''}${fmtP(sum(resultado))}</td>
+            </tr>
+            ${cajaInicial > 0 ? `<tr>
+              <td style="${tdPN};font-style:italic;color:#60a5fa">Caja inicial (${MONTHS[mesInicio0]})</td>
+              ${Array(12).fill(0).map((_,i) => i===mesInicio0
+                ? `<td style="${tdP};color:#60a5fa;font-weight:700">${fmtP(cajaInicial)}</td>`
+                : `<td style="${tdGray}">—</td>`).join('')}
+              <td style="${tdGray}">—</td>
+            </tr>` : ''}
+            <tr id="flujo-proy-saldo">
+              <td style="${tdPSN}">Saldo Proyectado de Caja</td>
+              ${saldos0.map(v => v===null
+                ? `<td style="${tdPS};background:#f8fafc;color:#9ca3af;font-weight:400">—</td>`
+                : `<td style="${tdPS};color:${v>=0?'#1e40af':'#dc2626'};font-size:14px">${fmtP(v)}</td>`).join('')}
+              <td style="${tdPS};color:#6c757d;font-size:11px">—</td>
+            </tr>`;
+          })()}
           <tr><td colspan="14" style="padding:16px 0;background:#e9ecef"></td></tr>
           <tr><td colspan="14" style="padding:10px 14px;font-size:13px;font-weight:700;color:#fff !important;background:#374151;text-transform:uppercase;letter-spacing:1.2px;border:none">Análisis de Ventas</td></tr>
           ${secHead('Punto de Equilibrio')}
@@ -4049,7 +4186,7 @@ async function loadAddStockForm() {
       ${prods.map(item => `
         <div class="stock-form-row">
           <div class="stock-form-name">
-            ${item.name}
+            ${item.name}${item.type !== 'ingredient' ? ` <span style="font-size:10px;padding:1px 5px;border-radius:8px;background:${item.type==='recipe'?'#e0f0ff':'#f0ffe0'};color:${item.type==='recipe'?'#1a6fa8':'#2a7a2a'}">${item.type==='recipe'?'receta':'prep'}</span>` : ''}
             ${(item.supplierNames||[]).length ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">${(item.supplierNames).map(s=>`<span style="font-size:10px;font-weight:500;color:#6c757d;background:#f0f0f0;border-radius:4px;padding:1px 6px">${s}</span>`).join('')}</div>` : ''}
           </div>
           <div class="stock-form-cur" title="Stock actual">${item.quantity !== null ? item.quantity : '—'}</div>
@@ -5494,7 +5631,10 @@ async function loadStockTable() {
           const cls = qty === null ? 'stock-none' : (min !== null && qty <= min) ? 'stock-low' : 'stock-ok';
           const qtyLabel = qty === null ? '—' : qty;
           return `<tr>
-            <td style="color:#fff;font-weight:500">${item.name}</td>
+            <td style="color:#fff;font-weight:500">
+              ${item.name}
+              ${item.type !== 'ingredient' ? `<span style="font-size:10px;padding:1px 5px;border-radius:8px;margin-left:6px;background:${item.type==='recipe'?'#e0f0ff':'#f0ffe0'};color:${item.type==='recipe'?'#1a6fa8':'#2a7a2a'}">${item.type==='recipe'?'receta':'prep'}</span>` : ''}
+            </td>
             <td style="color:#555">${item.category || '—'}</td>
             <td><span class="tag">${item.unit}</span></td>
             <td style="text-align:right"><input class="qty-input" type="number" min="0" step="0.1" value="${min ?? ''}" placeholder="—" id="min-${item.id}"></td>
@@ -8174,14 +8314,24 @@ function renderMargenRecetas() {
           <option value="Caliente">Caliente</option>
           <option value="Licuado">Licuado</option>
           <option value="Machacado">Machacado</option>
+          <option value="De autor">De autor</option>
           <option value="Otro">Otro</option>
         </select>
         <select id="marg-filter-margen" class="prod-filter-sel" onchange="margenFilterMargen=this.value;renderMargenRecetasContent()">
           <option value="">Todos los márgenes</option>
           <option value="sin_precio">Sin precio</option>
-          <option value="bajo">Bajo (&lt;40%)</option>
-          <option value="normal">Normal (40-60%)</option>
-          <option value="bueno">Bueno (&gt;60%)</option>
+          <option value="neg">Negativo (&lt;0%)</option>
+          <option value="0-10">0% - 10%</option>
+          <option value="10-20">10% - 20%</option>
+          <option value="20-30">20% - 30%</option>
+          <option value="30-40">30% - 40%</option>
+          <option value="40-50">40% - 50%</option>
+          <option value="50-60">50% - 60%</option>
+          <option value="60-70">60% - 70%</option>
+          <option value="70-80">70% - 80%</option>
+          <option value="80-90">80% - 90%</option>
+          <option value="90-100">90% - 100%</option>
+          <option value="100+">Más de 100%</option>
         </select>
         <div style="display:flex;border:1px solid #dee2e6;border-radius:8px;overflow:hidden">
           <button id="marg-view-list" onclick="margenView='list';margenUpdateViewBtns();renderMargenRecetasContent()"
@@ -8238,10 +8388,11 @@ function renderMargenRecetasContent() {
       const net     = selling / 1.19;
       const margin  = selling > 0 ? (net - totalCost) / net * 100 : null;
       if (margenFilterMargen === 'sin_precio') return margin === null;
-      if (margenFilterMargen === 'bajo')       return margin !== null && margin < 40;
-      if (margenFilterMargen === 'normal')     return margin !== null && margin >= 40 && margin < 60;
-      if (margenFilterMargen === 'bueno')      return margin !== null && margin >= 60;
-      return true;
+      if (margin === null) return false;
+      if (margenFilterMargen === 'neg')  return margin < 0;
+      if (margenFilterMargen === '100+') return margin >= 100;
+      const [lo, hi] = margenFilterMargen.split('-').map(Number);
+      return margin >= lo && margin < hi;
     });
   }
 
@@ -9001,6 +9152,7 @@ function margenOpenPrepModal(id) {
 
   // Ocultar campos que no aplican a preparaciones
   document.getElementById('marg-form-price-wrap').style.display  = 'none';
+  document.getElementById('marg-form-inv-wrap').style.display    = 'none';
   document.getElementById('marg-form-cat-wrap').style.display    = 'none';
   document.getElementById('marg-form-subcat-wrap').style.display = 'none';
   document.getElementById('marg-form-add-prep-btn').style.display          = 'none';
@@ -9587,11 +9739,23 @@ function margenOpenFormModal(id) {
   document.getElementById('marg-form-msg').textContent   = '';
 
   document.getElementById('marg-form-price-wrap').style.display = '';
+  document.getElementById('marg-form-inv-wrap').style.display = '';
   document.getElementById('marg-form-add-prep-btn').style.display = '';
   document.getElementById('marg-form-prep-extras').style.display = 'none';
   document.getElementById('marg-form-recipe-gdd-section').style.display = '';
   document.getElementById('marg-form-recipe-gdd').checked = recipe?.esGDD === true;
   document.getElementById('marg-recipe-gdd-prices-btn').style.display = (recipe?.esGDD === true && id) ? '' : 'none';
+
+  // Construir checkboxes de inventario (sin precio, como preparaciones)
+  const invIds = recipe?.inventoryRestaurantIds || [];
+  document.getElementById('marg-form-inv-rests').innerHTML = restaurants.map(r => {
+    const checked = invIds.includes(r.id);
+    return `<label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:13px;color:#212529;padding:7px 12px;border:1px solid ${checked?'#ff5023':'#dee2e6'};border-radius:8px;background:${checked?'#fff5f2':'#fff'};transition:all .15s">
+      <input type="checkbox" id="marg-inv-chk-${r.id}" value="${r.id}"
+        onchange="margenToggleInvChk('${r.id}')"
+        style="width:14px;height:14px;accent-color:#ff5023;flex-shrink:0" ${checked?'checked':''}> ${r.name}
+    </label>`;
+  }).join('');
 
   // Construir checkboxes de locales con precio por local
   const rp = document.getElementById('marg-form-rest-prices');
@@ -9633,6 +9797,15 @@ function margenOpenFormModal(id) {
   setTimeout(margenUpdateFormTotal, 30);
 }
 
+function margenToggleInvChk(restId) {
+  const chk = document.getElementById('marg-inv-chk-' + restId);
+  const lbl = chk?.closest('label');
+  if (lbl) {
+    lbl.style.borderColor = chk?.checked ? '#ff5023' : '#dee2e6';
+    lbl.style.background  = chk?.checked ? '#fff5f2' : '#fff';
+  }
+}
+
 function margenToggleRestPrice(restId) {
   const chk  = document.getElementById('marg-rest-chk-' + restId);
   const wrap = document.getElementById('marg-rest-price-wrap-' + restId);
@@ -9646,6 +9819,7 @@ function margenCloseFormModal() {
   // Restaurar campos visibles para próxima apertura
   document.getElementById('marg-form-rest').closest('div').style.display  = '';
   document.getElementById('marg-form-price-wrap').style.display = '';
+  document.getElementById('marg-form-inv-wrap').style.display = '';
   document.getElementById('marg-form-cat-wrap').style.display = '';
   document.getElementById('marg-form-subcat-wrap').style.display = '';
   document.getElementById('marg-form-add-prep-btn').style.display         = '';
@@ -10002,7 +10176,10 @@ async function margenSaveForm() {
   }
 
   // ── Guardar receta ──
-  // Recoger locales y precios
+  // Recoger locales de inventario
+  const inventoryRestaurantIds = [...document.querySelectorAll('#marg-form-inv-rests input[type=checkbox]:checked')].map(c => c.value);
+
+  // Recoger locales y precios de venta
   const restaurantIds = [];
   const sellingPrices = {};
   restaurants.forEach(r => {
@@ -10012,7 +10189,6 @@ async function margenSaveForm() {
       sellingPrices[r.id] = Number(document.getElementById('marg-rest-price-' + r.id)?.value) || 0;
     }
   });
-  if (!restaurantIds.length) { msg.style.color='#dc2626'; msg.textContent='Selecciona al menos un local.'; return; }
 
   // Backward compat: primer local y precio
   const restId    = restaurantIds[0];
@@ -10025,11 +10201,11 @@ async function margenSaveForm() {
   const esGDDReceta = document.getElementById('marg-form-recipe-gdd')?.checked === true;
   try {
     if (id) {
-      const res  = await apiFetch(`/api/recipes/${id}`, { method: 'PUT', body: JSON.stringify({ name, sellingPrice: price, sellingPrices, restaurantIds, restaurantId: restId, restaurantName: restName, ingredients, esPromedio, esGDD: esGDDReceta, rendimientoAgua: rendAgua, rendimientoAire: rendAire, merma: mermaVal, porciones, category, subcategoria, comentario }) });
+      const res  = await apiFetch(`/api/recipes/${id}`, { method: 'PUT', body: JSON.stringify({ name, sellingPrice: price, sellingPrices, restaurantIds, inventoryRestaurantIds, restaurantId: restId, restaurantName: restName, ingredients, esPromedio, esGDD: esGDDReceta, rendimientoAgua: rendAgua, rendimientoAire: rendAire, merma: mermaVal, porciones, category, subcategoria, comentario }) });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
     } else {
-      const res  = await apiFetch('/api/recipes/import', { method: 'POST', body: JSON.stringify({ recipes: [{ name, restaurantId: restId, restaurantName: restName, restaurantIds, sellingPrice: price, sellingPrices, ingredients, esPromedio, esGDD: esGDDReceta, rendimientoAgua: rendAgua, rendimientoAire: rendAire, merma: mermaVal, porciones, category, subcategoria, comentario }] }) });
+      const res  = await apiFetch('/api/recipes/import', { method: 'POST', body: JSON.stringify({ recipes: [{ name, restaurantId: restId, restaurantName: restName, restaurantIds, inventoryRestaurantIds, sellingPrice: price, sellingPrices, ingredients, esPromedio, esGDD: esGDDReceta, rendimientoAgua: rendAgua, rendimientoAire: rendAire, merma: mermaVal, porciones, category, subcategoria, comentario }] }) });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
     }
@@ -10277,6 +10453,9 @@ async function margenDeleteRecipe(id, name) {
             <option value="Batido">Batido</option>
             <option value="Frappe">Frappe</option>
             <option value="Caliente">Caliente</option>
+            <option value="Licuado">Licuado</option>
+            <option value="Machacado">Machacado</option>
+            <option value="De autor">De autor</option>
             <option value="Otro">Otro</option>
           </select>
         </div>
@@ -10284,6 +10463,11 @@ async function margenDeleteRecipe(id, name) {
       <!-- campos ocultos para compatibilidad -->
       <select id="marg-form-rest" style="display:none"><option value="">—</option></select>
       <input type="hidden" id="marg-form-price">
+      <!-- sección inventario: locales donde aplica en stock -->
+      <div id="marg-form-inv-wrap" style="margin-bottom:20px">
+        <div class="field-label" style="margin-bottom:8px">Locales en Inventario</div>
+        <div id="marg-form-inv-rests" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:6px"></div>
+      </div>
       <!-- sección multi-local + precio -->
       <div id="marg-form-price-wrap" style="margin-bottom:20px">
         <div class="field-label" style="margin-bottom:8px">Locales y precio de venta ($)</div>

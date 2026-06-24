@@ -731,9 +731,10 @@ app.get('/api/inv/stock/:restaurantId', requireAuth, async (req, res) => {
     return res.status(403).json({ error: 'Sin acceso a este local' });
   }
 
-  const [prodSnap, prepSnap, stockSnap, supSnap] = await Promise.all([
+  const [prodSnap, prepSnap, recipeSnap, stockSnap, supSnap] = await Promise.all([
     db.collection('products').orderBy('name').get(),
     db.collection('preparations').orderBy('name').get(),
+    db.collection('recipes').orderBy('name').get(),
     db.collection('stock').doc(restaurantId).collection('products').get(),
     db.collection('suppliers').get()
   ]);
@@ -786,7 +787,28 @@ app.get('/api/inv/stock/:restaurantId', requireAuth, async (req, res) => {
       updatedBy:   stockMap[d.id]?.updatedBy   ?? null,
     }));
 
-  const items = [...prodItems, ...prepItems].sort((a, b) => a.name.localeCompare(b.name, 'es'));
+  function passesFiltersRecipe(data) {
+    const ids = data.inventoryRestaurantIds || [];
+    if (!ids.includes(restaurantId)) return false;
+    const inCat = allowedCats.length === 0 || allowedCats.includes(data.category || data.categoria || '');
+    return inCat;
+  }
+
+  const recipeItems = recipeSnap.docs
+    .filter(d => passesFiltersRecipe(d.data()))
+    .map(d => ({
+      id: d.id, type: 'recipe',
+      name: d.data().name,
+      category: d.data().category || d.data().categoria || '',
+      unit: d.data().unit || 'porcion',
+      supplierIds: [], supplierNames: [],
+      quantity:    stockMap[d.id]?.quantity    ?? null,
+      minQuantity: stockMap[d.id]?.minQuantity ?? null,
+      lastUpdated: stockMap[d.id]?.lastUpdated ?? null,
+      updatedBy:   stockMap[d.id]?.updatedBy   ?? null,
+    }));
+
+  const items = [...prodItems, ...prepItems, ...recipeItems].sort((a, b) => a.name.localeCompare(b.name, 'es'));
 
   res.json({ items });
 });
@@ -2098,10 +2120,11 @@ app.post('/api/recipes/import', requireAuth, async (req, res) => {
 app.put('/api/recipes/:id', requireAuth, async (req, res) => {
   if (!await isEditor(req.uid)) return res.status(403).json({ error: 'Sin permisos' });
   const update = {};
-  const { sellingPrice, sellingPrices, restaurantIds, restaurantId, restaurantName, ingredients, name, esPromedio, esGDD, rendimientoAgua, rendimientoAire, merma, porciones, category, categoria, subcategoria, comentario } = req.body;
-  if (sellingPrice     !== undefined) update.sellingPrice     = Number(sellingPrice) || 0;
-  if (sellingPrices    !== undefined) update.sellingPrices    = sellingPrices;
-  if (restaurantIds    !== undefined) update.restaurantIds    = restaurantIds;
+  const { sellingPrice, sellingPrices, restaurantIds, inventoryRestaurantIds, restaurantId, restaurantName, ingredients, name, esPromedio, esGDD, rendimientoAgua, rendimientoAire, merma, porciones, category, categoria, subcategoria, comentario } = req.body;
+  if (sellingPrice            !== undefined) update.sellingPrice            = Number(sellingPrice) || 0;
+  if (sellingPrices           !== undefined) update.sellingPrices           = sellingPrices;
+  if (restaurantIds           !== undefined) update.restaurantIds           = restaurantIds;
+  if (inventoryRestaurantIds  !== undefined) update.inventoryRestaurantIds  = inventoryRestaurantIds;
   if (restaurantId     !== undefined) update.restaurantId     = restaurantId;
   if (restaurantName   !== undefined) update.restaurantName   = restaurantName;
   if (ingredients      !== undefined) update.ingredients      = ingredients;
