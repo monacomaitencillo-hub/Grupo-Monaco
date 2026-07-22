@@ -3361,11 +3361,9 @@ app.get('/api/vegeta/calce/:restaurantId', requireAuth, async (req, res) => {
 // ── MCP Server (Streamable HTTP, stateless para Vercel) ───────────────────────
 const MCP_ACCESS_TOKEN = (process.env.MCP_ACCESS_TOKEN || '').trim();
 
-function mcpAuth(req, res, next) {
+function mcpTokenAuth(req, res, next) {
   if (!MCP_ACCESS_TOKEN) return next();
-  const header = (req.headers.authorization || '').trim();
-  const token  = header.startsWith('Bearer ') ? header.slice(7).trim() : header;
-  if (token !== MCP_ACCESS_TOKEN) return res.status(401).json({ error: 'Unauthorized' });
+  if (req.params.token !== MCP_ACCESS_TOKEN) return res.status(401).json({ error: 'Unauthorized' });
   next();
 }
 
@@ -3448,7 +3446,7 @@ function createMcpServer() {
   return server;
 }
 
-app.post('/mcp', mcpAuth, async (req, res) => {
+app.post('/mcp/:token', mcpTokenAuth, async (req, res) => {
   try {
     const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
     const server = createMcpServer();
@@ -3460,7 +3458,7 @@ app.post('/mcp', mcpAuth, async (req, res) => {
   }
 });
 
-app.get('/mcp', mcpAuth, async (req, res) => {
+app.get('/mcp/:token', mcpTokenAuth, async (req, res) => {
   res.status(405).json({ error: 'GET no soportado en modo stateless' });
 });
 
