@@ -10,6 +10,9 @@ const { randomUUID } = require('crypto');
 const Anthropic      = require('@anthropic-ai/sdk');
 const XLSX           = require('xlsx');
 const { GoogleAuth } = require('google-auth-library');
+const { McpServer }  = require('@modelcontextprotocol/sdk/server/mcp.js');
+const { StreamableHTTPServerTransport } = require('@modelcontextprotocol/sdk/server/streamableHttp.js');
+const { z } = require('zod');
 
 // ── Chipax ────────────────────────────────────────────────
 const CHIPAX_APP_ID     = (process.env.CHIPAX_APP_ID     || '').trim();
@@ -3353,6 +3356,112 @@ app.get('/api/vegeta/calce/:restaurantId', requireAuth, async (req, res) => {
     console.error('vegeta calce error:', e.message);
     res.status(500).json({ error: e.message });
   }
+});
+
+// ── MCP Server (Streamable HTTP, stateless para Vercel) ───────────────────────
+const MCP_ACCESS_TOKEN = (process.env.MCP_ACCESS_TOKEN || '').trim();
+
+function mcpAuth(req, res, next) {
+  if (!MCP_ACCESS_TOKEN) return next();
+  const header = (req.headers.authorization || '').trim();
+  const token  = header.startsWith('Bearer ') ? header.slice(7).trim() : header;
+  if (token !== MCP_ACCESS_TOKEN) return res.status(401).json({ error: 'Unauthorized' });
+  next();
+}
+
+function createMcpServer() {
+  const server = new McpServer({ name: 'fudo-connect', version: '1.0.0' });
+
+  server.tool('get_restaurantes', 'Lista los locales del grupo con su id y nombre.', {}, async () => {
+    const snap = await db.collection('restaurants').get();
+    const result = snap.docs.map(d => ({ id: d.id, nombre: d.data().name }));
+    return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+  });
+
+  server.tool('get_menu_categorias', 'Devuelve todas las categorías de la carta (extraídas de las recetas).', {}, async () => {
+    const snap = await db.collection('recipes').get();
+    const cats = [...new Set(snap.docs.map(d => d.data().category || '').filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'));
+    return { content: [{ type: 'text', text: JSON.stringify(cats, null, 2) }] };
+  });
+
+  server.tool(
+    'get_productos',
+    'Devuelve productos de la carta con nombre, categoría y precio de venta. Filtrable por local y categoría.',
+    {
+      restaurantName: z.string().optional().describe('Nombre del local (opcional). Ej: "Daily Grind"'),
+      category:       z.string().optional().describe('Categoría de carta (opcional). Ej: "Bebidas"'),
+    },
+    async ({ restaurantName, category }) => {
+      const snap = await db.collection('recipes').get();
+      let items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      if (restaurantName) { const q = restaurantName.toLowerCase(); items = items.filter(r => (r.restaurantName || '').toLowerCase().includes(q)); }
+      if (category)       { const q = category.toLowerCase();       items = items.filter(r => (r.category || '').toLowerCase().includes(q)); }
+      const result = items.map(r => ({ nombre: r.name, local: r.restaurantName || '—', categoria: r.category || '—', precioVenta: r.sellingPrice || 0 })).sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
+      return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+    }
+  );
+
+  server.tool(
+    'get_recetas',
+    'Devuelve recetas con nombre, categoría, costo calculado, precio de venta y margen (%). Filtrable por local.',
+    { restaurantName: z.string().optional().describe('Nombre del local (opcional)') },
+    async ({ restaurantName }) => {
+      const [rSnap, pSnap, iSnap] = await Promise.all([db.collection('recipes').get(), db.collection('preparations').get(), db.collection('products').get()]);
+      const preparations = pSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const ingredients  = iSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      let recipes = rSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      if (restaurantName) { const q = restaurantName.toLowerCase(); recipes = recipes.filter(r => (r.restaurantName || '').toLowerCase().includes(q)); }
+      const result = recipes.map(r => {
+        const cost = agentCalcRecipeCost(r, preparations, ingredients);
+        const selling = r.sellingPrice || 0;
+        const sellingNet = selling > 0 ? selling / 1.19 : 0;
+        const margin = sellingNet > 0 ? Math.round((sellingNet - cost) / sellingNet * 100) : null;
+        return { nombre: r.name, local: r.restaurantName || '—', categoria: r.category || '—', costo: Math.round(cost), precioVenta: selling, margen: margin !== null ? margin + '%' : 'sin precio', porciones: r.porciones || 1 };
+      }).sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
+      return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+    }
+  );
+
+  server.tool(
+    'get_promos',
+    'Devuelve promociones activas con nombre, recetas incluidas, precio de venta y margen (%). Filtrable por local.',
+    { restaurantName: z.string().optional().describe('Nombre del local (opcional)') },
+    async ({ restaurantName }) => {
+      const [promoSnap, recipeSnap, prepSnap, ingSnap] = await Promise.all([db.collection('promos').get(), db.collection('recipes').get(), db.collection('preparations').get(), db.collection('products').get()]);
+      const recipes      = recipeSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const preparations = prepSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const ingredients  = ingSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      let promos = promoSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      if (restaurantName) { const q = restaurantName.toLowerCase(); promos = promos.filter(p => (p.restaurantName || '').toLowerCase().includes(q)); }
+      const result = promos.map(p => {
+        const recipeObjs = (p.recipes || []).map(id => recipes.find(r => r.id === id)).filter(Boolean);
+        const cost = recipeObjs.reduce((s, r) => s + agentCalcRecipeCost(r, preparations, ingredients), 0);
+        const selling = p.sellingPrice || 0;
+        const sellingNet = selling > 0 ? selling / 1.19 : 0;
+        const margin = sellingNet > 0 ? Math.round((sellingNet - cost) / sellingNet * 100) : null;
+        return { nombre: p.name, local: p.restaurantName || '—', recetas: recipeObjs.map(r => r.name), costo: Math.round(cost), precioVenta: selling, margen: margin !== null ? margin + '%' : 'sin precio' };
+      });
+      return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+    }
+  );
+
+  return server;
+}
+
+app.post('/mcp', mcpAuth, async (req, res) => {
+  try {
+    const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
+    const server = createMcpServer();
+    await server.connect(transport);
+    await transport.handleRequest(req, res, req.body);
+  } catch (e) {
+    console.error('MCP error:', e.message);
+    if (!res.headersSent) res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/mcp', mcpAuth, async (req, res) => {
+  res.status(405).json({ error: 'GET no soportado en modo stateless' });
 });
 
 module.exports = app;
