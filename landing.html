@@ -365,8 +365,10 @@
     .choice{min-width:calc(50% - 10px);max-width:calc(50% - 10px);flex-shrink:1;}
   }
 
-  /* ---------- Logo en lugar del nombre en card ---------- */
-  .place-logo{height:30px;width:auto;display:block;margin-bottom:2px;}
+  /* ---------- Logo + subtítulo en card ---------- */
+  .place-logo-row{display:flex;align-items:center;gap:10px;margin-bottom:2px;}
+  .place-logo{height:26px;width:auto;display:block;flex-shrink:0;}
+  .place-sub{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);white-space:nowrap;}
 
   /* ---------- Card backgrounds sin foto ---------- */
   .choice .cphoto.cphoto-mv{
@@ -437,7 +439,10 @@
     <div class="choice" onclick="showLoc('mte')">
       <div class="cphoto cphoto-mte"></div>
       <div class="cbody">
-        <img class="place-logo" src="/img/logo-monaco-white.png" alt="Mónaco Sports Bar">
+        <div class="place-logo-row">
+          <img class="place-logo" src="/img/logo-monaco-white.png" alt="Mónaco">
+          <span class="place-sub">Sports Bar</span>
+        </div>
         <span class="tag">Maitencillo · Abanico Centro</span>
         <div class="caddr">Av. del Mar 1408, Maitencillo</div>
         <div class="clinks">
@@ -452,7 +457,10 @@
     <div class="choice" onclick="showLoc('zpl')">
       <div class="cphoto cphoto-zpl"></div>
       <div class="cbody">
-        <img class="place-logo" src="/img/logo-monaco-white.png" alt="Mónaco Zapallar">
+        <div class="place-logo-row">
+          <img class="place-logo" src="/img/logo-monaco-white.png" alt="Mónaco">
+          <span class="place-sub">Zapallar</span>
+        </div>
         <span class="tag">Laguna de Zapallar</span>
         <div class="caddr">Carlos León 677, Laguna de Zapallar</div>
         <div class="clinks">
