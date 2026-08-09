@@ -835,17 +835,25 @@
 <div id="goku-module" style="display:none;flex-direction:column;background:#f4f6f9;min-height:100vh">
   <div style="background:#fff;border-bottom:1px solid #dee2e6;padding:0 28px;display:flex;align-items:center;gap:12px;height:52px;flex-shrink:0">
     <span style="font-size:16px;font-weight:700;color:#212529">⚡ GOKU</span>
-    <div style="display:flex;align-items:center;gap:6px;margin-left:auto">
+    <div style="display:flex;align-items:center;gap:8px;margin-left:auto">
       <button id="goku-stop-btn" onclick="stopGoku()" style="display:none;align-items:center;gap:5px;padding:5px 12px;border-radius:20px;border:1px solid #dee2e6;background:transparent;color:#6c757d;font-size:13px;cursor:pointer">
         <span style="width:8px;height:8px;background:#6c757d;border-radius:2px;display:inline-block"></span> Detener
+      </button>
+      <button onclick="gokuOpenConfig()" style="padding:5px 14px;border:1px solid #dee2e6;border-radius:8px;background:#fff;color:#374151;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:5px">
+        <i class="fas fa-sliders-h"></i> Configurar insumos
       </button>
     </div>
   </div>
   <div style="padding:24px 28px;max-width:900px;margin:0 auto;width:100%">
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:20px">
-      <button onclick="shiftGokuWeek(-1)" style="background:none;border:1px solid #dee2e6;border-radius:6px;padding:3px 10px;font-size:16px;cursor:pointer;color:#374151;line-height:1">‹</button>
-      <span id="goku-week-label" style="font-size:13px;color:#6c757d"></span>
-      <button onclick="shiftGokuWeek(1)" style="background:none;border:1px solid #dee2e6;border-radius:6px;padding:3px 10px;font-size:16px;cursor:pointer;color:#374151;line-height:1">›</button>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:20px;flex-wrap:wrap">
+      <button onclick="shiftGokuWeek(-1)" style="background:none;border:1px solid #dee2e6;border-radius:6px;padding:4px 12px;font-size:16px;cursor:pointer;color:#374151;line-height:1">‹</button>
+      <span id="goku-week-label" style="font-size:13px;color:#374151;font-weight:500"></span>
+      <button onclick="shiftGokuWeek(1)" style="background:none;border:1px solid #dee2e6;border-radius:6px;padding:4px 12px;font-size:16px;cursor:pointer;color:#374151;line-height:1">›</button>
+      <div style="display:flex;align-items:center;gap:6px;margin-left:4px">
+        <input type="date" id="goku-week-picker" onchange="gokuJumpToDate(this.value)"
+          style="padding:4px 8px;border:1px solid #dee2e6;border-radius:6px;font-size:12px;color:#374151;cursor:pointer">
+        <button onclick="gokuWeekOffset=0;initGoku()" style="padding:4px 10px;border:1px solid #dee2e6;border-radius:6px;background:#fff;font-size:12px;cursor:pointer;color:#374151;font-weight:500">Hoy</button>
+      </div>
     </div>
     <div id="goku-content"><div class="loading"><div class="spinner"></div><span>Cargando...</span></div></div>
   </div>
@@ -854,7 +862,7 @@
 <!-- ── VEGETA ── -->
 <div id="vegeta-module" style="display:none;flex-direction:column;background:#f4f6f9;min-height:100vh">
   <div style="background:#fff;border-bottom:1px solid #dee2e6;padding:0 20px;display:flex;align-items:center;gap:10px;height:52px;flex-shrink:0;flex-wrap:wrap">
-    <span style="font-size:16px;font-weight:700;color:#212529">🔥 Vegeta</span>
+    <span style="font-size:16px;font-weight:700;color:#212529">📊 Control Ing. vs Inventario</span>
     <select id="vegeta-rest-sel" onchange="initVegeta()" style="border:1px solid #dee2e6;border-radius:8px;padding:4px 10px;font-size:13px;color:#212529;background:#fff;cursor:pointer"></select>
     <div style="display:flex;align-items:center;gap:6px;margin-left:4px">
       <button onclick="shiftVegetaWeek(-1)" style="background:none;border:1px solid #dee2e6;border-radius:6px;padding:3px 10px;font-size:16px;cursor:pointer;color:#374151;line-height:1">‹</button>
@@ -898,7 +906,7 @@
       </div>
       <div>
         <label style="font-size:12px;color:#6b7280;display:block;margin-bottom:4px">Año</label>
-        <select id="eerr-year-sel" style="border:1px solid #e5e7eb;border-radius:8px;padding:6px 12px;font-size:14px;background:#fff"></select>
+        <select id="eerr-year-sel" onchange="eerrLoadSummary()" style="border:1px solid #e5e7eb;border-radius:8px;padding:6px 12px;font-size:14px;background:#fff"></select>
       </div>
       <button class="btn-new" onclick="eerrLoad()" style="margin-bottom:0">Cargar</button>
       <button onclick="goTo('eerr-config')" style="margin-bottom:0;padding:7px 14px;background:#f3f4f6;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;color:#374151;cursor:pointer;display:flex;align-items:center;gap:6px"><i class="fas fa-sliders-h"></i> Configurar</button>
@@ -910,6 +918,9 @@
       <button onclick="eerrSaveMapping()" style="padding:4px 10px;background:#f3f4f6;border:1px solid #e5e7eb;border-radius:6px;font-size:12px;cursor:pointer">Guardar vínculo</button>
       <span id="eerr-chipax-status" style="color:#6b7280"></span>
     </div>
+
+    <!-- Resumen automático por local -->
+    <div id="eerr-summary-panel" style="margin-bottom:24px"></div>
 
     <div id="eerr-loading" style="display:none;text-align:center;padding:48px;color:#6b7280">Cargando datos...</div>
 
@@ -1058,6 +1069,192 @@
           <tbody id="oc-tbody"></tbody>
         </table>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── VENTAS PRODUCTOS MODULE ── -->
+<div id="ventas-productos-module" style="display:none;flex-direction:column;min-height:100vh">
+  <div class="inv-topbar">
+    <span style="font-size:14px;font-weight:600;color:#fff">🧾 Ventas Productos</span>
+  </div>
+  <div style="flex:1;padding:24px 28px;max-width:1400px;width:100%;margin:0 auto">
+
+    <!-- Filtros -->
+    <div style="background:#fff;border-radius:14px;padding:20px 24px;border:1px solid #e5e7eb;margin-bottom:20px">
+      <div style="display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap">
+        <div>
+          <label style="font-size:12px;font-weight:600;color:#6b7280;display:block;margin-bottom:4px">LOCAL</label>
+          <select id="vp-sheet-select" style="border:1px solid #d1d5db;border-radius:8px;padding:7px 12px;font-size:13px;color:#374151;min-width:220px;background:#fff">
+            <option value="">Cargando...</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:600;color:#6b7280;display:block;margin-bottom:4px">DESDE</label>
+          <input type="date" id="vp-date-from" style="border:1px solid #d1d5db;border-radius:8px;padding:7px 12px;font-size:13px;color:#374151">
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:600;color:#6b7280;display:block;margin-bottom:4px">HASTA</label>
+          <input type="date" id="vp-date-to" style="border:1px solid #d1d5db;border-radius:8px;padding:7px 12px;font-size:13px;color:#374151">
+        </div>
+        <div style="padding-bottom:1px;display:flex;gap:8px;align-items:flex-end;margin-top:20px">
+          <button onclick="ventasProductosLoad()" style="background:#374151;color:#fff;border:none;border-radius:8px;padding:8px 24px;font-size:13px;font-weight:600;cursor:pointer">Cargar</button>
+          <button onclick="vpCrearInforme()" style="background:#4f46e5;color:#fff;border:none;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px"><span>📋</span> Crear Informe</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Informe -->
+    <div id="vp-informe-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;overflow-y:auto;padding:24px 16px">
+      <div style="background:#fff;border-radius:16px;max-width:900px;margin:0 auto;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.25)">
+        <div style="padding:20px 24px;border-bottom:1px solid #e5e7eb;display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <div style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.5px">Informe Consolidado</div>
+            <h2 id="vp-inf-titulo" style="margin:2px 0 0;font-size:18px;font-weight:700;color:#111827"></h2>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button onclick="vpDescargarPDF()" style="background:#10b981;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer">⬇ Descargar PDF</button>
+            <button onclick="document.getElementById('vp-informe-modal').style.display='none'" style="background:#f3f4f6;border:none;border-radius:8px;padding:8px 16px;font-size:13px;color:#374151;cursor:pointer;font-weight:600">✕ Cerrar</button>
+          </div>
+        </div>
+        <div id="vp-informe-body" style="padding:24px"></div>
+      </div>
+    </div>
+
+    <!-- Cards resumen -->
+    <div id="vp-summary-cards" style="display:none;gap:14px;flex-wrap:wrap;margin-bottom:20px"></div>
+
+    <!-- Tabs -->
+    <div id="vp-tabs-wrap" style="display:none">
+      <div style="display:flex;gap:4px;margin-bottom:16px;border-bottom:2px solid #e5e7eb">
+        <button class="vp-tab active" data-tab="resumen" onclick="vpSwitchTab('resumen')" style="padding:8px 18px;border:none;background:none;font-size:13px;font-weight:600;color:#111827;border-bottom:2px solid #111827;margin-bottom:-2px;cursor:pointer">Resumen por Categoría</button>
+        <button class="vp-tab" data-tab="productos" onclick="vpSwitchTab('productos')" style="padding:8px 18px;border:none;background:none;font-size:13px;font-weight:600;color:#6b7280;cursor:pointer">Top Productos</button>
+        <button class="vp-tab" data-tab="tabla" onclick="vpSwitchTab('tabla')" style="padding:8px 18px;border:none;background:none;font-size:13px;font-weight:600;color:#6b7280;cursor:pointer">Tabla Completa</button>
+      </div>
+
+      <!-- Resumen por categoría -->
+      <div id="vp-tab-resumen" style="display:block">
+        <div style="background:#fff;border-radius:14px;border:1px solid #e5e7eb;overflow:hidden">
+          <table style="width:100%;border-collapse:collapse;font-size:13px">
+            <thead>
+              <tr style="background:#f9fafb;border-bottom:1px solid #e5e7eb">
+                <th style="padding:10px 16px;text-align:left;font-weight:600;color:#374151">Categoría</th>
+                <th style="padding:10px 16px;text-align:right;font-weight:600;color:#374151">Unidades</th>
+                <th style="padding:10px 16px;text-align:right;font-weight:600;color:#374151">Total ($)</th>
+                <th style="padding:10px 16px;text-align:right;font-weight:600;color:#374151">% del Total</th>
+                <th style="padding:10px 16px;text-align:right;font-weight:600;color:#374151">Margen Teórico Pond.</th>
+                <th style="padding:10px 16px;text-align:center;font-weight:600;color:#374151"></th>
+              </tr>
+            </thead>
+            <tbody id="vp-tbody-resumen"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Panel drill-down categoría -->
+      <div id="vp-drilldown" style="display:none;margin-top:20px">
+        <div style="background:#fff;border-radius:14px;border:1px solid #e5e7eb;overflow:hidden">
+          <div style="padding:16px 20px;border-bottom:1px solid #e5e7eb;display:flex;align-items:center;justify-content:space-between">
+            <div>
+              <span style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.5px">Análisis de categoría</span>
+              <h3 id="vp-dd-title" style="font-size:17px;font-weight:700;color:#111827;margin:2px 0 0 0"></h3>
+            </div>
+            <button onclick="vpCloseDrilldown()" style="background:#f3f4f6;border:none;border-radius:8px;padding:6px 14px;font-size:12px;color:#374151;cursor:pointer;font-weight:600">✕ Cerrar</button>
+          </div>
+
+          <!-- Mini cards -->
+          <div id="vp-dd-cards" style="display:flex;gap:12px;padding:16px 20px;flex-wrap:wrap;border-bottom:1px solid #f3f4f6"></div>
+
+          <!-- Dos columnas: productos + por día -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;border-bottom:1px solid #f3f4f6">
+            <!-- Productos en la categoría -->
+            <div style="padding:16px 20px;border-right:1px solid #f3f4f6">
+              <div style="font-size:12px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Productos</div>
+              <table style="width:100%;border-collapse:collapse;font-size:12px">
+                <thead><tr style="border-bottom:1px solid #f3f4f6">
+                  <th style="padding:6px 0;text-align:left;color:#6b7280;font-weight:600">Producto</th>
+                  <th style="padding:6px 0;text-align:right;color:#6b7280;font-weight:600">Und.</th>
+                  <th style="padding:6px 0;text-align:right;color:#6b7280;font-weight:600">Total</th>
+                  <th style="padding:6px 0;text-align:right;color:#6b7280;font-weight:600">% venta</th>
+                  <th style="padding:6px 0;text-align:right;color:#6b7280;font-weight:600">Margen Teórico Receta</th>
+                </tr></thead>
+                <tbody id="vp-dd-productos"></tbody>
+              </table>
+            </div>
+            <!-- Ventas por día -->
+            <div style="padding:16px 20px">
+              <div style="font-size:12px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Ventas por Día</div>
+              <div id="vp-dd-dias"></div>
+            </div>
+          </div>
+
+          <!-- Por mozo -->
+          <div style="padding:16px 20px;border-bottom:1px solid #f3f4f6">
+            <div style="font-size:12px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Por Mozo</div>
+            <div id="vp-dd-mozos" style="display:flex;gap:10px;flex-wrap:wrap"></div>
+          </div>
+
+          <!-- Receta del producto seleccionado -->
+          <div id="vp-dd-receta" style="display:none;padding:16px 20px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+              <div>
+                <div style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.5px">Receta · Márgenes</div>
+                <div id="vp-dd-receta-title" style="font-size:14px;font-weight:700;color:#111827;margin-top:2px"></div>
+              </div>
+              <button onclick="document.getElementById('vp-dd-receta').style.display='none'" style="background:#f3f4f6;border:none;border-radius:6px;padding:4px 10px;font-size:11px;color:#6b7280;cursor:pointer">✕</button>
+            </div>
+            <div id="vp-dd-receta-content"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Top Productos -->
+      <div id="vp-tab-productos" style="display:none">
+        <div style="background:#fff;border-radius:14px;border:1px solid #e5e7eb;overflow:hidden">
+          <table style="width:100%;border-collapse:collapse;font-size:13px">
+            <thead>
+              <tr style="background:#f9fafb;border-bottom:1px solid #e5e7eb">
+                <th style="padding:10px 16px;text-align:left;font-weight:600;color:#374151">#</th>
+                <th style="padding:10px 16px;text-align:left;font-weight:600;color:#374151">Producto</th>
+                <th style="padding:10px 16px;text-align:left;font-weight:600;color:#374151">Categoría</th>
+                <th style="padding:10px 16px;text-align:right;font-weight:600;color:#374151">Unidades</th>
+                <th style="padding:10px 16px;text-align:right;font-weight:600;color:#374151">Total ($)</th>
+              </tr>
+            </thead>
+            <tbody id="vp-tbody-productos"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Tabla completa -->
+      <div id="vp-tab-tabla" style="display:none">
+        <div style="margin-bottom:10px;display:flex;gap:10px;align-items:center">
+          <input type="text" id="vp-search" placeholder="Buscar producto..." oninput="vpFilterTabla()" style="border:1px solid #d1d5db;border-radius:8px;padding:7px 12px;font-size:13px;flex:1;max-width:300px">
+          <span id="vp-count" style="font-size:12px;color:#6b7280"></span>
+        </div>
+        <div style="background:#fff;border-radius:14px;border:1px solid #e5e7eb;overflow:auto;max-height:600px">
+          <table style="width:100%;border-collapse:collapse;font-size:12px">
+            <thead style="position:sticky;top:0;z-index:1">
+              <tr style="background:#f9fafb;border-bottom:1px solid #e5e7eb">
+                <th style="padding:9px 14px;text-align:left;font-weight:600;color:#374151">ID Venta</th>
+                <th style="padding:9px 14px;text-align:left;font-weight:600;color:#374151">Fecha</th>
+                <th style="padding:9px 14px;text-align:left;font-weight:600;color:#374151">Producto</th>
+                <th style="padding:9px 14px;text-align:left;font-weight:600;color:#374151">Categoría</th>
+                <th style="padding:9px 14px;text-align:right;font-weight:600;color:#374151">Cant.</th>
+                <th style="padding:9px 14px;text-align:right;font-weight:600;color:#374151">Precio ($)</th>
+                <th style="padding:9px 14px;text-align:left;font-weight:600;color:#374151">Mozo</th>
+                <th style="padding:9px 14px;text-align:left;font-weight:600;color:#374151">Cancelada</th>
+              </tr>
+            </thead>
+            <tbody id="vp-tbody-tabla"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Estado carga -->
+    <div id="vp-state" style="text-align:center;padding:60px 0;color:#6b7280;font-size:14px">
+      Selecciona un rango de fechas y presiona <strong>Cargar</strong>.
     </div>
   </div>
 </div>
@@ -1662,7 +1859,7 @@ async function doLogout() {
   document.getElementById('login-screen').style.display = 'flex';
 }
 
-const ALL_MODULES_EL = ['hub','dashboard','inventario','registro-inv-module','add-stock-module','cierres-module','pdf-upload-module','pdf-view-module','usuarios-module','locales-module','pedidos-module','reuniones-module','gdd-module','margenes-module','orden-compra-module','eerr-module','eerr-config-module','goku-module','vegeta-module','flujo-module'];
+const ALL_MODULES_EL = ['hub','dashboard','inventario','registro-inv-module','add-stock-module','cierres-module','pdf-upload-module','pdf-view-module','usuarios-module','locales-module','pedidos-module','reuniones-module','gdd-module','margenes-module','orden-compra-module','eerr-module','eerr-config-module','goku-module','vegeta-module','flujo-module','ventas-productos-module'];
 function hideAll() { ALL_MODULES_EL.forEach(id => { const el = document.getElementById(id); if(el) el.style.display = 'none'; }); }
 // Note: hideAll() does NOT hide #admin-wrapper — goToHub() handles that separately
 
@@ -1681,7 +1878,7 @@ function goTo(module) {
     'registro-inv': 'Registro de Inventarios', cierres: 'Cierres de caja', pedidos: 'Pedidos Helados',
     'pdf-upload': 'Añadir PDF', 'pdf-view': 'Ver Manual', usuarios: 'Usuarios', reuniones: 'Reuniones',
     gdd: 'Guías de Despacho', margenes: 'Márgenes', 'orden-compra': 'Pedidos', eerr: 'EERR', 'eerr-config': 'Config EERR',
-    goku: 'GOKU', vegeta: 'Vegeta', flujo: 'Flujo de Caja Proyectado'
+    goku: 'GOKU', vegeta: 'Control Ingredientes vs Inventario', flujo: 'Flujo de Caja Proyectado', 'ventas-productos': 'Ventas Productos'
   };
   const titleEl = document.getElementById('admin-topbar-title');
   if (titleEl) titleEl.textContent = moduleNames[module] || module;
@@ -1767,7 +1964,8 @@ function goTo(module) {
     ocInit();
   } else if (module === 'goku') {
     document.getElementById('goku-module').style.display = 'flex';
-    initGoku();
+    gokuWeekOffset = 0;
+    gokuLoadConfig().then(() => initGoku());
   } else if (module === 'vegeta') {
     document.getElementById('vegeta-module').style.display = 'flex';
     initVegetaModule();
@@ -1780,6 +1978,9 @@ function goTo(module) {
   } else if (module === 'flujo') {
     document.getElementById('flujo-module').style.display = 'flex';
     flujoInit();
+  } else if (module === 'ventas-productos') {
+    document.getElementById('ventas-productos-module').style.display = 'flex';
+    ventasProductosInit();
   }
 }
 
@@ -1984,15 +2185,114 @@ function renderVentas(from, to, results, partial = false) {
 // ── GOKU ────────────────────────────────────────────────────
 let gokuAbort = null;
 let gokuWeekOffset = 0;
+let gokuCategorias      = {};  // { proveedorName: 'insumo'|'gas'|'luz'|'agua'|'arriendo'|'seguro'|'otro' }
+let gokuLastByProveedor = {};  // último byProveedor cargado
+let gokuServerToday     = null; // fecha del servidor en Santiago, usada para calcular semanas
+
+const GOKU_CATS = [
+  { id: 'insumo',      label: 'Insumo',       color: '#16a34a', bg: '#f0fdf4', border: '#86efac' },
+  { id: 'desechables', label: 'Desechables',  color: '#15803d', bg: '#dcfce7', border: '#86efac' },
+  { id: 'gas',         label: 'Gas',          color: '#ea580c', bg: '#fff7ed', border: '#fdba74' },
+  { id: 'luz',         label: 'Luz',          color: '#ca8a04', bg: '#fefce8', border: '#fde047' },
+  { id: 'agua',        label: 'Agua',         color: '#2563eb', bg: '#eff6ff', border: '#93c5fd' },
+  { id: 'arriendo',    label: 'Arriendo',     color: '#7c3aed', bg: '#faf5ff', border: '#c4b5fd' },
+  { id: 'seguro',      label: 'Seguro',       color: '#0891b2', bg: '#ecfeff', border: '#a5f3fc' },
+  { id: 'remodelacion',label: 'Remodelación', color: '#9d174d', bg: '#fdf2f8', border: '#f9a8d4' },
+  { id: 'otro',        label: 'Otro',         color: '#6b7280', bg: '#f9fafb', border: '#d1d5db' },
+];
+const GOKU_CAT_MAP = Object.fromEntries(GOKU_CATS.map(c => [c.id, c]));
+
+async function gokuLoadConfig() {
+  try {
+    const [configData, todayData] = await Promise.all([
+      apiFetch('/api/goku/config').then(r => r.json()),
+      apiFetch('/api/today').then(r => r.json()),
+    ]);
+    gokuCategorias  = configData.categorias || {};
+    gokuServerToday = todayData.today || null;
+  } catch(e) { console.warn('gokuLoadConfig:', e.message); }
+}
+
+function gokuOpenConfig() {
+  const todos = [...new Set([
+    ...Object.keys(gokuLastByProveedor),
+    ...Object.keys(gokuCategorias),
+  ])].sort((a,b) => a.localeCompare(b, 'es'));
+
+  const list = document.getElementById('goku-config-list');
+  if (todos.length === 0) {
+    list.innerHTML = '<div style="color:#9ca3af;font-size:13px;padding:8px 0">Carga una semana primero para ver los proveedores.</div>';
+  } else {
+    list.innerHTML = todos.map(p => {
+      const catActual = gokuCategorias[p];
+      const isSin = !catActual;
+      const chips = GOKU_CATS.map(c => {
+        const sel = catActual === c.id;
+        return `<button onclick="gokuCatSet('${p.replace(/'/g,"\\'")}','${c.id}')"
+          style="padding:3px 10px;border-radius:20px;border:1.5px solid ${sel?c.border:'#e5e7eb'};background:${sel?c.bg:'#fff'};color:${sel?c.color:'#9ca3af'};font-size:11px;font-weight:${sel?'700':'500'};cursor:pointer;white-space:nowrap">${c.label}</button>`;
+      }).join('');
+      return `<div style="padding:10px 0;border-bottom:1px solid #f3f4f6">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+          <span style="font-size:13px;color:#111827;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p}</span>
+          ${isSin ? '<span style="font-size:10px;background:#fef3c7;color:#92400e;border-radius:4px;padding:1px 6px;font-weight:700;flex-shrink:0">Sin clasificar</span>' : ''}
+        </div>
+        <div style="display:flex;gap:4px;flex-wrap:wrap">${chips}</div>
+      </div>`;
+    }).join('');
+  }
+
+  document.getElementById('goku-config-status').textContent = '';
+  document.getElementById('goku-config-modal').style.display = 'flex';
+}
+
+function gokuCatSet(proveedor, catId) {
+  if (gokuCategorias[proveedor] === catId) {
+    delete gokuCategorias[proveedor]; // deselect → sin clasificar
+  } else {
+    gokuCategorias[proveedor] = catId;
+  }
+  gokuOpenConfig();
+}
+
+async function gokuSaveConfig() {
+  const status = document.getElementById('goku-config-status');
+  status.textContent = 'Guardando...';
+  try {
+    await apiFetch('/api/goku/config', {
+      method: 'PUT',
+      body: JSON.stringify({ categorias: gokuCategorias }),
+    });
+    status.textContent = '✓ Guardado';
+    setTimeout(() => {
+      document.getElementById('goku-config-modal').style.display = 'none';
+      initGoku();
+    }, 700);
+  } catch(e) {
+    status.textContent = 'Error: ' + e.message;
+  }
+}
 
 function shiftGokuWeek(delta) {
   gokuWeekOffset += delta;
   initGoku();
 }
 
+function gokuJumpToDate(dateStr) {
+  if (!dateStr) return;
+  const today = getTodayClient();
+  const todayD = new Date(today + 'T12:00:00Z');
+  const todayDow = todayD.getUTCDay();
+  const mondayNow = new Date(todayD.getTime() + (todayDow === 0 ? -6 : 1 - todayDow) * 86400000);
+  const picked = new Date(dateStr + 'T12:00:00Z');
+  const pickedDow = picked.getUTCDay();
+  const mondayPicked = new Date(picked.getTime() + (pickedDow === 0 ? -6 : 1 - pickedDow) * 86400000);
+  gokuWeekOffset = Math.round((mondayPicked - mondayNow) / (7 * 86400000));
+  initGoku();
+}
+
 function getWeekRangeChile() {
-  // Returns { from: 'YYYY-MM-DD', to: 'YYYY-MM-DD' } for Mon–Sun of current week + offset in Santiago
-  const today = getTodayClient(); // YYYY-MM-DD
+  // Usa fecha del servidor (Santiago) para evitar errores del reloj del browser
+  const today = gokuServerToday || getTodayClient();
   const d = new Date(today + 'T12:00:00Z');
   const dow = d.getUTCDay(); // 0=Sun,1=Mon,...,6=Sat
   const mondayOffset = (dow === 0 ? -6 : 1 - dow) + gokuWeekOffset * 7;
@@ -2015,7 +2315,9 @@ async function initGoku() {
   const { from, to } = getWeekRangeChile();
   const fmtDate = d => new Date(d + 'T12:00:00Z').toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' });
   document.getElementById('goku-week-label').textContent =
-    `Semana: ${fmtDate(from)} → ${fmtDate(to)}`;
+    `${fmtDate(from)} → ${fmtDate(to)}`;
+  const picker = document.getElementById('goku-week-picker');
+  if (picker) picker.value = from;
   document.getElementById('goku-stop-btn').style.display = 'inline-flex';
   document.getElementById('goku-content').innerHTML =
     '<div class="loading"><div class="spinner"></div><span>Cargando...</span></div>';
@@ -2023,8 +2325,15 @@ async function initGoku() {
   const gokuState = { totalVentas: 0, byPayMethod: {}, totalSales: 0, ventasErrors: [],
                       totalGastos: 0, totalGastosIva: 0, gastosCount: 0, byProveedor: {}, gastosLoaded: false, gastosError: null };
 
-  // Fetch gastos en paralelo (no bloquea ventas)
-  apiFetch(`/api/goku/gastos?from=${from}&to=${to}`, { signal: myAbort.signal })
+  const setStatus = msg => {
+    const el = document.getElementById('goku-load-status');
+    if (el) el.textContent = msg;
+  };
+  document.getElementById('goku-content').innerHTML =
+    '<div class="loading"><div class="spinner"></div><span id="goku-load-status">Cargando gastos...</span></div>';
+
+  // Fetch gastos y ventas en paralelo — acumular todo, renderizar UNA sola vez al final
+  const gastosPromise = apiFetch(`/api/goku/gastos?from=${from}&to=${to}`, { signal: myAbort.signal })
     .then(r => r.json())
     .then(data => {
       if (myAbort.signal.aborted) return;
@@ -2032,15 +2341,17 @@ async function initGoku() {
       gokuState.totalGastosIva = data.totalIva || 0;
       gokuState.gastosCount    = data.count || 0;
       gokuState.byProveedor    = data.byProveedor || {};
-      gokuState.gastosLoaded = true;
-      if (myAbort.signal.aborted) return;
-      renderGoku(gokuState, false);
+      gokuLastByProveedor      = gokuState.byProveedor;
+      gokuState.gastosLoaded   = true;
     })
     .catch(e => { if (!myAbort.signal.aborted) { gokuState.gastosError = e.message; gokuState.gastosLoaded = true; } });
 
-  // Fetch ventas de a una
-  for (const r of fudoRestaurants) {
+  // Fetch ventas de a una, actualizando solo el spinner
+  const total = fudoRestaurants.length;
+  for (let i = 0; i < total; i++) {
     if (myAbort.signal.aborted) return;
+    const r = fudoRestaurants[i];
+    setStatus(`Cargando ventas ${i + 1}/${total} (${r.name || r.id})...`);
     try {
       const data = await apiFetch(`/api/ventas/${r.id}?from=${from}&to=${to}`, { signal: myAbort.signal })
         .then(res => res.json());
@@ -2052,8 +2363,12 @@ async function initGoku() {
         });
       } else if (data.error) gokuState.ventasErrors.push(r.name);
     } catch(e) { if (!myAbort.signal.aborted) gokuState.ventasErrors.push(r.name); }
-    if (!myAbort.signal.aborted) renderGoku(gokuState, true);
-    await new Promise(r => setTimeout(r, 300));
+  }
+
+  // Esperar gastos si aún no terminó
+  if (!myAbort.signal.aborted) {
+    setStatus('Finalizando...');
+    await gastosPromise;
   }
 
   if (!myAbort.signal.aborted) {
@@ -2073,68 +2388,130 @@ function renderGoku(state, loading) {
         <span style="color:#6c757d">${m}</span><span style="color:#212529;font-weight:600">${fmt(v)}</span>
       </div>`).join('');
 
-  const gastosRows = Object.entries(byProveedor).sort((a,b)=>b[1]-a[1])
-    .map(([proveedor, neto]) => `
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid #f0f0f0;font-size:13px">
-        <span style="color:#6c757d;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:60%">${proveedor}</span>
-        <span style="color:#212529;font-weight:600;white-space:nowrap">${fmt(neto)}</span>
-      </div>`).join('');
+  // Clasificar proveedores por categoría
+  const proveedores   = Object.entries(byProveedor).sort((a,b) => b[1]-a[1]);
+  const configSet     = Object.keys(gokuCategorias).length > 0;
+  const sinClasificar = proveedores.filter(([p]) => !gokuCategorias[p]);
+  const totalInsumos  = proveedores.filter(([p]) => gokuCategorias[p] === 'insumo').reduce((s,[,v]) => s+v, 0);
+
+  // Totales por categoría para mostrar en la lista
+  const totalesCat = {};
+  for (const [p, v] of proveedores) {
+    const cat = gokuCategorias[p] || '__sin__';
+    totalesCat[cat] = (totalesCat[cat] || 0) + v;
+  }
+
+  const mkProvRow = ([proveedor, neto]) => {
+    const cat = gokuCategorias[proveedor];
+    const cfg = cat ? GOKU_CAT_MAP[cat] : null;
+    const badge = cfg
+      ? `<span style="font-size:10px;background:${cfg.bg};color:${cfg.color};border:1px solid ${cfg.border};border-radius:10px;padding:1px 7px;font-weight:700">${cfg.label}</span>`
+      : `<span style="font-size:10px;background:#fef3c7;color:#92400e;border-radius:4px;padding:1px 5px;font-weight:600">?</span>`;
+    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid #f0f0f0;font-size:13px">
+      <span style="color:#6c757d;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:50%">${proveedor}</span>
+      <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">${badge}<span style="color:#212529;font-weight:600">${fmt(neto)}</span></div>
+    </div>`;
+  };
+
+  // Ordenar: sin clasificar primero, luego por categoría
+  const gastosRows = configSet
+    ? [
+        ...sinClasificar.map(p => mkProvRow(p)),
+        ...proveedores.filter(([p]) => gokuCategorias[p]).map(p => mkProvRow(p)),
+      ].join('')
+    : proveedores.map(p => mkProvRow(p)).join('');
 
   const ventasNetas  = totalVentas / 1.19;
   const utilidad     = ventasNetas - totalGastos;
   const ratio        = ventasNetas > 0 ? (utilidad / ventasNetas * 100) : 0;
-  const flujoCaja    = totalVentas - (totalGastosIva || totalGastos * 1.19);
-  const utilColor    = utilidad  >= 0 ? '#16a34a' : '#dc2626';
-  const flujoColor   = flujoCaja >= 0 ? '#16a34a' : '#dc2626';
+  const utilColor    = utilidad >= 0 ? '#16a34a' : '#dc2626';
+
+  // Margen real solo con insumos clasificados
+  const costoRealInsumos  = configSet ? totalInsumos : null;
+  const margenRealInsumos = costoRealInsumos !== null && ventasNetas > 0
+    ? (ventasNetas - costoRealInsumos) / ventasNetas * 100 : null;
+
+  const margenColor  = margenRealInsumos !== null
+    ? (margenRealInsumos >= 60 ? '#16a34a' : margenRealInsumos >= 40 ? '#ca8a04' : '#dc2626') : '#374151';
+  const margenBg     = margenRealInsumos !== null
+    ? (margenRealInsumos >= 60 ? '#f0fdf4' : margenRealInsumos >= 40 ? '#fefce8' : '#fff1f2') : '#fff';
+  const margenBorder = margenRealInsumos !== null
+    ? (margenRealInsumos >= 60 ? '#bbf7d0' : margenRealInsumos >= 40 ? '#fef08a' : '#fca5a5') : '#e5e7eb';
+
+  // Chips de resumen por categoría para la card de gastos
+  const catChips = configSet
+    ? GOKU_CATS.filter(c => totalesCat[c.id]).map(c =>
+        `<div style="background:${c.bg};border:1px solid ${c.border};border-radius:6px;padding:4px 12px;font-size:12px">
+          <span style="color:${c.color};font-weight:700">${c.label}: ${fmt(totalesCat[c.id])}</span>
+        </div>`
+      ).join('') : '';
 
   document.getElementById('goku-content').innerHTML = `
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
 
-      <!-- Ventas -->
+    <!-- Fila 1: Ventas | Utilidad | Margen Real -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px">
+
+      <!-- Ventas Brutas -->
       <div class="card" style="margin:0">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-          <span style="font-weight:600;color:#374151">Ventas Brutas</span>
+          <span style="font-size:12px;font-weight:600;color:#6c757d;text-transform:uppercase;letter-spacing:.4px">Ventas Brutas</span>
           <span style="font-size:12px;color:#9ca3af">${totalSales} ventas${loading ? ' · cargando...' : ''}</span>
         </div>
-        <div style="font-size:30px;font-weight:800;color:#ff5023;margin-bottom:4px">${fmt(totalVentas)}</div>
+        <div style="font-size:28px;font-weight:800;color:#ff5023;margin-bottom:4px">${fmt(totalVentas)}</div>
         <div style="font-size:12px;color:#6c757d;margin-bottom:10px">Neto: ${fmt(ventasNetas)}</div>
         ${ventasMethods}
         ${ventasErrors.length ? `<div style="font-size:11px;color:#f87171;margin-top:8px">Error: ${ventasErrors.join(', ')}</div>` : ''}
       </div>
 
-      <!-- Gastos -->
+      <!-- Utilidad Neta -->
       <div class="card" style="margin:0">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-          <span style="font-weight:600;color:#374151">Gastos Neto</span>
-          <span style="font-size:12px;color:#9ca3af">${gastosLoaded ? `${gastosCount} facturas` : 'cargando...'}</span>
+        <div style="font-size:12px;font-weight:600;color:#6c757d;text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">Utilidad Neta</div>
+        <div style="font-size:28px;font-weight:800;color:${utilColor};margin-bottom:6px">${utilidad >= 0 ? '+' : ''}${fmt(utilidad)}</div>
+        <div style="font-size:22px;font-weight:700;color:${utilColor};margin-bottom:8px">${ratio >= 0 ? '+' : ''}${ratio.toFixed(1)}%</div>
+        <div style="font-size:12px;color:#9ca3af">Ventas neto − gastos neto</div>
+      </div>
+
+      <!-- Margen Real de Insumos -->
+      <div class="card" style="margin:0;background:${margenBg};border:1px solid ${margenBorder}">
+        <div style="font-size:12px;font-weight:600;color:#6c757d;text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">Margen Real de Insumos</div>
+        ${margenRealInsumos !== null ? `
+          <div style="font-size:28px;font-weight:800;color:${margenColor};margin-bottom:6px">${margenRealInsumos.toFixed(1)}%</div>
+          <div style="font-size:13px;color:#6b7280;margin-bottom:4px">${fmt(ventasNetas - costoRealInsumos)} sobre ${fmt(ventasNetas)} neto</div>
+          <div style="font-size:11px;color:#9ca3af">Ventas neto − insumos / Ventas neto</div>
+        ` : `
+          <div style="font-size:13px;color:#9ca3af;margin-top:8px">Clasificá proveedores para calcular</div>
+          <button onclick="gokuOpenConfig()" style="margin-top:12px;padding:6px 14px;border:1px solid #e5e7eb;border-radius:8px;background:#fff;color:#374151;font-size:12px;cursor:pointer;font-weight:600">Configurar</button>
+        `}
+      </div>
+
+    </div>
+
+    <!-- Fila 2: Gastos Neto (full width) -->
+    <div class="card" style="margin:0 0 16px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <div style="display:flex;align-items:baseline;gap:12px">
+          <span style="font-size:12px;font-weight:600;color:#6c757d;text-transform:uppercase;letter-spacing:.4px">Gastos Neto</span>
+          <span style="font-size:28px;font-weight:800;color:#1d4ed8">${fmt(totalGastos)}</span>
+          ${gastosLoaded && totalGastosIva ? `<span style="font-size:12px;color:#6c757d">Con IVA: ${fmt(totalGastosIva)}</span>` : ''}
         </div>
-        <div style="font-size:30px;font-weight:800;color:#1d4ed8;margin-bottom:4px">${fmt(totalGastos)}</div>
-        ${gastosLoaded && totalGastosIva ? `<div style="font-size:12px;color:#6c757d;margin-bottom:10px">Con IVA: ${fmt(totalGastosIva)}</div>` : '<div style="margin-bottom:10px"></div>'}
+        <span style="font-size:12px;color:#9ca3af">${gastosLoaded ? `${gastosCount} facturas` : 'cargando...'}</span>
+      </div>
+      ${gastosLoaded ? `
+        <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
+          ${catChips}
+          ${sinClasificar.length ? `<div onclick="gokuOpenConfig()" style="background:#fef3c7;border:1px solid #fcd34d;border-radius:6px;padding:4px 12px;font-size:12px;cursor:pointer">
+            <span style="color:#92400e;font-weight:700">⚠ ${sinClasificar.length} sin clasificar</span>
+          </div>` : ''}
+          ${!configSet ? `<div onclick="gokuOpenConfig()" style="background:#fef3c7;border:1px solid #fcd34d;border-radius:6px;padding:4px 12px;font-size:12px;cursor:pointer">
+            <span style="color:#92400e;font-weight:700">⚠ Clasificar proveedores</span>
+          </div>` : ''}
+        </div>` : '<div style="margin-bottom:12px"></div>'}
+      <div style="columns:2;column-gap:24px">
         ${gastosError ? `<div style="font-size:12px;color:#f87171">Error: ${gastosError}</div>` : gastosRows}
       </div>
-
     </div>
 
-    <!-- KPIs fila -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
-
-      <!-- Utilidad -->
-      <div class="card" style="margin:0">
-        <div style="font-size:12px;color:#6c757d;font-weight:600;text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">Utilidad Neta</div>
-        <div style="font-size:26px;font-weight:800;color:${utilColor};margin-bottom:4px">${utilidad >= 0 ? '+' : ''}${fmt(utilidad)}</div>
-        <div style="font-size:20px;font-weight:700;color:${utilColor}">${ratio >= 0 ? '+' : ''}${ratio.toFixed(1)}%</div>
-      </div>
-
-      <!-- Flujo de caja -->
-      <div class="card" style="margin:0">
-        <div style="font-size:12px;color:#6c757d;font-weight:600;text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">Flujo de Caja</div>
-        <div style="font-size:26px;font-weight:800;color:${flujoColor};margin-bottom:4px">${flujoCaja >= 0 ? '+' : ''}${fmt(flujoCaja)}</div>
-        <div style="font-size:12px;color:#9ca3af">Ventas brutas − gastos c/IVA</div>
-      </div>
-
-    </div>
-
-    <!-- Resultado semana -->
+    <!-- Fila 3: Resultado semana -->
     <div class="card" style="margin:0;display:flex;justify-content:space-between;align-items:center">
       <span style="font-weight:600;color:#374151;font-size:15px">Resultado semana</span>
       <span style="font-size:28px;font-weight:800;color:${utilColor}">${utilidad >= 0 ? '+' : ''}${fmt(utilidad)}</span>
@@ -2143,8 +2520,27 @@ function renderGoku(state, loading) {
 
 // ── VEGETA ──────────────────────────────────────────────────
 let vegetaWeekOffset = 0;
-let vegetaItems      = [];   // ítems configurados
-let vegetaProducts   = [];   // todos los productos+preparaciones disponibles
+let vegetaItems      = [];
+let vegetaProducts   = [];
+let vegetaCurrentTab = 'resumen';
+let vegetaLastData   = null;
+let vegetaSortBy     = 'desviacionNoExplicadaPesos';
+let vegetaSortDir    = -1;
+let vegetaFiltro     = 'todos';
+let vegetaAvailableTabs = [];
+let vegetaSheetTab   = null;
+
+const VEGETA_NIVEL_LABELS = { critico: '⚠ Crítico', normal: 'Normal', 'no-controlado': 'No controlado' };
+const VEGETA_NIVEL_COLORS = { critico: '#dc2626', normal: '#374151', 'no-controlado': '#9ca3af' };
+const VEGETA_ESTADO_CFG = {
+  ok:           { label: 'Correcto',    bg: '#dcfce7', color: '#16a34a' },
+  advertencia:  { label: 'Advertencia', bg: '#fef9c3', color: '#ca8a04' },
+  critico:      { label: 'Crítico',     bg: '#fee2e2', color: '#dc2626' },
+  'sin-info':   { label: 'Sin info',    bg: '#f3f4f6', color: '#6b7280' },
+  'sin-receta': { label: 'Sin receta',  bg: '#ede9fe', color: '#7c3aed' },
+  'sin-ventas': { label: 'Sin ventas',  bg: '#f3f4f6', color: '#6b7280' },
+  revisar:      { label: 'Revisar',     bg: '#ffedd5', color: '#ea580c' },
+};
 
 function shiftVegetaWeek(delta) { vegetaWeekOffset += delta; initVegeta(); }
 
@@ -2159,23 +2555,27 @@ function getVegetaWeekRange() {
 }
 
 async function initVegetaModule() {
-  // Populate restaurant selector once
   const sel = document.getElementById('vegeta-rest-sel');
   if (sel.options.length <= 1) {
     const rests = restaurants || [];
     sel.innerHTML = rests.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
   }
-  // Load products+preparations for config dropdown (once)
   if (!vegetaProducts.length) {
     try {
       const [pRes, prepRes] = await Promise.all([
         apiFetch('/api/inv/products').then(r => r.json()),
         apiFetch('/api/preparations').then(r => r.json())
       ]);
-      const prods  = (pRes.products || []).map(p => ({ id: p.id, name: p.name, type: 'product',      unit: p.unit || '' }));
-      const preps  = (prepRes.preparations || pRes.preparations || []).map(p => ({ id: p.id, name: p.name, type: 'preparation', unit: p.unit || '' }));
+      const prods = (pRes.products || []).map(p => ({ id: p.id, name: p.name, type: 'product', unit: p.unit || '' }));
+      const preps = (prepRes.preparations || []).map(p => ({ id: p.id, name: p.name, type: 'preparation', unit: p.unit || '' }));
       vegetaProducts = [...prods, ...preps].sort((a,b) => a.name.localeCompare(b.name));
     } catch(e) { console.warn('vegeta load products:', e.message); }
+  }
+  if (!vegetaAvailableTabs.length) {
+    try {
+      const r = await apiFetch('/api/ventas-sheets/tabs').then(r => r.json());
+      vegetaAvailableTabs = r.tabs || [];
+    } catch(e) {}
   }
   initVegeta();
 }
@@ -2187,16 +2587,16 @@ async function initVegeta() {
   const fmtD = d => new Date(d + 'T12:00:00Z').toLocaleDateString('es-CL', { day: 'numeric', month: 'short' });
   document.getElementById('vegeta-week-label').textContent = `${fmtD(from)} → ${fmtD(to)}`;
   document.getElementById('vegeta-content').innerHTML = '<div class="loading"><div class="spinner"></div><span>Cargando...</span></div>';
-
   try {
-    // Load items config + calce in parallel
     const [cfgRes, calceRes] = await Promise.all([
       apiFetch(`/api/vegeta/items/${restId}`).then(r => r.json()),
       apiFetch(`/api/vegeta/calce/${restId}?from=${from}&to=${to}`).then(r => r.json())
     ]);
-    vegetaItems = cfgRes.items || [];
+    vegetaItems   = cfgRes.items || [];
+    vegetaSheetTab = calceRes.sheetTab;
+    vegetaLastData = calceRes;
     renderVegetaConfig(vegetaItems);
-    renderVegetaCalce(calceRes);
+    vegetaRenderAll(calceRes);
   } catch(e) {
     document.getElementById('vegeta-content').innerHTML = `<div style="color:#dc2626;font-size:14px">Error: ${e.message}</div>`;
   }
@@ -2209,25 +2609,61 @@ function toggleVegetaConfig() {
 }
 
 function renderVegetaConfig(items) {
-  // Populate add dropdown
   const sel = document.getElementById('vegeta-add-sel');
   const existingIds = new Set(items.map(i => i.id));
   sel.innerHTML = '<option value="">— Seleccionar ítem —</option>' +
     vegetaProducts.filter(p => !existingIds.has(p.id))
       .map(p => `<option value="${p.id}" data-name="${p.name}" data-type="${p.type}" data-unit="${p.unit}">${p.name}${p.type==='preparation'?' (prep)':''}</option>`).join('');
 
-  // List of current items
   const list = document.getElementById('vegeta-items-list');
-  if (!items.length) { list.innerHTML = '<div style="font-size:13px;color:#9ca3af">Sin ítems configurados</div>'; return; }
-  list.innerHTML = items.map(item => `
+
+  // Selector de hoja de ventas
+  const tabOpts = vegetaAvailableTabs.map(t =>
+    `<option value="${t}" ${t === vegetaSheetTab ? 'selected' : ''}>${t}</option>`
+  ).join('');
+  const sheetRow = `<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:8px 10px;background:#ede9fe;border-radius:8px;font-size:13px">
+    <span style="font-weight:600;color:#6366f1;white-space:nowrap">📊 Hoja de ventas:</span>
+    <select id="vegeta-sheet-sel" onchange="vegetaSaveSheetTab(this.value)"
+      style="flex:1;border:1px solid #c4b5fd;border-radius:6px;padding:3px 7px;font-size:12px;background:#fff;color:#374151">
+      <option value="">— Sin vincular —</option>
+      ${tabOpts}
+    </select>
+  </div>`;
+
+  if (!items.length) {
+    list.innerHTML = sheetRow + '<div style="font-size:13px;color:#9ca3af">Sin ítems configurados</div>';
+    return;
+  }
+  const nivelBadge = nivel => {
+    const lbl = VEGETA_NIVEL_LABELS[nivel] || 'Normal';
+    const col = VEGETA_NIVEL_COLORS[nivel] || '#374151';
+    return `<span style="font-size:11px;color:${col};background:#f3f4f6;padding:2px 7px;border-radius:10px;cursor:pointer;white-space:nowrap">${lbl}</span>`;
+  };
+  list.innerHTML = sheetRow + items.map(item => `
     <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:#f8f9fa;border-radius:8px;font-size:13px">
       <span style="flex:1;font-weight:500;color:#212529">${item.name}</span>
-      <span style="font-size:11px;color:#9ca3af;background:#e9ecef;padding:2px 6px;border-radius:10px">${item.type}</span>
-      <span style="font-size:11px;color:#6c757d">GDD: </span>
+      <span style="font-size:11px;color:#9ca3af;background:#e9ecef;padding:2px 6px;border-radius:10px">${item.unit}</span>
+      <select onchange="vegetaSetNivelControl('${item.id}',this.value)"
+        style="border:1px solid #dee2e6;border-radius:6px;padding:2px 6px;font-size:11px;color:#374151;background:#fff">
+        <option value="normal" ${(item.nivelControl||'normal')==='normal'?'selected':''}>Normal</option>
+        <option value="critico" ${item.nivelControl==='critico'?'selected':''}>Crítico</option>
+        <option value="no-controlado" ${item.nivelControl==='no-controlado'?'selected':''}>No controlado</option>
+      </select>
+      <span style="font-size:11px;color:#6c757d">GDD:</span>
       <input value="${item.gddKeyword || item.name}" onchange="vegetaUpdateKeyword('${item.id}',this.value)"
-        style="border:1px solid #dee2e6;border-radius:6px;padding:3px 7px;font-size:12px;width:150px;color:#374151">
+        style="border:1px solid #dee2e6;border-radius:6px;padding:3px 7px;font-size:12px;width:140px;color:#374151">
       <button onclick="vegetaRemoveItem('${item.id}')" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:16px;padding:0 4px">×</button>
     </div>`).join('');
+}
+
+async function vegetaSaveSheetTab(tab) {
+  const restId = document.getElementById('vegeta-rest-sel').value;
+  await apiFetch(`/api/vegeta/config/${restId}`, {
+    method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sheetTab: tab || null })
+  });
+  vegetaSheetTab = tab || null;
+  initVegeta();
 }
 
 async function vegetaAddItem() {
@@ -2237,8 +2673,7 @@ async function vegetaAddItem() {
   const restId = document.getElementById('vegeta-rest-sel').value;
   try {
     const res = await apiFetch(`/api/vegeta/items/${restId}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id: opt.value, name: opt.dataset.name, type: opt.dataset.type, unit: opt.dataset.unit })
     }).then(r => r.json());
     vegetaItems = res.items || [];
@@ -2258,20 +2693,60 @@ async function vegetaRemoveItem(itemId) {
 async function vegetaUpdateKeyword(itemId, keyword) {
   const restId = document.getElementById('vegeta-rest-sel').value;
   await apiFetch(`/api/vegeta/items/${restId}/${itemId}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
+    method: 'PATCH', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ gddKeyword: keyword })
   });
-  // reload calce silently
   const { from, to } = getVegetaWeekRange();
   const calceRes = await apiFetch(`/api/vegeta/calce/${restId}?from=${from}&to=${to}`).then(r => r.json());
-  renderVegetaCalce(calceRes);
+  vegetaLastData = calceRes;
+  vegetaRenderAll(calceRes);
 }
 
-function renderVegetaCalce(data) {
-  const { results = [], stockInicialDate, stockFinalDate } = data;
-  const fmt = n => n == null ? '—' : (Math.round(n * 100) / 100).toLocaleString('es-CL');
-  const fmtD = d => d ? new Date(d + 'T12:00:00Z').toLocaleDateString('es-CL', { day: 'numeric', month: 'short' }) : '—';
+async function vegetaSetNivelControl(itemId, nivel) {
+  const restId = document.getElementById('vegeta-rest-sel').value;
+  const res = await apiFetch(`/api/vegeta/items/${restId}/${itemId}/control`, {
+    method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ nivelControl: nivel })
+  }).then(r => r.json());
+  vegetaItems = res.items || [];
+  if (vegetaLastData) {
+    vegetaLastData.results = (vegetaLastData.results || []).map(r =>
+      r.id === itemId ? { ...r, nivelControl: nivel } : r
+    );
+    vegetaRenderAll(vegetaLastData);
+  }
+}
+
+function vegetaSetTab(tab) {
+  vegetaCurrentTab = tab;
+  if (vegetaLastData) vegetaRenderAll(vegetaLastData);
+}
+
+function vegetaSetFiltro(filtro) {
+  vegetaFiltro = filtro;
+  if (vegetaLastData) vegetaRenderAll(vegetaLastData);
+}
+
+function vegetaSetSort(col) {
+  if (vegetaSortBy === col) vegetaSortDir *= -1;
+  else { vegetaSortBy = col; vegetaSortDir = -1; }
+  if (vegetaLastData) vegetaRenderAll(vegetaLastData);
+}
+
+function vegetaApplyFiltro(results) {
+  switch (vegetaFiltro) {
+    case 'criticos':        return results.filter(r => r.nivelControl === 'critico');
+    case 'con-desviacion':  return results.filter(r => r.estado === 'critico' || r.estado === 'advertencia');
+    case 'con-merma':       return results.filter(r => r.mermaRegistrada > 0);
+    case 'sin-teorico':     return results.filter(r => r.consumoTeorico == null);
+    case 'sin-inventario':  return results.filter(r => r.stockInicial == null || r.stockFinal == null);
+    default: return results;
+  }
+}
+
+function vegetaRenderAll(data) {
+  const { results = [], stockInicialDate, stockFinalDate, resumen, sheetTab, ventasError, productosSinReceta = [] } = data;
+  const fmtD = d => d ? new Date(d + 'T12:00:00Z').toLocaleDateString('es-CL', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
 
   if (!results.length) {
     document.getElementById('vegeta-content').innerHTML = `
@@ -2282,72 +2757,475 @@ function renderVegetaCalce(data) {
     return;
   }
 
-  const dateNote = `<div style="font-size:11px;color:#9ca3af;margin-bottom:16px">
-    Stock inicial: inventario del ${fmtD(stockInicialDate)} · Stock final: inventario del ${fmtD(stockFinalDate)}
+  // Alertas globales
+  const alertas = [];
+  if (!sheetTab) alertas.push('Sin hoja de ventas vinculada — el consumo teórico no puede calcularse. Configura en ⚙ Ítems.');
+  if (ventasError) alertas.push(`Error al cargar ventas: ${ventasError}`);
+  if (productosSinReceta.length) alertas.push(`${productosSinReceta.length} producto(s) vendidos sin receta vinculada: ${productosSinReceta.slice(0,3).join(', ')}${productosSinReceta.length > 3 ? '…' : ''}`);
+
+  const alertasHtml = alertas.map(a =>
+    `<div style="background:#fef9c3;border:1px solid #fde68a;border-radius:8px;padding:8px 14px;font-size:12px;color:#92400e;margin-bottom:8px">⚠ ${a}</div>`
+  ).join('');
+
+  // Tabs
+  const tabs = [
+    { key: 'resumen',      label: 'Resumen' },
+    { key: 'desviaciones', label: 'Desviaciones' },
+    { key: 'mermas',       label: 'Mermas' },
+    { key: 'criticos',     label: 'Críticos' },
+  ];
+  const tabBar = `<div style="display:flex;gap:2px;margin-bottom:20px;background:#e9ecef;border-radius:10px;padding:3px">
+    ${tabs.map(t => `<button onclick="vegetaSetTab('${t.key}')"
+      style="flex:1;padding:7px 10px;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;
+             background:${vegetaCurrentTab===t.key?'#fff':'transparent'};
+             color:${vegetaCurrentTab===t.key?'#1d4ed8':'#6b7280'};
+             box-shadow:${vegetaCurrentTab===t.key?'0 1px 4px rgba(0,0,0,.1)':'none'}">${t.label}</button>`).join('')}
   </div>`;
 
-  const thStyle = 'padding:10px 12px;font-size:12px;font-weight:600;color:#6c757d;text-transform:uppercase;letter-spacing:.3px;text-align:right;white-space:nowrap';
-  const tdStyle = 'padding:10px 12px;font-size:14px;color:#212529;text-align:right;border-bottom:1px solid #f0f0f0';
-  const tdName  = 'padding:10px 12px;font-size:14px;font-weight:500;color:#212529;border-bottom:1px solid #f0f0f0';
+  const dateNote = `<div style="font-size:11px;color:#9ca3af;margin-bottom:12px">
+    Stock inicial: ${fmtD(stockInicialDate)} · Stock final: ${fmtD(stockFinalDate)}
+  </div>`;
 
-  const rows = results.map(r => {
-    const mermaColor = r.consumoReal != null && r.consumoReal < 0 ? '#ef4444' : r.consumoReal != null && r.consumoReal > 0 ? '#212529' : '#9ca3af';
-    const gddDetail = r.gddMatches?.length
-      ? r.gddMatches.map(m => `<div style="font-size:11px;color:#6c757d">${m.fecha} · ${m.proveedor}: +${m.cantidad} ${m.unidad||''}</div>`).join('')
-      : '<div style="font-size:11px;color:#9ca3af">Sin entregas GDD</div>';
+  let content = '';
+  if (vegetaCurrentTab === 'resumen')      content = vegetaBuildResumen(resumen, results, dateNote);
+  else if (vegetaCurrentTab === 'desviaciones') content = vegetaBuildDesviaciones(results, dateNote);
+  else if (vegetaCurrentTab === 'mermas')  content = vegetaBuildMermas(data);
+  else if (vegetaCurrentTab === 'criticos') content = vegetaBuildCriticos(results);
 
-    const recipeCount = (r.linkedRecipes || []).length;
-    const recipeBtn = recipeCount
+  document.getElementById('vegeta-content').innerHTML = alertasHtml + tabBar + content;
+}
+
+function vegetaBuildResumen(resumen, results, dateNote) {
+  if (!resumen) return `<div style="text-align:center;padding:32px;color:#9ca3af">Sin datos de resumen.</div>`;
+  const fmt$ = n => n == null ? '—' : '$' + Math.round(n).toLocaleString('es-CL');
+  const fmtN = n => n == null ? '—' : n.toLocaleString('es-CL');
+
+  const cards = [
+    { icon: '📈', label: 'Costo Teórico', val: fmt$(resumen.costoTeorico), color: '#6366f1', desc: 'Según ventas y recetas' },
+    { icon: '📦', label: 'Costo Real', val: fmt$(resumen.costoReal), color: '#374151', desc: 'Según inventarios y GDD' },
+    { icon: '⚖', label: 'Desviación Total', val: fmt$(resumen.desviacionTotal), color: resumen.desviacionTotal > 0 ? '#dc2626' : '#16a34a', desc: 'Real − Teórico' },
+    { icon: '🗑', label: 'Merma Registrada', val: fmt$(resumen.mermaTotal), color: '#f59e0b', desc: 'Documentada en el período' },
+    { icon: '❓', label: 'Desviac. No Explicada', val: fmt$(resumen.desviacionNoExplicadaTotal), color: resumen.desviacionNoExplicadaTotal > 0 ? '#dc2626' : '#6b7280', desc: 'Desviac. − Merma' },
+  ].map(c => `<div style="background:#fff;border-radius:12px;padding:16px;flex:1;min-width:140px;border:1px solid #e9ecef;box-shadow:0 1px 4px rgba(0,0,0,.05)">
+    <div style="font-size:22px;margin-bottom:6px">${c.icon}</div>
+    <div style="font-size:18px;font-weight:700;color:${c.color}">${c.val}</div>
+    <div style="font-size:12px;font-weight:600;color:#374151;margin-top:2px">${c.label}</div>
+    <div style="font-size:11px;color:#9ca3af">${c.desc}</div>
+  </div>`).join('');
+
+  const kpis = `<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:20px">${cards}</div>`;
+
+  const badges = `<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px">
+    <div style="background:#fff;border-radius:10px;padding:12px 18px;border:1px solid #e9ecef;text-align:center">
+      <div style="font-size:22px;font-weight:700;color:#374151">${fmtN(resumen.totalIngredientes)}</div>
+      <div style="font-size:11px;color:#6b7280">Ingredientes rastreados</div>
+    </div>
+    <div style="background:#fff;border-radius:10px;padding:12px 18px;border:1px solid #e9ecef;text-align:center">
+      <div style="font-size:22px;font-weight:700;color:#dc2626">${fmtN(resumen.ingredientesConAlerta)}</div>
+      <div style="font-size:11px;color:#6b7280">Con alerta</div>
+    </div>
+    <div style="background:#fff;border-radius:10px;padding:12px 18px;border:1px solid #e9ecef;text-align:center">
+      <div style="font-size:22px;font-weight:700;color:#16a34a">${resumen.pctEnRango}%</div>
+      <div style="font-size:11px;color:#6b7280">En rango aceptable</div>
+    </div>
+  </div>`;
+
+  // Top 5 desviaciones no explicadas
+  const top5 = [...results]
+    .filter(r => r.desviacionNoExplicadaPesos != null)
+    .sort((a,b) => Math.abs(b.desviacionNoExplicadaPesos) - Math.abs(a.desviacionNoExplicadaPesos))
+    .slice(0, 5);
+
+  const top5Html = top5.length ? `
+    <div style="background:#fff;border-radius:12px;border:1px solid #e9ecef;overflow:hidden;margin-bottom:16px">
+      <div style="padding:14px 16px;border-bottom:1px solid #e9ecef;font-size:12px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.4px">
+        Top ingredientes por desviación no explicada ($)
+      </div>
+      ${top5.map(r => {
+        const pct = r.desviacionNoExplicadaPesos;
+        const color = pct > 0 ? '#dc2626' : '#16a34a';
+        const cfg = VEGETA_ESTADO_CFG[r.estado] || VEGETA_ESTADO_CFG['sin-info'];
+        return `<div style="display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid #f5f5f5;cursor:pointer" onclick="vegetaShowDetalle(${JSON.stringify(r).replace(/"/g,'&quot;')})">
+          <span style="flex:1;font-size:13px;font-weight:600;color:#212529">${r.name}</span>
+          <span style="font-size:11px;color:#6b7280">${r.unit}</span>
+          <span style="font-size:11px;padding:2px 8px;border-radius:10px;background:${cfg.bg};color:${cfg.color}">${cfg.label}</span>
+          <span style="font-size:14px;font-weight:700;color:${color}">${pct >= 0 ? '+' : ''}$${Math.round(pct).toLocaleString('es-CL')}</span>
+        </div>`;
+      }).join('')}
+    </div>` : '';
+
+  return dateNote + kpis + badges + top5Html;
+}
+
+function vegetaBuildDesviaciones(results, dateNote) {
+  const fmt  = n => n == null ? '—' : (Math.round(n * 100) / 100).toLocaleString('es-CL');
+  const fmt$ = n => n == null ? '—' : (n >= 0 ? '+' : '') + '$' + Math.round(n).toLocaleString('es-CL');
+  const fmtPct = n => n == null ? '—' : (n >= 0 ? '+' : '') + n.toFixed(1) + '%';
+
+  // Filtros rápidos
+  const filtros = [
+    { key: 'todos', label: 'Todos' },
+    { key: 'criticos', label: 'Solo críticos' },
+    { key: 'con-desviacion', label: 'Con desviación' },
+    { key: 'con-merma', label: 'Con merma' },
+    { key: 'sin-teorico', label: 'Sin consumo teórico' },
+    { key: 'sin-inventario', label: 'Sin inventario' },
+  ];
+  const filtroBar = `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">
+    ${filtros.map(f => `<button onclick="vegetaSetFiltro('${f.key}')"
+      style="padding:4px 12px;border-radius:16px;border:1px solid #dee2e6;font-size:12px;cursor:pointer;
+             background:${vegetaFiltro===f.key?'#1d4ed8':'#fff'};
+             color:${vegetaFiltro===f.key?'#fff':'#374151'}">${f.label}</button>`).join('')}
+  </div>`;
+
+  let rows = vegetaApplyFiltro(results);
+
+  // Ordenar
+  const sortKey = vegetaSortBy;
+  rows = [...rows].sort((a, b) => {
+    const av = a[sortKey] ?? (vegetaSortDir < 0 ? -Infinity : Infinity);
+    const bv = b[sortKey] ?? (vegetaSortDir < 0 ? -Infinity : Infinity);
+    if (typeof av === 'string') return vegetaSortDir * av.localeCompare(bv);
+    return vegetaSortDir * (av - bv);
+  });
+
+  const thBtn = (col, label) => {
+    const active = vegetaSortBy === col;
+    const arrow = active ? (vegetaSortDir > 0 ? '↑' : '↓') : '';
+    return `<th onclick="vegetaSetSort('${col}')" style="padding:9px 10px;font-size:11px;font-weight:600;color:${active?'#1d4ed8':'#6b7280'};text-transform:uppercase;letter-spacing:.3px;white-space:nowrap;cursor:pointer;user-select:none;text-align:right">${label} ${arrow}</th>`;
+  };
+
+  const tableRows = rows.map(r => {
+    const cfg = VEGETA_ESTADO_CFG[r.estado] || VEGETA_ESTADO_CFG['sin-info'];
+    const estadoBadge = `<span style="font-size:11px;padding:2px 8px;border-radius:10px;background:${cfg.bg};color:${cfg.color};white-space:nowrap">${cfg.label}</span>`;
+    const td = (v, extra = '') => `<td style="padding:8px 10px;font-size:13px;color:#212529;text-align:right;border-bottom:1px solid #f0f0f0${extra}">${v}</td>`;
+    const color$ = n => n == null ? '#9ca3af' : n > 0 ? '#dc2626' : n < 0 ? '#16a34a' : '#374151';
+
+    const recipeBtn = r.linkedRecipes?.length
       ? `<button onclick='vegetaShowRecipes(${JSON.stringify(r.linkedRecipes).replace(/'/g,"&#39;")},"${r.name}")'
-           style="padding:3px 10px;background:#ede9fe;color:#6366f1;border:none;border-radius:12px;font-size:12px;cursor:pointer;white-space:nowrap">
-           📋 ${recipeCount} recetas
-         </button>`
-      : ``;
+           style="padding:2px 8px;background:#ede9fe;color:#6366f1;border:none;border-radius:10px;font-size:11px;cursor:pointer">${r.linkedRecipes.length} rec.</button>`
+      : '';
 
-    return `<tr>
-      <td style="${tdName}">${r.name}<div style="font-size:11px;color:#9ca3af">${r.unit}</div></td>
-      <td style="${tdStyle}">${fmt(r.stockInicial)}</td>
-      <td style="${tdStyle}">
-        <div style="color:#16a34a;font-weight:600">${r.entradasGDD > 0 ? '+'+fmt(r.entradasGDD) : fmt(r.entradasGDD)}</div>
-        ${gddDetail}
+    return `<tr style="cursor:pointer" onclick="vegetaShowDetalle(${JSON.stringify(r).replace(/"/g,'&quot;')})">
+      <td style="padding:8px 10px;font-size:13px;font-weight:600;color:#212529;border-bottom:1px solid #f0f0f0;white-space:nowrap">
+        ${r.name}<div style="font-size:10px;color:#9ca3af;font-weight:400">${r.unit}</div>
       </td>
-      <td style="${tdStyle}">${fmt(r.stockFinal)}</td>
-      <td style="${tdStyle};font-weight:700;color:${mermaColor}">${fmt(r.consumoReal)}</td>
-      <td style="${tdStyle}">${recipeBtn}</td>
-      <td style="${tdStyle};color:#9ca3af">—</td>
+      ${td(fmt(r.stockInicial))}
+      ${td(r.entradasGDD > 0 ? `<span style="color:#16a34a">+${fmt(r.entradasGDD)}</span>` : fmt(r.entradasGDD))}
+      ${td(fmt(r.stockFinal))}
+      ${td(`<strong>${fmt(r.consumoReal)}</strong>`)}
+      ${td(fmt(r.consumoTeorico))}
+      ${td(`<strong style="color:${color$(r.desviacion)}">${fmt(r.desviacion)}</strong>`)}
+      ${td(`<span style="color:${color$(r.desviacionPct)}">${fmtPct(r.desviacionPct)}</span>`)}
+      ${td(`<strong style="color:${color$(r.desviacionPesos)}">${fmt$(r.desviacionPesos)}</strong>`)}
+      ${td(fmt(r.mermaRegistrada))}
+      ${td(`<strong style="color:${color$(r.desviacionNoExplicada)}">${fmt(r.desviacionNoExplicada)}</strong>`)}
+      ${td(`<strong style="color:${color$(r.desviacionNoExplicadaPesos)}">${fmt$(r.desviacionNoExplicadaPesos)}</strong>`)}
+      <td style="padding:8px 10px;border-bottom:1px solid #f0f0f0">${estadoBadge}</td>
+      <td style="padding:8px 10px;border-bottom:1px solid #f0f0f0">${recipeBtn}</td>
     </tr>`;
   }).join('');
 
-  document.getElementById('vegeta-content').innerHTML = `
-    ${dateNote}
+  return dateNote + filtroBar + `
     <div style="background:#fff;border-radius:12px;border:1px solid #e9ecef;overflow:auto">
-      <table style="width:100%;border-collapse:collapse">
+      <table style="width:100%;border-collapse:collapse;min-width:1100px">
         <thead>
-          <tr style="border-bottom:2px solid #e9ecef">
-            <th style="${thStyle};text-align:left">Ítem</th>
-            <th style="${thStyle}">Stock Inicial</th>
-            <th style="${thStyle}">Entradas GDD</th>
-            <th style="${thStyle}">Stock Final</th>
-            <th style="${thStyle}">Consumo Real</th>
-            <th style="${thStyle};text-align:left">Recetas vinculadas</th>
-            <th style="${thStyle}">Merma</th>
+          <tr style="border-bottom:2px solid #e9ecef;background:#f9fafb">
+            <th style="padding:9px 10px;font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;text-align:left">Ingrediente</th>
+            ${thBtn('stockInicial','Stock Ini.')}
+            ${thBtn('entradasGDD','GDD')}
+            ${thBtn('stockFinal','Stock Fin.')}
+            ${thBtn('consumoReal','Cons. Real')}
+            ${thBtn('consumoTeorico','Cons. Teórico')}
+            ${thBtn('desviacion','Desv. Cant.')}
+            ${thBtn('desviacionPct','Desv. %')}
+            ${thBtn('desviacionPesos','Desv. $')}
+            ${thBtn('mermaRegistrada','Merma')}
+            ${thBtn('desviacionNoExplicada','No Explicada')}
+            ${thBtn('desviacionNoExplicadaPesos','No Expl. $')}
+            <th style="padding:9px 10px;font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase">Estado</th>
+            <th style="padding:9px 10px;font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase">Recetas</th>
           </tr>
         </thead>
-        <tbody>${rows}</tbody>
+        <tbody>${tableRows || '<tr><td colspan="14" style="padding:32px;text-align:center;color:#9ca3af">Sin resultados para este filtro</td></tr>'}</tbody>
       </table>
     </div>`;
 }
 
-function vegetaShowRecipes(recipes, itemName) {
-  // Remove existing popup
-  document.getElementById('vegeta-recipes-popup')?.remove();
+function vegetaBuildMermas(data) {
+  const { results = [] } = data;
+  const { from, to } = getVegetaWeekRange();
+  const restId = document.getElementById('vegeta-rest-sel').value;
 
+  const motivos = ['vencimiento', 'quemado', 'derrame', 'mal-estado', 'produccion', 'rotura', 'consumo-personal', 'otro'];
+  const motivoLabel = { vencimiento:'Vencimiento', quemado:'Quemado', derrame:'Derrame', 'mal-estado':'Mal estado', produccion:'Error producción', rotura:'Rotura', 'consumo-personal':'Consumo personal', otro:'Otro' };
+
+  const ingOpts = results.map(r => `<option value="${r.id}" data-unit="${r.unit}" data-name="${r.name}">${r.name} (${r.unit})</option>`).join('');
+
+  const forma = `<div style="background:#fff;border-radius:12px;border:1px solid #e9ecef;padding:20px;margin-bottom:16px">
+    <div style="font-size:13px;font-weight:700;color:#374151;margin-bottom:14px">Registrar Merma</div>
+    <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end">
+      <div style="flex:2;min-width:180px">
+        <label style="font-size:11px;color:#6b7280;display:block;margin-bottom:3px">Ingrediente</label>
+        <select id="vg-m-ing" style="width:100%;border:1px solid #dee2e6;border-radius:7px;padding:6px 9px;font-size:13px;background:#fff">
+          <option value="">— Seleccionar —</option>${ingOpts}
+        </select>
+      </div>
+      <div style="flex:1;min-width:90px">
+        <label style="font-size:11px;color:#6b7280;display:block;margin-bottom:3px">Cantidad</label>
+        <input id="vg-m-cant" type="number" min="0" step="0.001" placeholder="0"
+          style="width:100%;border:1px solid #dee2e6;border-radius:7px;padding:6px 9px;font-size:13px">
+      </div>
+      <div style="flex:1;min-width:110px">
+        <label style="font-size:11px;color:#6b7280;display:block;margin-bottom:3px">Motivo</label>
+        <select id="vg-m-motivo" style="width:100%;border:1px solid #dee2e6;border-radius:7px;padding:6px 9px;font-size:13px;background:#fff">
+          ${motivos.map(m => `<option value="${m}">${motivoLabel[m]}</option>`).join('')}
+        </select>
+      </div>
+      <div style="flex:1;min-width:120px">
+        <label style="font-size:11px;color:#6b7280;display:block;margin-bottom:3px">Fecha</label>
+        <input id="vg-m-fecha" type="date" value="${from}"
+          style="width:100%;border:1px solid #dee2e6;border-radius:7px;padding:6px 9px;font-size:13px">
+      </div>
+      <div style="flex:2;min-width:150px">
+        <label style="font-size:11px;color:#6b7280;display:block;margin-bottom:3px">Notas (opcional)</label>
+        <input id="vg-m-notas" placeholder="Ej: caja en mal estado"
+          style="width:100%;border:1px solid #dee2e6;border-radius:7px;padding:6px 9px;font-size:13px">
+      </div>
+      <button onclick="vegetaGuardarMerma('${restId}')"
+        style="padding:7px 18px;background:#374151;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap">+ Guardar</button>
+    </div>
+  </div>`;
+
+  // Cargar y mostrar mermas del período
+  const listaId = 'vg-mermas-lista';
+  vegetaCargarMermas(restId, from, to, listaId);
+
+  return forma + `<div id="${listaId}"><div class="loading"><div class="spinner"></div><span>Cargando mermas…</span></div></div>`;
+}
+
+async function vegetaCargarMermas(restId, from, to, containerId) {
+  try {
+    const res = await apiFetch(`/api/vegeta/mermas/${restId}?from=${from}&to=${to}`).then(r => r.json());
+    const mermas = res.mermas || [];
+    const cont = document.getElementById(containerId);
+    if (!cont) return;
+    if (!mermas.length) {
+      cont.innerHTML = '<div style="text-align:center;padding:32px;color:#9ca3af;font-size:13px">Sin mermas registradas en este período.</div>';
+      return;
+    }
+    const motivoLabel = { vencimiento:'Vencimiento', quemado:'Quemado', derrame:'Derrame', 'mal-estado':'Mal estado', produccion:'Error producción', rotura:'Rotura', 'consumo-personal':'Consumo personal', otro:'Otro' };
+    const rows = mermas.map(m => `
+      <tr>
+        <td style="padding:8px 12px;font-size:13px;font-weight:600;color:#212529;border-bottom:1px solid #f0f0f0">${m.productName || m.productId}</td>
+        <td style="padding:8px 12px;font-size:13px;text-align:right;border-bottom:1px solid #f0f0f0">${m.cantidad} ${m.unidad || ''}</td>
+        <td style="padding:8px 12px;font-size:13px;border-bottom:1px solid #f0f0f0">${motivoLabel[m.motivo] || m.motivo}</td>
+        <td style="padding:8px 12px;font-size:13px;border-bottom:1px solid #f0f0f0">${m.fecha}</td>
+        <td style="padding:8px 12px;font-size:12px;color:#6b7280;border-bottom:1px solid #f0f0f0">${m.notas || ''}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #f0f0f0">
+          <button onclick="vegetaEliminarMerma('${restId}','${m.id}')"
+            style="background:none;border:none;color:#ef4444;font-size:14px;cursor:pointer;padding:0">×</button>
+        </td>
+      </tr>`).join('');
+    cont.innerHTML = `<div style="background:#fff;border-radius:12px;border:1px solid #e9ecef;overflow:auto">
+      <table style="width:100%;border-collapse:collapse">
+        <thead><tr style="background:#f9fafb;border-bottom:2px solid #e9ecef">
+          <th style="padding:8px 12px;font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;text-align:left">Ingrediente</th>
+          <th style="padding:8px 12px;font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;text-align:right">Cantidad</th>
+          <th style="padding:8px 12px;font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase">Motivo</th>
+          <th style="padding:8px 12px;font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase">Fecha</th>
+          <th style="padding:8px 12px;font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase">Notas</th>
+          <th></th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+  } catch(e) {
+    const cont = document.getElementById(containerId);
+    if (cont) cont.innerHTML = `<div style="color:#ef4444;font-size:13px">Error: ${e.message}</div>`;
+  }
+}
+
+async function vegetaGuardarMerma(restId) {
+  const ingSel = document.getElementById('vg-m-ing');
+  const opt    = ingSel.options[ingSel.selectedIndex];
+  const cant   = parseFloat(document.getElementById('vg-m-cant').value);
+  const motivo = document.getElementById('vg-m-motivo').value;
+  const fecha  = document.getElementById('vg-m-fecha').value;
+  const notas  = document.getElementById('vg-m-notas').value.trim();
+  if (!opt?.value || !(cant > 0) || !fecha) { alert('Completa ingrediente, cantidad y fecha.'); return; }
+  try {
+    await apiFetch(`/api/vegeta/mermas/${restId}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ productId: opt.value, productName: opt.dataset.name, cantidad: cant, unidad: opt.dataset.unit, motivo, fecha, notas })
+    });
+    document.getElementById('vg-m-cant').value = '';
+    document.getElementById('vg-m-notas').value = '';
+    const { from, to } = getVegetaWeekRange();
+    vegetaCargarMermas(restId, from, to, 'vg-mermas-lista');
+    initVegeta(); // recargar calce para actualizar desviacionNoExplicada
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
+async function vegetaEliminarMerma(restId, mermaId) {
+  if (!confirm('¿Eliminar esta merma?')) return;
+  await apiFetch(`/api/vegeta/mermas/${restId}/${mermaId}`, { method: 'DELETE' });
+  const { from, to } = getVegetaWeekRange();
+  vegetaCargarMermas(restId, from, to, 'vg-mermas-lista');
+  initVegeta();
+}
+
+function vegetaBuildCriticos(results) {
+  const criticos = results.filter(r => r.nivelControl === 'critico');
+  if (!criticos.length) {
+    return `<div style="text-align:center;padding:40px;color:#9ca3af">
+      <div style="font-size:28px;margin-bottom:8px">⚠</div>
+      <div style="font-size:13px">Ningún ingrediente marcado como Crítico. Márcalos en ⚙ Ítems.</div>
+    </div>`;
+  }
+  const fmt  = n => n == null ? '—' : (Math.round(n * 100) / 100).toLocaleString('es-CL');
+  const fmt$ = n => n == null ? '—' : (n >= 0 ? '+' : '') + '$' + Math.round(n).toLocaleString('es-CL');
+  const fmtPct = n => n == null ? '—' : (n >= 0 ? '+' : '') + n.toFixed(1) + '%';
+  const color$ = n => n == null ? '#9ca3af' : n > 0 ? '#dc2626' : n < 0 ? '#16a34a' : '#374151';
+
+  const sorted = [...criticos].sort((a,b) =>
+    Math.abs(b.desviacionNoExplicadaPesos || 0) - Math.abs(a.desviacionNoExplicadaPesos || 0)
+  );
+
+  const cards = sorted.map(r => {
+    const cfg = VEGETA_ESTADO_CFG[r.estado] || VEGETA_ESTADO_CFG['sin-info'];
+    const adv = r.advertencias?.length
+      ? `<div style="margin-top:8px">${r.advertencias.map(a => `<div style="font-size:11px;color:#92400e;background:#fef9c3;padding:2px 7px;border-radius:4px;margin-bottom:2px">⚠ ${a}</div>`).join('')}</div>`
+      : '';
+    return `<div onclick="vegetaShowDetalle(${JSON.stringify(r).replace(/"/g,'&quot;')})"
+      style="background:#fff;border-radius:12px;border:2px solid ${cfg.color}30;padding:16px;cursor:pointer;transition:box-shadow .15s"
+      onmouseover="this.style.boxShadow='0 4px 16px rgba(0,0,0,.1)'" onmouseout="this.style.boxShadow='none'">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
+        <div>
+          <div style="font-size:14px;font-weight:700;color:#212529">${r.name}</div>
+          <div style="font-size:11px;color:#6b7280">${r.unit}</div>
+        </div>
+        <span style="font-size:11px;padding:3px 9px;border-radius:10px;background:${cfg.bg};color:${cfg.color}">${cfg.label}</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px">
+        <div><span style="color:#6b7280">Consumo real</span><br><strong>${fmt(r.consumoReal)}</strong></div>
+        <div><span style="color:#6b7280">Consumo teórico</span><br><strong>${fmt(r.consumoTeorico)}</strong></div>
+        <div><span style="color:#6b7280">Desviación $</span><br><strong style="color:${color$(r.desviacionPesos)}">${fmt$(r.desviacionPesos)}</strong></div>
+        <div><span style="color:#6b7280">No explicada $</span><br><strong style="color:${color$(r.desviacionNoExplicadaPesos)}">${fmt$(r.desviacionNoExplicadaPesos)}</strong></div>
+      </div>
+      ${adv}
+    </div>`;
+  }).join('');
+
+  return `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px">${cards}</div>`;
+}
+
+function vegetaShowDetalle(item) {
+  if (typeof item === 'string') { try { item = JSON.parse(item); } catch(e) { return; } }
+  document.getElementById('vegeta-detalle-popup')?.remove();
+  const fmt  = n => n == null ? '—' : (Math.round(n * 100) / 100).toLocaleString('es-CL');
+  const fmt$ = n => n == null ? '—' : '$' + Math.abs(Math.round(n)).toLocaleString('es-CL');
+  const fmtPct = n => n == null ? '—' : n.toFixed(1) + '%';
+  const cfg = VEGETA_ESTADO_CFG[item.estado] || VEGETA_ESTADO_CFG['sin-info'];
+  const color$ = n => n == null ? '#9ca3af' : n > 0 ? '#dc2626' : n < 0 ? '#16a34a' : '#374151';
+
+  const gddRows = (item.gddMatches || []).map(m =>
+    `<tr><td style="padding:4px 8px;font-size:12px">${m.fecha}</td><td style="padding:4px 8px;font-size:12px">${m.proveedor}</td>
+     <td style="padding:4px 8px;font-size:12px">${m.producto}</td>
+     <td style="padding:4px 8px;font-size:12px;text-align:right;color:#16a34a">+${m.cantidad} ${m.unidad||''}</td></tr>`
+  ).join('') || '<tr><td colspan="4" style="padding:8px;color:#9ca3af;text-align:center">Sin entregas GDD</td></tr>';
+
+  const ventasRows = (item.ventasDetalle || []).map(v =>
+    `<tr><td style="padding:4px 8px;font-size:12px">${v.recipeName}</td>
+     <td style="padding:4px 8px;font-size:12px;text-align:right">${v.units}</td>
+     <td style="padding:4px 8px;font-size:12px;text-align:right">${fmt(v.qtyPerUnit)}</td>
+     <td style="padding:4px 8px;font-size:12px;text-align:right;color:#6366f1">${fmt(v.total)}</td></tr>`
+  ).join('') || `<tr><td colspan="4" style="padding:8px;color:#9ca3af;text-align:center">${item.consumoTeorico == null ? 'Sin receta vinculada o sin ventas' : 'Sin ventas en el período'}</td></tr>`;
+
+  const calcSection = `
+    <div style="background:#f9fafb;border-radius:10px;padding:14px;margin-bottom:14px;font-size:13px">
+      <div style="font-weight:700;color:#374151;margin-bottom:10px">Cálculo de consumo</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        ${[
+          ['Stock inicial', fmt(item.stockInicial), '#374151'],
+          ['Entradas GDD', `+${fmt(item.entradasGDD)}`, '#16a34a'],
+          ['Stock final', `-${fmt(item.stockFinal)}`, '#374151'],
+          ['= Consumo real', fmt(item.consumoReal), '#1d4ed8'],
+          ['Consumo teórico', fmt(item.consumoTeorico), '#6b7280'],
+          ['Desviación', (item.desviacion != null ? (item.desviacion >= 0 ? '+' : '') + fmt(item.desviacion) : '—'), color$(item.desviacion)],
+          ['Desviación %', fmtPct(item.desviacionPct), color$(item.desviacionPct)],
+          ['Costo/unidad', item.costoPorUnidad ? '$' + item.costoPorUnidad.toLocaleString('es-CL') : '—', '#374151'],
+          ['Desviación $', (item.desviacionPesos != null ? (item.desviacionPesos >= 0 ? '+' : '-') + fmt$(item.desviacionPesos) : '—'), color$(item.desviacionPesos)],
+          ['Merma registrada', fmt(item.mermaRegistrada), '#f59e0b'],
+          ['No explicada (cant.)', (item.desviacionNoExplicada != null ? (item.desviacionNoExplicada >= 0 ? '+' : '') + fmt(item.desviacionNoExplicada) : '—'), color$(item.desviacionNoExplicada)],
+          ['No explicada ($)', (item.desviacionNoExplicadaPesos != null ? (item.desviacionNoExplicadaPesos >= 0 ? '+' : '-') + fmt$(item.desviacionNoExplicadaPesos) : '—'), color$(item.desviacionNoExplicadaPesos)],
+        ].map(([lbl, val, col]) => `
+          <div style="color:#6b7280">${lbl}</div>
+          <div style="font-weight:700;color:${col}">${val}</div>
+        `).join('')}
+      </div>
+    </div>`;
+
+  const advSection = (item.advertencias || []).length
+    ? `<div style="margin-bottom:14px">${item.advertencias.map(a =>
+        `<div style="font-size:12px;color:#92400e;background:#fef9c3;padding:5px 10px;border-radius:6px;margin-bottom:4px">⚠ ${a}</div>`
+      ).join('')}</div>` : '';
+
+  const popup = document.createElement('div');
+  popup.id = 'vegeta-detalle-popup';
+  popup.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;overflow-y:auto;padding:20px';
+  popup.innerHTML = `
+    <div style="background:#fff;border-radius:16px;max-width:700px;margin:0 auto;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.25)">
+      <div style="padding:18px 22px;border-bottom:1px solid #e9ecef;display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div style="font-size:17px;font-weight:700;color:#212529">${item.name}</div>
+          <div style="font-size:12px;color:#6b7280">Unidad: ${item.unit} ·
+            <span style="padding:2px 8px;border-radius:8px;background:${cfg.bg};color:${cfg.color};font-size:11px">${cfg.label}</span>
+          </div>
+        </div>
+        <button onclick="document.getElementById('vegeta-detalle-popup').remove()"
+          style="background:#f3f4f6;border:none;border-radius:8px;padding:7px 14px;font-size:13px;color:#374151;cursor:pointer">✕ Cerrar</button>
+      </div>
+      <div style="padding:20px 22px;max-height:75vh;overflow-y:auto">
+        ${advSection}
+        ${calcSection}
+        <div style="font-weight:700;color:#374151;font-size:12px;text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px">Entradas GDD del período</div>
+        <div style="background:#fff;border:1px solid #e9ecef;border-radius:8px;overflow:hidden;margin-bottom:14px">
+          <table style="width:100%;border-collapse:collapse">
+            <thead><tr style="background:#f9fafb">
+              <th style="padding:6px 8px;font-size:11px;color:#6b7280;text-align:left">Fecha</th>
+              <th style="padding:6px 8px;font-size:11px;color:#6b7280;text-align:left">Proveedor</th>
+              <th style="padding:6px 8px;font-size:11px;color:#6b7280;text-align:left">Producto</th>
+              <th style="padding:6px 8px;font-size:11px;color:#6b7280;text-align:right">Cantidad</th>
+            </tr></thead>
+            <tbody>${gddRows}</tbody>
+          </table>
+        </div>
+        <div style="font-weight:700;color:#374151;font-size:12px;text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px">Consumo teórico por producto vendido</div>
+        <div style="background:#fff;border:1px solid #e9ecef;border-radius:8px;overflow:hidden">
+          <table style="width:100%;border-collapse:collapse">
+            <thead><tr style="background:#f9fafb">
+              <th style="padding:6px 8px;font-size:11px;color:#6b7280;text-align:left">Receta/Producto</th>
+              <th style="padding:6px 8px;font-size:11px;color:#6b7280;text-align:right">Uds. vendidas</th>
+              <th style="padding:6px 8px;font-size:11px;color:#6b7280;text-align:right">Qty/receta (${item.unit})</th>
+              <th style="padding:6px 8px;font-size:11px;color:#6b7280;text-align:right">Total (${item.unit})</th>
+            </tr></thead>
+            <tbody>${ventasRows}</tbody>
+          </table>
+        </div>
+      </div>
+    </div>`;
+  popup.addEventListener('click', e => { if (e.target === popup) popup.remove(); });
+  document.body.appendChild(popup);
+}
+
+function vegetaShowRecipes(recipes, itemName) {
+  document.getElementById('vegeta-recipes-popup')?.remove();
   const rows = recipes.map(r => `
     <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f0f0f0">
       <button onclick="goTo('margenes')" style="background:none;border:none;padding:0;font-size:13px;color:#6366f1;cursor:pointer;text-align:left;text-decoration:underline">${r.name}</button>
       <span style="font-size:12px;color:#374151;font-weight:600;white-space:nowrap;margin-left:16px">${r.quantity} ${r.unit}</span>
     </div>`).join('');
-
   const popup = document.createElement('div');
   popup.id = 'vegeta-recipes-popup';
   popup.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:9999;display:flex;align-items:center;justify-content:center';
@@ -2361,15 +3239,14 @@ function vegetaShowRecipes(recipes, itemName) {
         <button onclick="document.getElementById('vegeta-recipes-popup').remove()"
           style="background:none;border:none;font-size:20px;color:#9ca3af;cursor:pointer;line-height:1">×</button>
       </div>
-      ${rows}
+      ${rows || '<div style="color:#9ca3af;text-align:center;padding:16px">Sin recetas</div>'}
     </div>`;
   popup.addEventListener('click', e => { if (e.target === popup) popup.remove(); });
   document.body.appendChild(popup);
 }
 
-function vegetaOpenRecipe(recipeId, recipeType) {
-  const row = document.querySelector(`[data-recipe-id="${recipeId}"]`) ||
-              document.querySelector(`[data-prep-id="${recipeId}"]`);
+function vegetaOpenRecipe(recipeId) {
+  const row = document.querySelector(`[data-recipe-id="${recipeId}"]`);
   if (row) { row.scrollIntoView({ behavior: 'smooth', block: 'center' }); row.style.background = '#fef3c7'; setTimeout(() => row.style.background = '', 2000); }
 }
 
@@ -3881,11 +4758,12 @@ function renderAdminSidebar() {
     {
       label: 'Finanzas', icon: 'fas fa-chart-line',
       items: [
-        { id: 'goku',         icon: 'fas fa-bolt',          name: 'GOKU',                        adminOnly: false },
-        { id: 'vegeta',       icon: 'fas fa-fire',          name: 'Vegeta',                      adminOnly: false },
-        { id: 'eerr',         icon: 'fas fa-chart-line',    name: 'EERR',                        adminOnly: false },
-        { id: 'flujo',        icon: 'fas fa-stream',        name: 'Flujo de Caja Proyectado',    adminOnly: false },
-        { id: 'margenes',     icon: 'fas fa-percentage',    name: 'Márgenes',                    adminOnly: false },
+        { id: 'margenes',          icon: 'fas fa-percentage',    name: 'Márgenes',                    adminOnly: false },
+        { id: 'goku',              icon: 'fas fa-bolt',          name: 'GOKU',                        adminOnly: false },
+        { id: 'ventas-productos',  icon: 'fas fa-receipt',       name: 'Ventas Productos',            adminOnly: false },
+        { id: 'vegeta',            icon: 'fas fa-balance-scale', name: 'Control Ing. vs Inventario',  adminOnly: false },
+        { id: 'eerr',              icon: 'fas fa-chart-line',    name: 'EERR',                        adminOnly: false },
+        { id: 'flujo',             icon: 'fas fa-stream',        name: 'Flujo de Caja Proyectado',    adminOnly: false },
       ]
     },
     {
@@ -4030,11 +4908,12 @@ function renderSidebar() {
       { id: 'inventario',   icon: '🥕', name: 'Ingredientes',           bg: 'linear-gradient(135deg,#3d9e72,#52c98a)', adminOnly: false },
     ]},
     { label: 'Finanzas', items: [
-      { id: 'goku',         icon: '⚡', name: 'GOKU',                        bg: 'linear-gradient(135deg,#f59e0b,#f97316)', adminOnly: false },
-      { id: 'vegeta',       icon: '🔥', name: 'Vegeta',                      bg: 'linear-gradient(135deg,#b91c1c,#ef4444)', adminOnly: false },
-      { id: 'eerr',         icon: '📊', name: 'EERR',                        bg: 'linear-gradient(135deg,#1d4ed8,#3b82f6)', adminOnly: false },
-      { id: 'flujo',        icon: '💰', name: 'Flujo de Caja Proyectado',    bg: 'linear-gradient(135deg,#065f46,#10b981)', adminOnly: false },
-      { id: 'margenes',     icon: '📐', name: 'Márgenes',                    bg: 'linear-gradient(135deg,#7c3aed,#a855f7)', adminOnly: false },
+      { id: 'margenes',          icon: '📐', name: 'Márgenes',                    bg: 'linear-gradient(135deg,#7c3aed,#a855f7)', adminOnly: false },
+      { id: 'goku',              icon: '⚡', name: 'GOKU',                        bg: 'linear-gradient(135deg,#f59e0b,#f97316)', adminOnly: false },
+      { id: 'ventas-productos',  icon: '🧾', name: 'Ventas Productos',            bg: 'linear-gradient(135deg,#0f766e,#10b981)', adminOnly: false },
+      { id: 'vegeta',            icon: '📊', name: 'Control Ing. vs Inventario',  bg: 'linear-gradient(135deg,#1d4ed8,#3b82f6)', adminOnly: false },
+      { id: 'eerr',              icon: '📊', name: 'EERR',                        bg: 'linear-gradient(135deg,#1d4ed8,#3b82f6)', adminOnly: false },
+      { id: 'flujo',             icon: '💰', name: 'Flujo de Caja Proyectado',    bg: 'linear-gradient(135deg,#065f46,#10b981)', adminOnly: false },
     ]},
     { label: 'Venta Helados B2B', items: [
       { id: 'b2b-clientes', icon: '👥', name: 'Clientes',               bg: 'linear-gradient(135deg,#0f766e,#10b981)', adminOnly: false },
@@ -7025,6 +7904,7 @@ async function eerrInit() {
   });
 
   eerrOnRestChange();
+  eerrLoadSummary();
 }
 
 function eerrOnRestChange() {
@@ -7045,6 +7925,248 @@ function eerrOnRestChange() {
     chipaxSel.value = '';
     if (status) status.textContent = 'Sin vínculo — selecciona y guarda';
   }
+}
+
+async function eerrLoadSummary() {
+  const panel = document.getElementById('eerr-summary-panel');
+  if (!panel) return;
+  const year = document.getElementById('eerr-year-sel')?.value || new Date().getFullYear().toString();
+  const MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+
+  panel.innerHTML = '<div style="padding:14px 0;color:#9ca3af;font-size:13px"><i class="fas fa-circle-notch fa-spin" style="margin-right:8px"></i>Cargando resumen...</div>';
+
+  try {
+    const [eerrCfg, allCierresArr, allSbArr, allEpArr, chipaxPerLocal] = await Promise.all([
+      apiFetch('/api/eerr/config').then(r=>r.json()).catch(()=>({ excluded:[] })),
+      Promise.all(eerrRestaurants.map(r =>
+        apiFetch(`/api/cierres/${r.id}?all=true`).then(res=>res.json()).catch(()=>({cierres:[]}))
+      )),
+      Promise.all(eerrRestaurants.map(r =>
+        apiFetch(`/api/eerr/scotiabank?localName=${encodeURIComponent(r.name)}&year=${year}`).then(res=>res.json()).catch(()=>({}))
+      )),
+      Promise.all(eerrRestaurants.map(r =>
+        apiFetch(`/api/eerr/efectivo-pagado?localName=${encodeURIComponent(r.name)}&year=${year}`).then(res=>res.json()).catch(()=>({}))
+      )),
+      Promise.all(eerrRestaurants.map(r => {
+        const lid = eerrMapping[r.id]?.lineaNegocioId;
+        if (!lid) return Promise.resolve({ grouped:{} });
+        return apiFetch(`/api/chipax/ro-datos?lineaNegocioId=${lid}&fechaInicial=${year}-01-01&fechaFinal=${year}-12-31`)
+          .then(res=>res.json()).catch(()=>({ grouped:{} }));
+      })),
+    ]);
+
+    const exSet = new Set(eerrCfg.excluded || []);
+
+    const sheetCatTotal = (data, m) => {
+      const per = `${year}-${String(m).padStart(2,'0')}`;
+      return -Object.values(data).reduce((s, p) => s + (p[per]||0), 0);
+    };
+    const chipaxAllMes = (grouped, m) => {
+      const per = `${year}-${String(m).padStart(2,'0')}`;
+      let sum = 0;
+      Object.values(grouped).forEach(subs =>
+        Object.entries(subs).forEach(([sub, periodos]) => {
+          if (!exSet.has(sub)) sum += periodos[per]||0;
+        })
+      );
+      return -sum;
+    };
+
+    const localData = eerrRestaurants.map((r, i) => {
+      const byMonth = {};
+      (allCierresArr[i].cierres||[]).filter(c=>(c.fecha||'').startsWith(year)).forEach(c => {
+        const m = parseInt((c.fecha||'').split('-')[1], 10);
+        if (!m) return;
+        if (!byMonth[m]) byMonth[m] = { transbank:0, efectivo:0 };
+        byMonth[m].transbank += c.transbank||0;
+        byMonth[m].efectivo  += c.efectivo ||0;
+      });
+      const grouped   = chipaxPerLocal[i].grouped || {};
+      const hasChipax = Object.keys(grouped).length > 0;
+      let totalIngr = 0, totalRO = 0;
+      const ingrByMonth = {}, roByMonth = {}, tbByMonth = {}, efByMonth = {};
+      for (let m = 1; m <= 12; m++) {
+        const tb   = (byMonth[m]?.transbank||0)/1.19;
+        const ef   = byMonth[m]?.efectivo||0;
+        const ingr = tb + ef;
+        const ro   = ingr + chipaxAllMes(grouped, m) + sheetCatTotal(allEpArr[i], m) + sheetCatTotal(allSbArr[i], m);
+        tbByMonth[m]   = tb;
+        efByMonth[m]   = ef;
+        ingrByMonth[m] = ingr;
+        roByMonth[m]   = ro;
+        totalIngr += ingr;
+        totalRO   += ro;
+      }
+      return { rest:r, totalIngr, totalRO, hasChipax, ingrByMonth, roByMonth, tbByMonth, efByMonth };
+    });
+
+    // Meses con datos
+    const mesesConDatos = [...new Set(
+      localData.flatMap(d => Object.keys(d.ingrByMonth).filter(m => d.ingrByMonth[m] > 0).map(Number))
+    )].sort((a,b) => a-b);
+
+    let consIngr = 0, consRO = 0;
+    const consIngrByMonth = {}, consROByMonth = {};
+    localData.forEach(d => {
+      consIngr += d.totalIngr; consRO += d.totalRO;
+      for (let m = 1; m <= 12; m++) {
+        consIngrByMonth[m] = (consIngrByMonth[m]||0) + d.ingrByMonth[m];
+        consROByMonth[m]   = (consROByMonth[m]||0)   + d.roByMonth[m];
+      }
+    });
+
+    const fmt = v => {
+      if (!v) return '—';
+      return (v < 0 ? '-$' : '$') + Math.abs(Math.round(v)).toLocaleString('es-CL');
+    };
+    // Compact format for monthly cells (no decimals, short)
+    const fmtM = v => {
+      if (!Math.round(v)) return '—';
+      const abs = Math.abs(Math.round(v));
+      const s = abs >= 1000000
+        ? (abs/1000000).toFixed(1).replace(/\.0$/,'') + 'M'
+        : abs >= 1000
+          ? (abs/1000).toFixed(0) + 'K'
+          : String(abs);
+      return (v < 0 ? '-$' : '$') + s;
+    };
+    const roColor = v => v < 0 ? '#dc2626' : v > 0 ? '#16a34a' : '#6b7280';
+    const pct = (ro, ingr) => ingr > 0 ? (ro/ingr*100).toFixed(1)+'%' : '—';
+
+    // Build header TH cells for months
+    const thMeses = mesesConDatos.map(m =>
+      `<th style="padding:7px 10px;text-align:right;font-size:11px;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;border-bottom:1px solid #e5e7eb;white-space:nowrap">${MESES[m-1]}</th>`
+    ).join('');
+
+    const tdSub = (v, color, extra) =>
+      `<td style="padding:4px 10px;text-align:right;color:${color};font-size:11px;border-bottom:1px solid #f3f4f6;white-space:nowrap${extra||''}">${fmtM(v)}</td>`;
+
+    // Build all rows interleaved per local
+    const allRows = localData.flatMap(d => {
+      const roC    = roColor(d.totalRO);
+      const warn   = d.hasChipax ? '' : ' <span style="color:#f59e0b;font-size:11px" title="Sin Chipax vinculado">⚠</span>';
+      const tbTotal = Object.values(d.tbByMonth).reduce((s,v)=>s+v,0);
+      const efTotal = Object.values(d.efByMonth).reduce((s,v)=>s+v,0);
+
+      // Main ventas row
+      const mainRow = `<tr style="cursor:pointer" onmouseover="this.style.background='#f0f9ff'" onmouseout="this.style.background=''" onclick="eerrSelectLocal('${d.rest.id}')">
+        <td style="padding:11px 14px 4px;font-weight:600;color:#1f2937;white-space:nowrap;position:sticky;left:0;background:inherit">${d.rest.name}${warn}</td>
+        ${mesesConDatos.map(m => `<td style="padding:9px 10px 4px;text-align:right;color:#374151;white-space:nowrap;font-size:12px">${fmtM(d.ingrByMonth[m]||0)}</td>`).join('')}
+        <td style="padding:9px 10px 4px;text-align:right;font-weight:700;color:#111827;white-space:nowrap;border-left:2px solid #e5e7eb">${fmt(d.totalIngr)}</td>
+        <td style="padding:9px 10px 4px;text-align:right;color:${roC};font-weight:600;white-space:nowrap">${fmt(d.totalRO)}</td>
+        <td style="padding:9px 10px 4px;text-align:right;color:${roC};white-space:nowrap">${pct(d.totalRO,d.totalIngr)}</td>
+        <td style="padding:9px 10px 4px;text-align:center;color:#3b82f6;font-size:12px;font-weight:500;white-space:nowrap">Ver →</td>
+      </tr>`;
+
+      // Transbank sub-row
+      const tbRow = `<tr style="background:#fafafa">
+        <td style="padding:3px 14px 3px 24px;font-size:11px;color:#9ca3af;border-bottom:1px solid #f3f4f6;position:sticky;left:0;background:#fafafa;white-space:nowrap">Transbank (sin IVA)</td>
+        ${mesesConDatos.map(m => tdSub(d.tbByMonth[m]||0, '#374151')).join('')}
+        <td style="padding:3px 10px;text-align:right;font-size:11px;color:#374151;border-bottom:1px solid #f3f4f6;border-left:2px solid #e5e7eb;white-space:nowrap">${fmt(tbTotal)}</td>
+        <td style="border-bottom:1px solid #f3f4f6" colspan="3"></td>
+      </tr>`;
+
+      // Efectivo sub-row
+      const efRow = `<tr style="background:#fafafa">
+        <td style="padding:3px 14px 3px 24px;font-size:11px;color:#9ca3af;border-bottom:1px solid #f3f4f6;position:sticky;left:0;background:#fafafa;white-space:nowrap">Efectivo</td>
+        ${mesesConDatos.map(m => tdSub(d.efByMonth[m]||0, '#374151')).join('')}
+        <td style="padding:3px 10px;text-align:right;font-size:11px;color:#374151;border-bottom:1px solid #f3f4f6;border-left:2px solid #e5e7eb;white-space:nowrap">${fmt(efTotal)}</td>
+        <td style="border-bottom:1px solid #f3f4f6" colspan="3"></td>
+      </tr>`;
+
+      // Resultado Op. sub-row
+      const roRow = `<tr style="background:#f5f5f5">
+        <td style="padding:3px 14px 3px 24px;font-size:11px;color:${roC};font-weight:600;position:sticky;left:0;background:#f5f5f5;white-space:nowrap">Resultado Op.</td>
+        ${mesesConDatos.map(m => { const v=d.roByMonth[m]||0; const c=roColor(v);
+          return `<td style="padding:3px 10px;text-align:right;color:${c};font-size:11px;font-weight:600;white-space:nowrap">${fmtM(v)}</td>`;
+        }).join('')}
+        <td style="padding:3px 10px;text-align:right;font-size:11px;font-weight:700;color:${roC};border-left:2px solid #e5e7eb;white-space:nowrap">${fmt(d.totalRO)}</td>
+        <td></td>
+        <td style="padding:3px 10px;text-align:right;font-size:11px;font-weight:600;color:${roC};white-space:nowrap">${pct(d.totalRO,d.totalIngr)}</td>
+        <td></td>
+      </tr>`;
+
+      // Margen % sub-row
+      const margenRow = `<tr style="background:#f5f5f5">
+        <td style="padding:3px 14px 6px 24px;font-size:11px;color:#9ca3af;font-weight:500;border-bottom:2px solid #e5e7eb;position:sticky;left:0;background:#f5f5f5;white-space:nowrap">Margen %</td>
+        ${mesesConDatos.map(m => {
+          const ro   = d.roByMonth[m]||0;
+          const ingr = d.ingrByMonth[m]||0;
+          const p    = ingr > 0 ? (ro/ingr*100).toFixed(1)+'%' : '—';
+          const c    = roColor(ro);
+          return `<td style="padding:3px 10px 6px;text-align:right;color:${c};font-size:11px;border-bottom:2px solid #e5e7eb;white-space:nowrap">${p}</td>`;
+        }).join('')}
+        <td style="border-bottom:2px solid #e5e7eb;border-left:2px solid #e5e7eb"></td>
+        <td style="border-bottom:2px solid #e5e7eb"></td>
+        <td style="border-bottom:2px solid #e5e7eb"></td>
+        <td style="border-bottom:2px solid #e5e7eb"></td>
+      </tr>`;
+
+      return [mainRow, tbRow, efRow, roRow, margenRow];
+    }).join('');
+
+    // Consolidated row
+    const cc = roColor(consRO);
+    const consMesCells = mesesConDatos.map(m => {
+      const v = consIngrByMonth[m] || 0;
+      return `<td style="padding:9px 10px;border-top:2px solid #3b82f6;text-align:right;color:#1e40af;white-space:nowrap;font-size:12px">${fmtM(v)}</td>`;
+    }).join('');
+
+    const cc2 = roColor(consRO);
+
+    panel.innerHTML = `
+      <div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.05)">
+        <div style="padding:14px 18px;border-bottom:1px solid #e5e7eb;background:#f9fafb;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+          <span style="font-weight:600;font-size:14px;color:#111827">Resumen ${year} — Todos los locales</span>
+          <div style="display:flex;gap:28px">
+            <div style="text-align:right">
+              <div style="font-size:11px;color:#6b7280;margin-bottom:2px">Ventas Neto Consolidado</div>
+              <div style="font-size:18px;font-weight:700;color:#111827">${fmt(consIngr)}</div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-size:11px;color:#6b7280;margin-bottom:2px">Resultado Operacional Consolidado</div>
+              <div style="font-size:18px;font-weight:700;color:${cc2}">${fmt(consRO)} <span style="font-size:13px;font-weight:500">${pct(consRO,consIngr)}</span></div>
+            </div>
+          </div>
+        </div>
+        <div style="overflow-x:auto">
+          <table style="width:100%;border-collapse:collapse;font-size:13px;min-width:900px">
+            <thead>
+              <tr style="background:#f9fafb">
+                <th style="padding:8px 14px;text-align:left;font-size:11px;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;border-bottom:1px solid #e5e7eb;position:sticky;left:0;background:#f9fafb">Local</th>
+                ${thMeses}
+                <th style="padding:8px 10px;text-align:right;font-size:11px;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;border-bottom:1px solid #e5e7eb;border-left:2px solid #e5e7eb;white-space:nowrap">Total Ventas</th>
+                <th style="padding:8px 10px;text-align:right;font-size:11px;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;border-bottom:1px solid #e5e7eb;white-space:nowrap">Resultado Op.</th>
+                <th style="padding:8px 10px;text-align:right;font-size:11px;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;border-bottom:1px solid #e5e7eb;white-space:nowrap">Margen %</th>
+                <th style="padding:8px 10px;border-bottom:1px solid #e5e7eb"></th>
+              </tr>
+            </thead>
+            <tbody>
+              ${allRows}
+              <tr style="background:#eff6ff;font-weight:700;cursor:pointer" onmouseover="this.style.background='#dbeafe'" onmouseout="this.style.background='#eff6ff'" onclick="eerrSelectLocal('__all__')">
+                <td style="padding:10px 14px;border-top:2px solid #3b82f6;color:#1e40af;position:sticky;left:0;background:inherit">Total Consolidado</td>
+                ${consMesCells}
+                <td style="padding:10px 10px;text-align:right;border-top:2px solid #3b82f6;color:#1e40af;white-space:nowrap;border-left:2px solid #3b82f6">${fmt(consIngr)}</td>
+                <td style="padding:10px 10px;text-align:right;border-top:2px solid #3b82f6;color:${cc};white-space:nowrap">${fmt(consRO)}</td>
+                <td style="padding:10px 10px;text-align:right;border-top:2px solid #3b82f6;color:${cc};white-space:nowrap">${pct(consRO,consIngr)}</td>
+                <td style="padding:10px 10px;text-align:center;border-top:2px solid #3b82f6;color:#3b82f6;font-size:12px;font-weight:500">Ver →</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div style="padding:8px 14px;font-size:11px;color:#9ca3af;border-top:1px solid #f3f4f6">
+          Ventas Neto (sin IVA). Resultado Op. incluye Chipax + Scotiabank + Efectivo Pagado. No incluye GDD. ⚠ = sin Chipax vinculado.
+        </div>
+      </div>`;
+  } catch(e) {
+    panel.innerHTML = `<div style="padding:12px 0;color:#dc2626;font-size:13px">Error al cargar resumen: ${e.message}</div>`;
+  }
+}
+
+function eerrSelectLocal(restaurantId) {
+  document.getElementById('eerr-rest-sel').value = restaurantId;
+  eerrOnRestChange();
+  eerrLoad();
 }
 
 async function eerrSaveMapping() {
@@ -7408,6 +8530,43 @@ async function eerrLoad() {
       gddKeys.forEach(k => addRow(k, m => gddMes(k,m), { indent:true, color:gddColor }));
       addRow('', null, { separator:true });
     }
+
+    // ── MARGEN DE CONTRIBUCIÓN ──
+    // = Ingresos Neto + Costos de Insumos (Chipax) + GDD + Scotiabank
+    const insumosCats = costCats.filter(c => c.toLowerCase().includes('insumos'));
+    const ingrNetoMes = m => (byMonth[m]?.transbank||0)/1.19 + (byMonth[m]?.efectivo||0);
+    const margenContribMes = m => {
+      const insumosT = insumosCats.reduce((s,c) => s + chipaxCatMes(c,m), 0);
+      const sbT      = sheetCatTotal(scotiaData, m);
+      const gddI     = gddKeys.length ? gddTotal(m) : 0;
+      return ingrNetoMes(m) + insumosT + sbT + gddI;
+    };
+    addRow('Margen de Contribución', m => margenContribMes(m), { bold:true, bg:'#ecfdf5', color:'#065f46' });
+    // Fila de porcentaje
+    (()=>{
+      const tr = document.createElement('tr');
+      tr.style.background = '#ecfdf5';
+      const tdL = document.createElement('td');
+      tdL.style.cssText = 'padding:5px 12px 5px 28px;border-bottom:1px solid #d1fae5;font-size:12px;color:#065f46';
+      tdL.textContent = 'Margen de Contribución %';
+      tr.appendChild(tdL);
+      todosLosMeses.forEach(m => {
+        const td = document.createElement('td');
+        td.style.cssText = 'text-align:right;padding:5px 12px;border-bottom:1px solid #d1fae5;font-size:12px;color:#065f46';
+        const ingr = ingrNetoMes(m);
+        const mc   = margenContribMes(m);
+        td.textContent = ingr > 0 ? (mc / ingr * 100).toFixed(1) + '%' : '—';
+        tr.appendChild(td);
+      });
+      const tdTot = document.createElement('td');
+      const totIngr = todosLosMeses.reduce((s,m) => s + ingrNetoMes(m), 0);
+      const totMC   = todosLosMeses.reduce((s,m) => s + margenContribMes(m), 0);
+      tdTot.style.cssText = 'text-align:right;padding:5px 12px;border-bottom:1px solid #d1fae5;font-size:12px;font-weight:700;background:#d1fae5;color:#065f46';
+      tdTot.textContent = totIngr > 0 ? (totMC / totIngr * 100).toFixed(1) + '%' : '—';
+      tr.appendChild(tdTot);
+      tbody.appendChild(tr);
+    })();
+    addRow('', null, { separator:true });
 
     // ── RESULTADO OPERACIONAL ──
     // Solo usar categorías que se muestran en la tabla (costCats + gastoCats)
@@ -8352,6 +9511,7 @@ function renderMargenRecetas() {
         </label>
         <button class="btn-edit" onclick="margenDescargarPlantilla()" style="padding:7px 14px;font-size:13px">&#8681; Plantilla</button>
         <button class="btn-edit" onclick="margenExportarExcel()"      style="padding:7px 14px;font-size:13px">&#8681; Exportar</button>
+        <button onclick="margenAbrirManual()" style="padding:7px 14px;font-size:13px;background:#1e40af;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600">&#128218; Manual</button>
       </div>`;
   }
   renderMargenRecetasContent();
@@ -8382,11 +9542,10 @@ function renderMargenRecetasContent() {
   if (margenFilterSearch) filtered = filtered.filter(r => (r.name || '').toLowerCase().includes(margenFilterSearch.toLowerCase()));
   if (margenFilterMargen) {
     filtered = filtered.filter(r => {
-      let totalCost = 0;
-      (r.ingredients || []).forEach(item => { totalCost += calcItemCost(item); });
+      const cost    = calcRecipeCost(r);
       const selling = r.sellingPrice || 0;
       const net     = selling / 1.19;
-      const margin  = selling > 0 ? (net - totalCost) / net * 100 : null;
+      const margin  = selling > 0 ? (net - cost) / net * 100 : null;
       if (margenFilterMargen === 'sin_precio') return margin === null;
       if (margin === null) return false;
       if (margenFilterMargen === 'neg')  return margin < 0;
@@ -8404,15 +9563,10 @@ function renderMargenRecetasContent() {
       else if (margenSortCol === 'local') { va = (a.restaurantName||'').toLowerCase(); vb = (b.restaurantName||'').toLowerCase(); }
       else if (margenSortCol === 'ing')   { va = (a.ingredients||[]).filter(i=>i.quantity>0).length; vb = (b.ingredients||[]).filter(i=>i.quantity>0).length; }
       else {
-        const calc = r => {
-          let c = 0; (r.ingredients||[]).forEach(i => { c += calcItemCost(i); });
-          const p = r.porciones > 1 ? r.porciones : 1;
-          return p > 1 ? c / p : c;
-        };
-        if (margenSortCol === 'costo')  { va = calc(a); vb = calc(b); }
+        if (margenSortCol === 'costo')  { va = calcRecipeCost(a); vb = calcRecipeCost(b); }
         else if (margenSortCol === 'venta')  { va = a.sellingPrice||0; vb = b.sellingPrice||0; }
         else if (margenSortCol === 'margen') {
-          const m = r => { const s = r.sellingPrice||0; if (!s) return -Infinity; const c = calc(r); return (s/1.19 - c)/(s/1.19)*100; };
+          const m = r => { const s = r.sellingPrice||0; if (!s) return -Infinity; const c = calcRecipeCost(r); return (s/1.19 - c)/(s/1.19)*100; };
           va = m(a); vb = m(b);
         }
       }
@@ -8439,13 +9593,11 @@ function renderMargenRecetasContent() {
 
 function margenListHTML(recipes) {
   const rows = recipes.map(r => {
-    let totalCost = 0;
-    (r.ingredients || []).forEach(item => { totalCost += calcItemCost(item); });
+    const costoPorcion = calcRecipeCost(r);
     const porciones    = r.porciones > 1 ? r.porciones : 1;
-    const costoPorcion = porciones > 1 ? totalCost / porciones : totalCost;
     // Multi-local: normalizar
     const restIds  = r.restaurantIds?.length ? r.restaurantIds : (r.restaurantId ? [r.restaurantId] : []);
-    const prices   = r.sellingPrices || (r.restaurantId && r.sellingPrice ? { [r.restaurantId]: r.sellingPrice } : {});
+    const prices   = Object.values(r.sellingPrices||{}).some(v=>v>0) ? r.sellingPrices : (r.sellingPrice > 0 ? Object.fromEntries(restIds.map(id=>[id,r.sellingPrice])) : (r.restaurantId && r.sellingPrice ? {[r.restaurantId]:r.sellingPrice} : {}));
     const restNames = restIds.map(rid => restaurants.find(x => x.id === rid)?.name || r.restaurantName || rid).join(', ') || r.restaurantName || '—';
 
     // Margins por local
@@ -8491,7 +9643,17 @@ function margenListHTML(recipes) {
         </div>
       </td>
       <td style="padding:10px 14px;font-size:12px;color:#6c757d">${restNames}</td>
-      <td style="padding:10px 14px;font-size:13px;color:#212529;text-align:right">${costoPorcion > 0 ? '$'+Math.round(costoPorcion).toLocaleString('es-CL')+(porciones > 1 ? '/p' : '') : '—'}</td>
+      <td style="padding:10px 14px;text-align:right">
+        <div style="font-size:13px;font-weight:600;color:#212529">${costoPorcion > 0 ? '$'+Math.round(costoPorcion).toLocaleString('es-CL')+(porciones > 1 ? '/p' : '') : '—'}</div>
+        ${(() => {
+          const tags = [];
+          if ((r.rendimientoAire||0) > 0)  tags.push(`<span style="color:#7c3aed">💨 aire ${r.rendimientoAire}%</span>`);
+          if ((r.rendimientoAgua||0) > 0)  tags.push(`<span style="color:#0369a1">💧 agua ${r.rendimientoAgua}%</span>`);
+          if ((r.merma||0) > 0)            tags.push(`<span style="color:#dc2626">🗑 merma ${r.merma}%</span>`);
+          if (porciones > 1)               tags.push(`<span style="color:#16a34a">÷${porciones}p</span>`);
+          return tags.length ? `<div style="display:flex;flex-direction:column;gap:1px;margin-top:2px;font-size:10px;font-weight:500;line-height:1.3">${tags.join('')}</div>` : '';
+        })()}
+      </td>
       <td style="padding:10px 14px;font-size:12px;color:#212529;text-align:right;white-space:nowrap">${ventaText}</td>
       <td style="padding:10px 14px;text-align:center"><div style="display:flex;flex-wrap:wrap;gap:3px;justify-content:center">${margenCellHTML}</div></td>
       <td style="padding:10px 14px;font-size:13px;color:#6c757d;text-align:center">${ingCount}</td>
@@ -8559,10 +9721,8 @@ function margenSubcatBadge(subcat, extra) {
 }
 
 function margenCardHTML(r, cols) {
-  let totalCost = 0;
-  (r.ingredients || []).forEach(item => { totalCost += calcItemCost(item); });
-  const porciones      = r.porciones > 1 ? r.porciones : 1;
-  const costoPorcion   = porciones > 1 ? totalCost / porciones : totalCost;
+  const costoPorcion = calcRecipeCost(r);
+  const porciones    = r.porciones > 1 ? r.porciones : 1;
   const selling    = r.sellingPrice || 0;
   const sellingNet = selling / 1.19;
   const margin     = selling > 0 ? ((sellingNet - costoPorcion) / sellingNet * 100) : null;
@@ -8664,7 +9824,7 @@ function margenOpenRecipe(id) {
   }).join('');
 
   const porciones      = r.porciones > 1 ? r.porciones : 1;
-  const costoPorcion   = porciones > 1 ? totalCost / porciones : totalCost;
+  const costoPorcion   = calcRecipeCost(r);
   const selling    = r.sellingPrice || 0;
   const sellingNet = selling / 1.19;
   const marginAbs  = selling > 0 ? sellingNet - costoPorcion : null;
@@ -8689,14 +9849,18 @@ function margenOpenRecipe(id) {
       </table>
     </div>
     <div style="padding:16px 20px;background:#f8f9fa;border-top:2px solid #e9ecef">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:${porciones > 1 ? '6px' : '10px'}">
-        <span style="font-size:13px;color:#495057;font-weight:500">Costo total ingredientes</span>
-        <span style="font-size:15px;font-weight:700;color:#212529">${totalCost > 0 ? '$'+Math.round(totalCost).toLocaleString('es-CL') : '—'}</span>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <span style="font-size:13px;color:#495057;font-weight:500">${porciones > 1 ? 'Costo lote completo' : 'Costo total'}</span>
+        <span style="font-size:${porciones > 1 ? '13px' : '15px'};font-weight:${porciones > 1 ? '500' : '700'};color:${porciones > 1 ? '#6c757d' : '#212529'}">${totalCost > 0 ? '$'+Math.round(totalCost).toLocaleString('es-CL') : '—'}</span>
       </div>
       ${porciones > 1 ? `
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;color:#16a34a">
         <span style="font-size:13px;font-weight:500">÷ ${porciones} porciones</span>
-        <span style="font-size:15px;font-weight:700">$${Math.round(costoPorcion).toLocaleString('es-CL')}/porción</span>
+        <span style="font-size:13px;color:#6c757d">$${Math.round(costoPorcion).toLocaleString('es-CL')}/p</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <span style="font-size:13px;color:#212529;font-weight:600">Costo/porción</span>
+        <span style="font-size:15px;font-weight:700;color:#212529">$${Math.round(costoPorcion).toLocaleString('es-CL')}</span>
       </div>` : ''}
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:${marginPct!==null?'10px':'0'}">
         <span style="font-size:13px;color:#495057;font-weight:500">Precio de venta (bruto c/IVA)</span>
@@ -8817,6 +9981,457 @@ async function margenImportExcel(input) {
   reader.readAsArrayBuffer(file);
 }
 
+// ── Manual de Cocina ───────────────────────────────────────
+function margenAbrirManual() {
+  const modal  = document.getElementById('marg-manual-modal');
+  const sel    = document.getElementById('marg-manual-rest-sel');
+  // Poblar selector de locales
+  if (sel.options.length === 0) {
+    const opt0 = document.createElement('option');
+    opt0.value = ''; opt0.textContent = 'Todos los locales';
+    sel.appendChild(opt0);
+    const names = [...new Set(margenRecipes.map(r => r.restaurantName).filter(Boolean))].sort();
+    names.forEach(n => {
+      const o = document.createElement('option'); o.value = n; o.textContent = n; sel.appendChild(o);
+    });
+  }
+  // Pre-seleccionar el filtro activo si hay uno
+  if (margenFilterRest) {
+    const r = restaurants.find(r => r.id === margenFilterRest);
+    if (r) sel.value = r.name;
+  }
+  modal.style.display = 'flex';
+  margenRenderManual();
+}
+
+function margenPortadaHTML(recetas, preps) {
+  const mc  = v => v === null ? '#9ca3af' : v >= 70 ? '#16a34a' : v >= 40 ? '#ca8a04' : v >= 0 ? '#dc2626' : '#7c3aed';
+  const fp  = v => v !== null ? v.toFixed(1) + '%' : '—';
+
+  const conMargen = recetas.map(r => {
+    const costoPorcion = calcRecipeCost(r);
+    const selling      = r.sellingPrice || 0;
+    const sellingNet   = selling / 1.19;
+    const margin       = selling > 0 ? (sellingNet - costoPorcion) / sellingNet * 100 : null;
+    return { name: r.name, restaurantName: r.restaurantName, category: r.category||r.categoria||'Sin categoría', margin };
+  });
+
+  const conPrecio = conMargen.filter(r => r.margin !== null);
+  const sinPrecio = conMargen.filter(r => r.margin === null);
+  const negativos = conPrecio.filter(r => r.margin < 0);
+  const bajos     = conPrecio.filter(r => r.margin >= 0  && r.margin < 40);
+  const medios    = conPrecio.filter(r => r.margin >= 40 && r.margin < 70);
+  const altos     = conPrecio.filter(r => r.margin >= 70);
+
+  const margins   = conPrecio.map(r => r.margin);
+  const avgGlobal = margins.length ? margins.reduce((a,b)=>a+b,0)/margins.length : null;
+  const stdGlobal = margins.length > 1
+    ? Math.sqrt(margins.reduce((s,m)=>s+(m-avgGlobal)**2,0)/margins.length) : null;
+
+  // Stats por categoría
+  const byCat = {};
+  conPrecio.forEach(r => {
+    if (!byCat[r.category]) byCat[r.category] = [];
+    byCat[r.category].push(r.margin);
+  });
+  const catStats = Object.entries(byCat).map(([cat, ms]) => {
+    const avg = ms.reduce((a,b)=>a+b,0)/ms.length;
+    const std = ms.length > 1 ? Math.sqrt(ms.reduce((s,m)=>s+(m-avg)**2,0)/ms.length) : 0;
+    return { cat, n: ms.length, avg, std, min: Math.min(...ms), max: Math.max(...ms) };
+  }).sort((a,b) => b.avg - a.avg);
+
+  // Top 5 y críticas
+  const sorted  = [...conPrecio].sort((a,b) => b.margin - a.margin);
+  const top5    = sorted.slice(0, 5);
+  const bottom5 = sorted.slice(-5).reverse();
+
+  const total = conPrecio.length;
+  const distBar = total > 0 ? `
+    <div style="display:flex;height:18px;border-radius:8px;overflow:hidden;margin:10px 0 6px">
+      ${negativos.length ? `<div style="flex:${negativos.length};background:#7c3aed" title="${negativos.length} negativo"></div>` : ''}
+      ${bajos.length     ? `<div style="flex:${bajos.length};background:#dc2626"     title="${bajos.length} 0-40%"></div>` : ''}
+      ${medios.length    ? `<div style="flex:${medios.length};background:#f59e0b"    title="${medios.length} 40-70%"></div>` : ''}
+      ${altos.length     ? `<div style="flex:${altos.length};background:#16a34a"     title="${altos.length} >70%"></div>` : ''}
+    </div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:11px;color:#6b7280">
+      ${negativos.length ? `<span><b style="color:#7c3aed">${negativos.length}</b> Negativo</span>` : ''}
+      <span><b style="color:#dc2626">${bajos.length}</b> Bajo (0–40%)</span>
+      <span><b style="color:#f59e0b">${medios.length}</b> Medio (40–70%)</span>
+      <span><b style="color:#16a34a">${altos.length}</b> Alto (&gt;70%)</span>
+    </div>` : '<div style="color:#9ca3af;font-size:12px">Sin recetas con precio.</div>';
+
+  return `
+  <div style="page-break-after:always;margin-bottom:36px">
+
+    <!-- KPIs -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">
+      <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:14px 16px">
+        <div style="font-size:10px;font-weight:700;color:#3b82f6;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Recetas totales</div>
+        <div style="font-size:30px;font-weight:800;color:#1e40af;line-height:1">${recetas.length}</div>
+        <div style="font-size:11px;color:#6b7280;margin-top:4px">${conPrecio.length} con precio registrado</div>
+      </div>
+      <div style="background:${avgGlobal===null?'#f9fafb':avgGlobal>=70?'#f0fdf4':avgGlobal>=40?'#fefce8':'#fff1f2'};border:1px solid #e5e7eb;border-radius:10px;padding:14px 16px">
+        <div style="font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Margen promedio</div>
+        <div style="font-size:30px;font-weight:800;color:${mc(avgGlobal)};line-height:1">${fp(avgGlobal)}</div>
+        <div style="font-size:11px;color:#6b7280;margin-top:4px">${stdGlobal!==null?'±'+stdGlobal.toFixed(1)+'% desv. estándar':'—'}</div>
+      </div>
+      <div style="background:#faf5ff;border:1px solid #e9d5ff;border-radius:10px;padding:14px 16px">
+        <div style="font-size:10px;font-weight:700;color:#7c3aed;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Preparaciones</div>
+        <div style="font-size:30px;font-weight:800;color:#7c3aed;line-height:1">${preps.length}</div>
+        <div style="font-size:11px;color:#6b7280;margin-top:4px">sub-recetas referenciadas</div>
+      </div>
+      <div style="background:${sinPrecio.length||negativos.length?'#fff1f2':'#f0fdf4'};border:1px solid ${sinPrecio.length||negativos.length?'#fca5a5':'#bbf7d0'};border-radius:10px;padding:14px 16px">
+        <div style="font-size:10px;font-weight:700;color:${sinPrecio.length||negativos.length?'#dc2626':'#16a34a'};text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Alertas</div>
+        <div style="font-size:30px;font-weight:800;color:${sinPrecio.length||negativos.length?'#dc2626':'#16a34a'};line-height:1">${sinPrecio.length+negativos.length}</div>
+        <div style="font-size:11px;color:#6b7280;margin-top:4px">${sinPrecio.length} sin precio · ${negativos.length} margen negativo</div>
+      </div>
+    </div>
+
+    <!-- Distribución -->
+    <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:14px 16px;margin-bottom:20px">
+      <div style="font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.05em">Distribución de márgenes — ${total} recetas con precio</div>
+      ${distBar}
+    </div>
+
+    <!-- Tabla por categoría -->
+    <div style="margin-bottom:20px">
+      <div style="font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Análisis por categoría</div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead>
+          <tr style="background:#f9fafb">
+            <th style="padding:8px 10px;text-align:left;font-weight:600;color:#6b7280;border-bottom:2px solid #e5e7eb">Categoría</th>
+            <th style="padding:8px 10px;text-align:right;font-weight:600;color:#6b7280;border-bottom:2px solid #e5e7eb">Recetas</th>
+            <th style="padding:8px 10px;text-align:right;font-weight:600;color:#6b7280;border-bottom:2px solid #e5e7eb">Prom.</th>
+            <th style="padding:8px 10px;text-align:right;font-weight:600;color:#6b7280;border-bottom:2px solid #e5e7eb">Desv. std</th>
+            <th style="padding:8px 10px;text-align:right;font-weight:600;color:#6b7280;border-bottom:2px solid #e5e7eb">Mín.</th>
+            <th style="padding:8px 10px;text-align:right;font-weight:600;color:#6b7280;border-bottom:2px solid #e5e7eb">Máx.</th>
+            <th style="padding:8px 10px;text-align:left;font-weight:600;color:#6b7280;border-bottom:2px solid #e5e7eb;min-width:100px">Distribución</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${catStats.map((s,idx) => {
+            const neg = conPrecio.filter(r=>r.category===s.cat&&r.margin<0).length;
+            const baj = conPrecio.filter(r=>r.category===s.cat&&r.margin>=0&&r.margin<40).length;
+            const med = conPrecio.filter(r=>r.category===s.cat&&r.margin>=40&&r.margin<70).length;
+            const alt = conPrecio.filter(r=>r.category===s.cat&&r.margin>=70).length;
+            const bar = `<div style="display:flex;height:10px;border-radius:4px;overflow:hidden;min-width:80px">
+              ${neg?`<div style="flex:${neg};background:#7c3aed"></div>`:''}
+              ${baj?`<div style="flex:${baj};background:#dc2626"></div>`:''}
+              ${med?`<div style="flex:${med};background:#f59e0b"></div>`:''}
+              ${alt?`<div style="flex:${alt};background:#16a34a"></div>`:''}
+            </div>`;
+            return `<tr style="border-bottom:1px solid #f3f4f6;background:${idx%2===0?'#fff':'#fafafa'}">
+              <td style="padding:8px 10px;font-weight:500;color:#111827">${s.cat}</td>
+              <td style="padding:8px 10px;text-align:right;color:#6b7280">${s.n}</td>
+              <td style="padding:8px 10px;text-align:right;font-weight:700;color:${mc(s.avg)}">${fp(s.avg)}</td>
+              <td style="padding:8px 10px;text-align:right;color:#6b7280">±${s.std.toFixed(1)}%</td>
+              <td style="padding:8px 10px;text-align:right;color:${mc(s.min)}">${fp(s.min)}</td>
+              <td style="padding:8px 10px;text-align:right;color:${mc(s.max)}">${fp(s.max)}</td>
+              <td style="padding:8px 10px">${bar}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Top 5 rentables + Top 5 críticas -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:${sinPrecio.length||negativos.length?'20px':'0'}">
+      <div>
+        <div style="font-size:11px;font-weight:700;color:#16a34a;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Top 5 más rentables</div>
+        ${top5.map((r,i) => `
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;background:${i%2?'#fff':'#f0fdf4'};border-radius:6px;margin-bottom:3px">
+            <span style="font-size:12px;color:#374151;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${i+1}. ${r.name}</span>
+            <span style="font-size:13px;font-weight:700;color:#16a34a;margin-left:8px;flex-shrink:0">${fp(r.margin)}</span>
+          </div>`).join('')}
+      </div>
+      <div>
+        <div style="font-size:11px;font-weight:700;color:#dc2626;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Top 5 críticas (menor margen)</div>
+        ${bottom5.map((r,i) => `
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;background:${i%2?'#fff':'#fff1f2'};border-radius:6px;margin-bottom:3px">
+            <span style="font-size:12px;color:#374151;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${i+1}. ${r.name}</span>
+            <span style="font-size:13px;font-weight:700;color:${mc(r.margin)};margin-left:8px;flex-shrink:0">${fp(r.margin)}</span>
+          </div>`).join('')}
+      </div>
+    </div>
+
+    <!-- Alertas -->
+    ${sinPrecio.length || negativos.length ? `
+    <div style="background:#fff1f2;border:1px solid #fca5a5;border-radius:10px;padding:14px 16px">
+      <div style="font-size:11px;font-weight:700;color:#dc2626;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Alertas que requieren atención</div>
+      ${sinPrecio.length ? `<div style="margin-bottom:6px"><span style="font-size:11px;font-weight:600;color:#dc2626">Sin precio (${sinPrecio.length}):</span>
+        <span style="font-size:11px;color:#374151"> ${sinPrecio.map(r=>r.name).join(' · ')}</span></div>` : ''}
+      ${negativos.length ? `<div><span style="font-size:11px;font-weight:600;color:#7c3aed">Margen negativo (${negativos.length}):</span>
+        <span style="font-size:11px;color:#374151"> ${negativos.map(r=>r.name+' ('+fp(r.margin)+')').join(' · ')}</span></div>` : ''}
+    </div>` : ''}
+  </div>`;
+}
+
+function margenRenderManual() {
+  const restFiltro = document.getElementById('marg-manual-rest-sel')?.value || '';
+  const body = document.getElementById('marg-manual-body');
+  if (!body) return;
+
+  const fmt  = v => v > 0 ? '$' + Math.round(v).toLocaleString('es-CL') : '—';
+  const mColor = v => v === null ? '#9ca3af' : v >= 70 ? '#16a34a' : v >= 40 ? '#ca8a04' : v >= 0 ? '#dc2626' : '#7c3aed';
+
+  // Obtener locales a mostrar
+  const todosLocales = [...new Set(margenRecipes.map(r => r.restaurantName).filter(Boolean))].sort();
+  const localesAMostrar = restFiltro ? [restFiltro] : todosLocales;
+
+  const ingRowHTML = (item, indent) => {
+    const isPrep = item.type === 'preparation';
+    const cost   = calcItemCost(item);
+    let unitLabel = '', costLabel = '';
+    if (isPrep) {
+      const prep = margenPreparations.find(p => p.id === item.preparationId || p.name === item.name);
+      costLabel  = calcPrepCost(prep) > 0 ? fmt(calcPrepCost(prep)) + '/u' : '—';
+      unitLabel  = 'u';
+    } else {
+      const prod = margenIngredients.find(p => p.id === item.productId || p.name === item.name);
+      costLabel  = prod?.costPerUnit > 0 ? fmt(prod.costPerUnit) + '/' + (prod.unit||'u') : '—';
+      unitLabel  = prod?.unit || '';
+    }
+    const badge = isPrep ? `<span style="font-size:9px;background:#ede9fe;color:#7c3aed;border-radius:3px;padding:1px 5px;margin-left:4px;font-weight:700">PREP</span>` : '';
+    return `<tr style="border-bottom:1px solid #f3f4f6${indent?';background:#fafafa':''}">
+      <td style="padding:6px 8px 6px ${indent?'28px':'10px'};font-size:12px;color:#374151">${item.name}${badge}</td>
+      <td style="padding:6px 8px;font-size:12px;color:#6b7280;white-space:nowrap;text-align:right">${item.quantity} ${unitLabel}</td>
+      <td style="padding:6px 8px;font-size:12px;color:#6b7280;white-space:nowrap;text-align:right">${costLabel}</td>
+      <td style="padding:6px 8px;font-size:12px;font-weight:600;color:#111827;white-space:nowrap;text-align:right">${cost > 0 ? fmt(cost) : '—'}</td>
+    </tr>`;
+  };
+
+  const recetaHTML = r => {
+    const items = (r.ingredients||[]).filter(i => i.quantity > 0);
+    let totalCost = 0;
+    const ingRows = items.map(item => { totalCost += calcItemCost(item); return ingRowHTML(item, false); }).join('');
+    const agua  = r.rendimientoAgua || 0;
+    const aire  = r.rendimientoAire || 0;
+    const merma = r.merma || 0;
+    let costoAjust = totalCost;
+    if (agua  > 0) costoAjust = costoAjust / (1 + agua  / 100);
+    if (aire  > 0) costoAjust = costoAjust / (1 + aire  / 100);
+    if (merma > 0 && merma < 100) costoAjust = costoAjust / (1 - merma / 100);
+    const porciones    = r.porciones > 1 ? r.porciones : 1;
+    const costoPorcion = porciones > 1 ? costoAjust / porciones : costoAjust;
+    const tieneAjustes = agua > 0 || aire > 0 || merma > 0 || porciones > 1;
+    const selling   = r.sellingPrice || 0;
+    const sellingNet = selling / 1.19;
+    const marginPct = selling > 0 ? (sellingNet - costoPorcion) / sellingNet * 100 : null;
+    const mc = mColor(marginPct);
+    return `
+      <div style="margin-bottom:20px;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;page-break-inside:avoid">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#f9fafb;border-bottom:1px solid #e5e7eb">
+          <div>
+            <span style="font-size:14px;font-weight:700;color:#111827">${r.name}</span>
+            ${r.subcategoria ? `<span style="font-size:10px;background:#e5e7eb;color:#374151;border-radius:4px;padding:1px 7px;margin-left:6px;font-weight:600">${r.subcategoria}</span>` : ''}
+          </div>
+          <div style="display:flex;gap:16px;align-items:center">
+            <div style="text-align:right">
+              <div style="font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:.04em">Costo${porciones>1?'/p':''}</div>
+              <div style="font-size:13px;font-weight:700;color:#374151">${fmt(costoPorcion)}${porciones>1?'<span style="font-size:10px;color:#9ca3af"> /p</span>':''}</div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:.04em">Venta</div>
+              <div style="font-size:13px;font-weight:700;color:#374151">${fmt(selling)}</div>
+            </div>
+            <div style="background:${mc}18;color:${mc};border:1.5px solid ${mc}44;border-radius:20px;padding:3px 10px;font-size:13px;font-weight:700;min-width:54px;text-align:center">
+              ${marginPct !== null ? marginPct.toFixed(1)+'%' : '—'}
+            </div>
+          </div>
+        </div>
+        <table style="width:100%;border-collapse:collapse">
+          <thead>
+            <tr style="background:#f9fafb">
+              <th style="padding:6px 10px;font-size:10px;color:#9ca3af;font-weight:600;text-transform:uppercase;text-align:left;border-bottom:1px solid #e5e7eb">Ingrediente / Prep.</th>
+              <th style="padding:6px 8px;font-size:10px;color:#9ca3af;font-weight:600;text-transform:uppercase;text-align:right;border-bottom:1px solid #e5e7eb">Cant.</th>
+              <th style="padding:6px 8px;font-size:10px;color:#9ca3af;font-weight:600;text-transform:uppercase;text-align:right;border-bottom:1px solid #e5e7eb">Costo unit.</th>
+              <th style="padding:6px 8px;font-size:10px;color:#9ca3af;font-weight:600;text-transform:uppercase;text-align:right;border-bottom:1px solid #e5e7eb">Subtotal</th>
+            </tr>
+          </thead>
+          <tbody>${ingRows || '<tr><td colspan="4" style="padding:10px;color:#9ca3af;font-size:12px">Sin ingredientes</td></tr>'}</tbody>
+          ${totalCost > 0 ? `<tfoot>
+            <tr style="background:#f9fafb;border-top:1px solid #e5e7eb">
+              <td colspan="3" style="padding:7px 10px;font-size:12px;font-weight:600;color:#374151">Total ingredientes</td>
+              <td style="padding:7px 8px;font-size:12px;color:#6b7280;text-align:right">${fmt(totalCost)}</td>
+            </tr>
+            ${agua > 0 ? `<tr style="background:#eff6ff"><td colspan="3" style="padding:5px 10px;font-size:11px;color:#0369a1">💧 Rend. agua +${agua}%</td><td style="padding:5px 8px;font-size:11px;color:#0369a1;text-align:right;font-weight:600">${fmt(totalCost / (1 + agua/100))}</td></tr>` : ''}
+            ${aire > 0 ? `<tr style="background:#faf5ff"><td colspan="3" style="padding:5px 10px;font-size:11px;color:#7c3aed">💨 Rend. aire +${aire}%</td><td style="padding:5px 8px;font-size:11px;color:#7c3aed;text-align:right;font-weight:600">${fmt(totalCost / (1+agua/100||1) / (1 + aire/100))}</td></tr>` : ''}
+            ${merma > 0 ? `<tr style="background:#fff1f2"><td colspan="3" style="padding:5px 10px;font-size:11px;color:#dc2626">🗑 Merma ${merma}%</td><td style="padding:5px 8px;font-size:11px;color:#dc2626;text-align:right;font-weight:600">${fmt(costoAjust)}</td></tr>` : ''}
+            ${porciones > 1 ? `<tr style="background:#f0fdf4"><td colspan="3" style="padding:5px 10px;font-size:11px;color:#16a34a">÷ ${porciones} porciones</td><td style="padding:5px 8px;font-size:11px;color:#16a34a;text-align:right;font-weight:600">${fmt(costoPorcion)}/p</td></tr>` : ''}
+            ${tieneAjustes ? `<tr style="background:#f9fafb;border-top:2px solid #e5e7eb"><td colspan="3" style="padding:7px 10px;font-size:12px;font-weight:700;color:#111827">Costo${porciones>1?' /porción':' final'}</td><td style="padding:7px 8px;font-size:13px;font-weight:700;color:#111827;text-align:right">${fmt(costoPorcion)}</td></tr>` : ''}
+          </tfoot>` : ''}
+        </table>
+      </div>`;
+  };
+
+  const prepHTML = p => {
+    const items = (p.ingredients||[]).filter(i => i.quantity > 0);
+    let totalCost = 0;
+    const ingRows = items.map(item => { totalCost += calcItemCost(item); return ingRowHTML(item, false); }).join('');
+    const aguaVal  = p.rendimientoAgua || 0;
+    const aireVal  = p.rendimientoAire || 0;
+    const mermaVal = p.merma || 0;
+    let costoAjust = totalCost;
+    if (aguaVal  > 0) costoAjust = costoAjust / (1 + aguaVal  / 100);
+    if (aireVal  > 0) costoAjust = costoAjust / (1 + aireVal  / 100);
+    if (mermaVal > 0 && mermaVal < 100) costoAjust = costoAjust / (1 - mermaVal / 100);
+    const porciones    = p.porciones > 1 ? p.porciones : 1;
+    const costoPorcion = porciones > 1 ? costoAjust / porciones : costoAjust;
+    const tieneAjustes = aguaVal > 0 || aireVal > 0 || mermaVal > 0 || porciones > 1;
+    const notas = [
+      aguaVal  > 0 ? `Rend. agua ${aguaVal}%`  : '',
+      aireVal  > 0 ? `Rend. aire ${aireVal}%`  : '',
+      mermaVal > 0 ? `Merma ${mermaVal}%`       : '',
+    ].filter(Boolean).join(' · ');
+    return `
+      <div style="margin-bottom:16px;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;page-break-inside:avoid">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 14px;background:#faf5ff;border-bottom:1px solid #e5e7eb">
+          <div>
+            <span style="font-size:13px;font-weight:700;color:#7c3aed">${p.name}</span>
+            <span style="font-size:10px;background:#ede9fe;color:#7c3aed;border-radius:4px;padding:1px 7px;margin-left:6px;font-weight:700">PREPARACIÓN</span>
+            ${notas ? `<span style="font-size:10px;color:#9ca3af;margin-left:8px">${notas}</span>` : ''}
+          </div>
+          <div style="display:flex;gap:16px;align-items:center">
+            ${porciones > 1 ? `<div style="text-align:right"><div style="font-size:10px;color:#9ca3af">Porciones</div><div style="font-size:13px;font-weight:700;color:#374151">${porciones}</div></div>` : ''}
+            <div style="text-align:right"><div style="font-size:10px;color:#9ca3af">${porciones>1?'Costo/p':'Costo total'}</div><div style="font-size:13px;font-weight:700;color:#7c3aed">${fmt(costoPorcion)}</div></div>
+          </div>
+        </div>
+        <table style="width:100%;border-collapse:collapse">
+          <thead>
+            <tr style="background:#faf5ff">
+              <th style="padding:5px 10px;font-size:10px;color:#9ca3af;font-weight:600;text-transform:uppercase;text-align:left;border-bottom:1px solid #e5e7eb">Ingrediente</th>
+              <th style="padding:5px 8px;font-size:10px;color:#9ca3af;font-weight:600;text-transform:uppercase;text-align:right;border-bottom:1px solid #e5e7eb">Cant.</th>
+              <th style="padding:5px 8px;font-size:10px;color:#9ca3af;font-weight:600;text-transform:uppercase;text-align:right;border-bottom:1px solid #e5e7eb">Costo unit.</th>
+              <th style="padding:5px 8px;font-size:10px;color:#9ca3af;font-weight:600;text-transform:uppercase;text-align:right;border-bottom:1px solid #e5e7eb">Subtotal</th>
+            </tr>
+          </thead>
+          <tbody>${ingRows || '<tr><td colspan="4" style="padding:10px;color:#9ca3af;font-size:12px">Sin ingredientes</td></tr>'}</tbody>
+          ${totalCost > 0 && tieneAjustes ? `<tfoot>
+            <tr style="background:#faf5ff;border-top:1px solid #e5e7eb">
+              <td colspan="3" style="padding:5px 10px;font-size:11px;color:#6b7280">Total ingredientes</td>
+              <td style="padding:5px 8px;font-size:11px;color:#6b7280;text-align:right">${fmt(totalCost)}</td>
+            </tr>
+            ${aguaVal > 0  ? `<tr style="background:#eff6ff"><td colspan="3" style="padding:4px 10px;font-size:11px;color:#0369a1">💧 Rend. agua +${aguaVal}%</td><td style="padding:4px 8px;font-size:11px;color:#0369a1;text-align:right;font-weight:600">${fmt(totalCost / (1+aguaVal/100))}</td></tr>` : ''}
+            ${aireVal > 0  ? `<tr style="background:#faf5ff"><td colspan="3" style="padding:4px 10px;font-size:11px;color:#7c3aed">💨 Rend. aire +${aireVal}%</td><td style="padding:4px 8px;font-size:11px;color:#7c3aed;text-align:right;font-weight:600">${fmt(totalCost/(1+aguaVal/100||1)/(1+aireVal/100))}</td></tr>` : ''}
+            ${mermaVal > 0 ? `<tr style="background:#fff1f2"><td colspan="3" style="padding:4px 10px;font-size:11px;color:#dc2626">🗑 Merma ${mermaVal}%</td><td style="padding:4px 8px;font-size:11px;color:#dc2626;text-align:right;font-weight:600">${fmt(costoAjust)}</td></tr>` : ''}
+            ${porciones > 1 ? `<tr style="background:#f0fdf4"><td colspan="3" style="padding:4px 10px;font-size:11px;color:#16a34a">÷ ${porciones} porciones</td><td style="padding:4px 8px;font-size:11px;color:#16a34a;text-align:right;font-weight:600">${fmt(costoPorcion)}/p</td></tr>` : ''}
+            <tr style="background:#faf5ff;border-top:2px solid #ede9fe"><td colspan="3" style="padding:6px 10px;font-size:12px;font-weight:700;color:#7c3aed">Costo${porciones>1?' /porción':' final'}</td><td style="padding:6px 8px;font-size:13px;font-weight:700;color:#7c3aed;text-align:right">${fmt(costoPorcion)}</td></tr>
+          </tfoot>` : ''}
+        </table>
+      </div>`;
+  };
+
+  // Recetas del scope actual (para la portada)
+  const recetasScope = restFiltro
+    ? margenRecipes.filter(r => r.restaurantName === restFiltro)
+    : margenRecipes;
+  const prepsScope = restFiltro
+    ? (() => {
+        const ids = new Set(recetasScope.flatMap(r => (r.ingredients||[]).filter(i=>i.type==='preparation').map(i=>i.preparationId||i.name)));
+        return margenPreparations.filter(p => ids.has(p.id)||ids.has(p.name));
+      })()
+    : margenPreparations;
+
+  let html = margenPortadaHTML(recetasScope, prepsScope);
+
+  localesAMostrar.forEach(localNombre => {
+    const recetasLocal = margenRecipes.filter(r => r.restaurantName === localNombre);
+    // Agrupar por categoría
+    const byCategoria = {};
+    recetasLocal.forEach(r => {
+      const cat = r.category || r.categoria || 'Sin categoría';
+      if (!byCategoria[cat]) byCategoria[cat] = [];
+      byCategoria[cat].push(r);
+    });
+    const cats = Object.keys(byCategoria).sort();
+
+    html += `<div style="margin-bottom:40px">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;padding-bottom:10px;border-bottom:3px solid #1e40af">
+        <div style="font-size:22px;font-weight:800;color:#1e40af">${localNombre}</div>
+        <div style="font-size:13px;color:#6b7280;background:#eff6ff;border-radius:8px;padding:3px 10px">${recetasLocal.length} recetas</div>
+      </div>`;
+
+    // Recetas por categoría
+    cats.forEach(cat => {
+      const recs = byCategoria[cat].sort((a,b) => a.name.localeCompare(b.name, 'es'));
+      html += `<div style="margin-bottom:28px">
+        <div style="font-size:13px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px;display:flex;align-items:center;gap:8px">
+          <span style="width:24px;height:2px;background:#e5e7eb;display:inline-block"></span>
+          ${cat}
+          <span style="width:24px;height:2px;background:#e5e7eb;display:inline-block"></span>
+        </div>
+        ${recs.map(recetaHTML).join('')}
+      </div>`;
+    });
+
+    // Preparaciones del local (las que se usan en alguna receta de este local)
+    const prepIdsUsados = new Set(
+      recetasLocal.flatMap(r => (r.ingredients||[]).filter(i => i.type==='preparation').map(i => i.preparationId||i.name))
+    );
+    const prepsDelLocal = margenPreparations.filter(p => prepIdsUsados.has(p.id) || prepIdsUsados.has(p.name));
+    if (prepsDelLocal.length) {
+      html += `<div style="margin-bottom:28px">
+        <div style="font-size:13px;font-weight:700;color:#7c3aed;text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px;display:flex;align-items:center;gap:8px">
+          <span style="width:24px;height:2px;background:#ede9fe;display:inline-block"></span>
+          Preparaciones (${prepsDelLocal.length})
+          <span style="width:24px;height:2px;background:#ede9fe;display:inline-block"></span>
+        </div>
+        ${prepsDelLocal.sort((a,b)=>a.name.localeCompare(b.name,'es')).map(prepHTML).join('')}
+      </div>`;
+    }
+
+    html += '</div>';
+  });
+
+  // Si se muestran todos los locales, añadir sección con TODAS las preparaciones al final
+  if (!restFiltro) {
+    const todasLasPreps = [...margenPreparations].sort((a,b) => a.name.localeCompare(b.name,'es'));
+    if (todasLasPreps.length) {
+      html += `<div style="margin-bottom:40px">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;padding-bottom:10px;border-bottom:3px solid #7c3aed">
+          <div style="font-size:22px;font-weight:800;color:#7c3aed">Todas las Preparaciones</div>
+          <div style="font-size:13px;color:#6b7280;background:#faf5ff;border-radius:8px;padding:3px 10px">${todasLasPreps.length} preparaciones</div>
+        </div>
+        ${todasLasPreps.map(prepHTML).join('')}
+      </div>`;
+    }
+  }
+
+  body.innerHTML = html || '<div style="color:#9ca3af;padding:20px">No hay recetas para mostrar.</div>';
+}
+
+function margenDescargarManualPDF() {
+  const restNombre = document.getElementById('marg-manual-rest-sel')?.selectedOptions[0]?.text || 'Todos los locales';
+  const cuerpo     = document.getElementById('marg-manual-body')?.innerHTML || '';
+  const fecha      = new Date().toLocaleDateString('es-CL', { year:'numeric', month:'long', day:'numeric' });
+  const ventana    = window.open('', '_blank');
+  ventana.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
+    <title>Manual de Cocina – ${restNombre}</title>
+    <style>
+      @page { size: A4; margin: 18mm 16mm; }
+      * { box-sizing: border-box; }
+      body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #111827; background: #fff; margin: 0; }
+      .cover { padding: 40px 0 32px; border-bottom: 3px solid #1e40af; margin-bottom: 32px; }
+      .cover h1 { font-size: 28px; font-weight: 800; color: #1e40af; margin: 0 0 4px; }
+      .cover .sub { font-size: 14px; color: #6b7280; }
+      table { width: 100%; border-collapse: collapse; }
+      th, td { font-size: 11px; }
+      @media print {
+        .cover { page-break-after: avoid; }
+        div[style*="page-break-inside:avoid"] { page-break-inside: avoid; }
+      }
+    </style>
+  </head><body>
+    <div class="cover">
+      <h1>Manual de Cocina</h1>
+      <div class="sub">${restNombre} &nbsp;·&nbsp; ${fecha}</div>
+    </div>
+    ${cuerpo}
+    <script>window.onload = () => { window.print(); }<\/script>
+  </body></html>`);
+  ventana.document.close();
+}
+
 function margenDescargarPlantilla() {
   const ingNames = margenIngredients.map(p => p.name);
   const header   = ['Producto', 'Local', ...ingNames];
@@ -8843,15 +10458,9 @@ function margenExportarExcel() {
   const header   = ['Producto', 'Local', 'Precio venta ($)', 'Costo total ($)', 'Margen (%)', ...ingNames];
 
   const rows = margenRecipes.map(r => {
-    let totalCost = 0;
     const qtyMap  = {};
-    (r.ingredients||[]).forEach(item => {
-      qtyMap[item.name] = item.quantity || 0;
-      const prod = margenIngredients.find(p => p.id === item.productId || p.name === item.name);
-      totalCost += (prod?.costPerUnit || 0) * (item.quantity || 0);
-    });
-    const porcXls    = r.porciones > 1 ? r.porciones : 1;
-    const costoXls   = porcXls > 1 ? totalCost / porcXls : totalCost;
+    (r.ingredients||[]).forEach(item => { qtyMap[item.name] = item.quantity || 0; });
+    const costoXls   = calcRecipeCost(r);
     const selling    = r.sellingPrice || 0;
     const sellingNet = selling / 1.19;
     const marginPct  = selling > 0 ? ((sellingNet - costoXls) / sellingNet * 100).toFixed(1) : '';
@@ -9730,8 +11339,7 @@ function margenOpenFormModal(id) {
   // Normalizar campos multi-local (compatibilidad con recetas antiguas)
   const restIds = recipe?.restaurantIds?.length ? recipe.restaurantIds
     : (recipe?.restaurantId ? [recipe.restaurantId] : []);
-  const prices = recipe?.sellingPrices || (recipe?.restaurantId && recipe?.sellingPrice
-    ? { [recipe.restaurantId]: recipe.sellingPrice } : {});
+  const prices = Object.values(recipe?.sellingPrices||{}).some(v=>v>0) ? recipe.sellingPrices : (recipe?.sellingPrice > 0 ? Object.fromEntries(restIds.map(id=>[id,recipe.sellingPrice])) : (recipe?.restaurantId && recipe?.sellingPrice ? {[recipe.restaurantId]:recipe.sellingPrice} : {}));
 
   document.getElementById('marg-form-id').value          = id || '';
   document.getElementById('marg-form-title').textContent = recipe ? 'Editar receta' : 'Nueva receta';
@@ -10081,7 +11689,7 @@ function margenUpdateFormTotal() {
   const costoConAire = aire > 0 ? costoConAgua / (1 + aire / 100) : costoConAgua;
   const costoFinal   = merma > 0 ? costoConAire / (1 - merma / 100) : costoConAire;
 
-  const porcionesVal = parseInt(document.getElementById('marg-form-porciones')?.value) || 1;
+  const porcionesVal = parseFloat(document.getElementById('marg-form-porciones')?.value) || 1;
   const porciones    = porcionesVal > 1 ? porcionesVal : 1;
   const costoPorcion = porciones > 1 ? costoFinal / porciones : costoFinal;
 
@@ -10095,7 +11703,9 @@ function margenUpdateFormTotal() {
     if (aire > 0) html += `<div style="display:flex;justify-content:space-between;color:#7c3aed"><span>💨 ÷ Aire (+${aire}%):</span><span>$${Math.round(costoConAire).toLocaleString('es-CL')}</span></div>`;
     if (merma > 0) html += `<div style="display:flex;justify-content:space-between;color:#dc2626"><span>🗑 Merma (${merma}%):</span><span>$${Math.round(costoFinal).toLocaleString('es-CL')}</span></div>`;
     if (porciones > 1) html += `<div style="display:flex;justify-content:space-between;color:#16a34a"><span>÷ ${porciones} porciones:</span><span style="font-weight:700">$${Math.round(costoPorcion).toLocaleString('es-CL')}/porción</span></div>`;
-    else html += `<div style="display:flex;justify-content:space-between;font-weight:700;color:#212529;border-top:1px solid #dee2e6;padding-top:4px;margin-top:2px"><span>Costo final:</span><span>$${Math.round(costoFinal).toLocaleString('es-CL')}</span></div>`;
+    const finalVal = porciones > 1 ? costoPorcion : costoFinal;
+    const finalLbl = porciones > 1 ? 'Costo/porción' : 'Costo final';
+    html += `<div style="display:flex;justify-content:space-between;font-weight:700;color:#212529;border-top:1px solid #dee2e6;padding-top:4px;margin-top:2px"><span>${finalLbl}:</span><span>$${Math.round(finalVal).toLocaleString('es-CL')}</span></div>`;
     html += `</div>`;
     el.innerHTML = html;
   } else {
@@ -10137,7 +11747,7 @@ async function margenSaveForm() {
   });
 
   const esPromedio = document.getElementById('marg-form-promedio')?.checked === true;
-  const porciones  = parseInt(document.getElementById('marg-form-porciones')?.value) || 1;
+  const porciones  = parseFloat(document.getElementById('marg-form-porciones')?.value) || 1;
   msg.style.color = '#888'; msg.textContent = 'Guardando...';
 
   const comentario = document.getElementById('marg-form-comentario')?.value.trim() || '';
@@ -10228,6 +11838,607 @@ async function margenDeleteRecipe(id, name) {
   } catch(e) {
     alert('Error: ' + e.message);
   }
+}
+</script>
+
+<script>
+// ── Ventas Productos ──────────────────────────────────────
+let vpAllRows = [];
+let vpFilteredRows = [];
+let vpMargenes = {}; // nombre → { costo, locales }
+
+async function vpCrearInforme() {
+  const from  = document.getElementById('vp-date-from').value;
+  const to    = document.getElementById('vp-date-to').value;
+  if (!from || !to) { alert('Selecciona un rango de fechas primero.'); return; }
+
+  const modal = document.getElementById('vp-informe-modal');
+  const body  = document.getElementById('vp-informe-body');
+  document.getElementById('vp-inf-titulo').textContent =
+    `${from.split('-').reverse().join('/')} — ${to.split('-').reverse().join('/')}`;
+  modal.style.display = 'block';
+  body.innerHTML = '<div style="text-align:center;padding:40px;color:#6b7280;font-size:14px">Cargando datos de todos los locales…</div>';
+
+  try {
+    await vpLoadMargenes();
+    const tabsRes  = await apiFetch('/api/ventas-sheets/tabs');
+    const tabsData = await tabsRes.json();
+    const tabs = tabsData.tabs || [];
+
+    const fromDate = new Date(from + 'T00:00:00');
+    const toDate   = new Date(to   + 'T23:59:59');
+
+    const resultados = await Promise.all(tabs.map(async tab => {
+      const r    = await apiFetch(`/api/ventas-sheets?sheet=${encodeURIComponent(tab)}`);
+      const data = await r.json();
+      const rows = (data.rows || []).filter(row => {
+        if ((row['Cancelada'] || '').toLowerCase() === 'si') return false;
+        const parts = (row['Creación'] || '').split(' ')[0].split('-');
+        if (parts.length < 3) return false;
+        const d = new Date(`${parts[2]}-${parts[1]}-${parts[0]}T00:00:00`);
+        return d >= fromDate && d <= toDate;
+      });
+      return { tab, rows };
+    }));
+
+    const localesConDatos = resultados.filter(r => r.rows.length > 0);
+    if (!localesConDatos.length) {
+      body.innerHTML = '<div style="text-align:center;padding:40px;color:#6b7280">Sin datos para el período seleccionado.</div>';
+      return;
+    }
+
+    const fmt    = n => '$' + Math.round(n).toLocaleString('es-CL');
+    const mColor = v => v === null ? '#9ca3af' : v >= 60 ? '#10b981' : v >= 40 ? '#f59e0b' : '#ef4444';
+
+    let html = '';
+
+    localesConDatos.forEach(({ tab, rows }, idx) => {
+      const localNombre = tab.replace(/^Ventas\s*/i, '');
+      const ing  = rows.reduce((s, r) => s + (parseInt(r['Precio'])   || 0), 0);
+      const its  = rows.reduce((s, r) => s + (parseInt(r['Cantidad']) || 0), 0);
+      const bols = new Set(rows.map(r => r['Id. Venta'])).size;
+      const tck  = bols > 0 ? ing / bols : 0;
+      const mg   = vpCalcMargenPonderadoLocal(rows, tab);
+
+      // Cards del local
+      const cardsHtml = `<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px">
+        ${[
+          { icon:'💰', val: fmt(ing),                     label:'Total Ingresos',       color:'#10b981' },
+          { icon:'📦', val: its.toLocaleString('es-CL'),  label:'Ítems Vendidos',       color:'#3b82f6' },
+          { icon:'🧾', val: bols.toLocaleString('es-CL'), label:'Boletas / Mesas',      color:'#8b5cf6' },
+          { icon:'📊', val: fmt(tck),                     label:'Ticket Promedio',      color:'#f59e0b' },
+          { icon:'📐', val: mg !== null ? mg+'%' : '—',   label:'Margen Teórico Pond.', color: mColor(mg) },
+        ].map(c => `<div style="background:#f9fafb;border-radius:10px;padding:11px 15px;flex:1;min-width:110px;border:1px solid #e5e7eb">
+          <div style="font-size:17px;margin-bottom:3px">${c.icon}</div>
+          <div style="font-size:16px;font-weight:700;color:${c.color}">${c.val}</div>
+          <div style="font-size:11px;color:#6b7280;margin-top:2px">${c.label}</div>
+        </div>`).join('')}
+      </div>`;
+
+      // Top categorías del local
+      const byCateg = {};
+      rows.forEach(r => {
+        const cat = r['Categoría'] || 'Sin categoría';
+        if (!byCateg[cat]) byCateg[cat] = { total: 0, rows: [] };
+        byCateg[cat].total += parseInt(r['Precio']) || 0;
+        byCateg[cat].rows.push(r);
+      });
+      const sortedCateg = Object.entries(byCateg).sort((a,b) => b[1].total - a[1].total).slice(0, 8);
+      const categHtml = `<div style="margin-bottom:18px">
+        <div style="font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Top Categorías</div>
+        <table style="width:100%;border-collapse:collapse;font-size:13px">
+          <thead><tr style="background:#f9fafb;border-bottom:2px solid #e5e7eb">
+            <th style="padding:7px 10px;text-align:left;color:#6b7280;font-weight:600">Categoría</th>
+            <th style="padding:7px 10px;text-align:right;color:#6b7280;font-weight:600">Total ($)</th>
+            <th style="padding:7px 10px;text-align:right;color:#6b7280;font-weight:600">% del Total</th>
+            <th style="padding:7px 10px;text-align:right;color:#6b7280;font-weight:600">Margen Teórico Pond.</th>
+          </tr></thead>
+          <tbody>${sortedCateg.map(([cat, v]) => {
+            const pct = ing > 0 ? (v.total / ing * 100).toFixed(1) : '0';
+            const cmg = vpCalcMargenPonderadoLocal(v.rows, tab);
+            return `<tr style="border-bottom:1px solid #f3f4f6">
+              <td style="padding:7px 10px;font-weight:600;color:#374151">${cat}</td>
+              <td style="padding:7px 10px;text-align:right;font-weight:700;color:#374151">${fmt(v.total)}</td>
+              <td style="padding:7px 10px;text-align:right;color:#6b7280">${pct}%</td>
+              <td style="padding:7px 10px;text-align:right;font-weight:700;color:${mColor(cmg)}">${cmg !== null ? cmg+'%' : '—'}</td>
+            </tr>`;
+          }).join('')}</tbody>
+        </table>
+      </div>`;
+
+      // Top productos del local
+      const byProd = {};
+      rows.forEach(r => {
+        const p = r['Producto'] || '—';
+        if (!byProd[p]) byProd[p] = { total: 0, unidades: 0 };
+        byProd[p].total    += parseInt(r['Precio'])   || 0;
+        byProd[p].unidades += parseInt(r['Cantidad']) || 0;
+      });
+      const sortedProd = Object.entries(byProd).sort((a,b) => b[1].total - a[1].total).slice(0, 10);
+      const prodHtml = `<div>
+        <div style="font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Top 10 Productos</div>
+        <table style="width:100%;border-collapse:collapse;font-size:13px">
+          <thead><tr style="background:#f9fafb;border-bottom:2px solid #e5e7eb">
+            <th style="padding:7px 10px;text-align:left;color:#6b7280;font-weight:600">Producto</th>
+            <th style="padding:7px 10px;text-align:right;color:#6b7280;font-weight:600">Und.</th>
+            <th style="padding:7px 10px;text-align:right;color:#6b7280;font-weight:600">Total ($)</th>
+            <th style="padding:7px 10px;text-align:right;color:#6b7280;font-weight:600">Margen Teórico Receta</th>
+          </tr></thead>
+          <tbody>${sortedProd.map(([nombre, v]) => {
+            const pmg = vpGetMargenLocal(nombre, tab);
+            return `<tr style="border-bottom:1px solid #f3f4f6">
+              <td style="padding:7px 10px;color:#374151">${nombre}</td>
+              <td style="padding:7px 10px;text-align:right;color:#6b7280">${v.unidades}</td>
+              <td style="padding:7px 10px;text-align:right;font-weight:700;color:#374151">${fmt(v.total)}</td>
+              <td style="padding:7px 10px;text-align:right;font-weight:700;color:${mColor(pmg)}">${pmg !== null ? pmg+'%' : '—'}</td>
+            </tr>`;
+          }).join('')}</tbody>
+        </table>
+      </div>`;
+
+      if (idx > 0) html += '<hr style="border:none;border-top:2px solid #e5e7eb;margin:28px 0">';
+      html += `<div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+          <div style="width:4px;height:28px;background:#4f46e5;border-radius:4px"></div>
+          <h3 style="margin:0;font-size:17px;font-weight:700;color:#111827">${localNombre}</h3>
+        </div>
+        ${cardsHtml}${categHtml}${prodHtml}
+      </div>`;
+    });
+
+    body.innerHTML = html;
+
+  } catch(e) {
+    body.innerHTML = `<div style="color:#ef4444;padding:20px">Error: ${e.message}</div>`;
+  }
+}
+
+function vpGetMargenLocal(nombre, tabNombre) {
+  const rec = vpMargenes[nombre];
+  if (!rec || !rec.locales || rec.locales.length === 0) return null;
+  const slug = tabNombre.toLowerCase().replace(/^ventas\s*/i, '').trim();
+  const local = rec.locales.find(l => {
+    const ln = l.nombre.toLowerCase();
+    return ln === slug || ln.includes(slug) || slug.includes(ln);
+  }) || rec.locales[0];
+  return local?.margen ?? null;
+}
+
+function vpCalcMargenPonderadoLocal(rows, tabNombre) {
+  const byProd = {};
+  rows.forEach(r => {
+    const p = r['Producto'] || '—';
+    if (!byProd[p]) byProd[p] = 0;
+    byProd[p] += parseInt(r['Precio']) || 0;
+  });
+  let sumaMargenPesos = 0, sumaBase = 0;
+  Object.entries(byProd).forEach(([nombre, total]) => {
+    const m = vpGetMargenLocal(nombre, tabNombre);
+    if (m !== null) { sumaMargenPesos += total * m / 100; sumaBase += total; }
+  });
+  return sumaBase > 0 ? Math.round(sumaMargenPesos / sumaBase * 100) : null;
+}
+
+function vpDescargarPDF() {
+  const titulo  = document.getElementById('vp-inf-titulo').textContent;
+  const cuerpo  = document.getElementById('vp-informe-body').innerHTML;
+  const ventana = window.open('', '_blank');
+  ventana.document.write(`<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Informe Ventas – ${titulo}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 13px; color: #111827; padding: 32px; }
+    h1 { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+    .subtitulo { font-size: 11px; color: #6b7280; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 24px; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+    th { background: #f9fafb; border-bottom: 2px solid #e5e7eb; padding: 7px 10px; font-size: 12px; color: #6b7280; font-weight: 600; }
+    td { padding: 7px 10px; border-bottom: 1px solid #f3f4f6; }
+    hr { border: none; border-top: 2px solid #e5e7eb; margin: 28px 0; }
+    @page { size: A4; margin: 20mm; }
+    @media print { body { padding: 0; } }
+  </style>
+</head>
+<body>
+  <div class="subtitulo">Informe de Ventas por Local</div>
+  <h1>${titulo}</h1>
+  <br>
+  ${cuerpo}
+  <script>window.onload = () => { window.print(); }<\/script>
+</body>
+</html>`);
+  ventana.document.close();
+}
+
+async function vpLoadMargenes() {
+  if (Object.keys(vpMargenes).length > 0) return; // ya cargado
+  try {
+    const r = await apiFetch('/api/recetas-margenes');
+    if (r.ok) vpMargenes = await r.json();
+  } catch(e) { console.warn('vpLoadMargenes error:', e); }
+}
+
+function vpGetMargen(nombre) {
+  const rec = vpMargenes[nombre];
+  if (!rec || !rec.locales || rec.locales.length === 0) return null;
+  const local = rec.locales.find(l => l.nombre.toLowerCase().includes('monaco') || l.nombre.toLowerCase().includes('mónaco')) || rec.locales[0];
+  return local?.margen ?? null;
+}
+
+function vpCalcMargenPonderado(rows) {
+  // Agrupa por producto para calcular totales
+  const byProd = {};
+  rows.forEach(r => {
+    const p = r['Producto'] || '—';
+    if (!byProd[p]) byProd[p] = 0;
+    byProd[p] += parseInt(r['Precio']) || 0;
+  });
+  let sumaMargenPesos = 0, sumaBase = 0;
+  Object.entries(byProd).forEach(([nombre, total]) => {
+    const m = vpGetMargen(nombre);
+    if (m !== null) { sumaMargenPesos += total * m / 100; sumaBase += total; }
+  });
+  return sumaBase > 0 ? Math.round(sumaMargenPesos / sumaBase * 100) : null;
+}
+
+async function ventasProductosInit() {
+  // Fechas por defecto: últimos 7 días
+  const today = new Date();
+  const from  = new Date(today); from.setDate(today.getDate() - 6);
+  const fmt   = d => d.toISOString().slice(0,10);
+  const fromEl = document.getElementById('vp-date-from');
+  const toEl   = document.getElementById('vp-date-to');
+  if (!fromEl.value) fromEl.value = fmt(from);
+  if (!toEl.value)   toEl.value   = fmt(today);
+
+  // Cargar pestañas disponibles
+  const sel = document.getElementById('vp-sheet-select');
+  try {
+    const res  = await apiFetch('/api/ventas-sheets/tabs');
+    const data = await res.json();
+    const tabs = data.tabs || [];
+    sel.innerHTML = tabs.map(t => `<option value="${t}">${t}</option>`).join('');
+  } catch(e) {
+    sel.innerHTML = '<option value="">Error al cargar locales</option>';
+  }
+}
+
+async function ventasProductosLoad() {
+  const from  = document.getElementById('vp-date-from').value;
+  const to    = document.getElementById('vp-date-to').value;
+  const sheet = document.getElementById('vp-sheet-select').value.trim();
+  if (!from || !to || !sheet) return alert('Completa todos los campos');
+
+  const stateEl = document.getElementById('vp-state');
+  stateEl.style.display = 'block';
+  stateEl.innerHTML = '<div style="font-size:28px;margin-bottom:12px">⏳</div>Cargando datos...';
+  document.getElementById('vp-summary-cards').style.display = 'none';
+  document.getElementById('vp-tabs-wrap').style.display = 'none';
+
+  try {
+    const res  = await apiFetch(`/api/ventas-sheets?sheet=${encodeURIComponent(sheet)}`);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    // Filtrar por rango de fechas y excluir canceladas
+    const fromDate = new Date(from + 'T00:00:00');
+    const toDate   = new Date(to   + 'T23:59:59');
+
+    vpAllRows = (data.rows || []).filter(r => {
+      if ((r['Cancelada'] || '').toLowerCase() === 'si') return false;
+      // Fecha formato DD-MM-YYYY HH:MM:SS
+      const parts = (r['Creación'] || '').split(' ')[0].split('-');
+      if (parts.length < 3) return false;
+      const d = new Date(`${parts[2]}-${parts[1]}-${parts[0]}T00:00:00`);
+      return d >= fromDate && d <= toDate;
+    });
+
+    if (!vpAllRows.length) {
+      stateEl.innerHTML = 'Sin datos para el rango seleccionado.';
+      return;
+    }
+
+    stateEl.style.display = 'none';
+    await vpLoadMargenes();
+    vpRenderSummaryCards();
+    vpRenderResumen();
+    vpRenderProductos();
+    vpFilteredRows = [...vpAllRows];
+    vpRenderTabla(vpFilteredRows);
+    document.getElementById('vp-summary-cards').style.display = 'flex';
+    document.getElementById('vp-tabs-wrap').style.display = 'block';
+
+  } catch(e) {
+    stateEl.innerHTML = `<span style="color:#ef4444">Error: ${e.message}</span>`;
+  }
+}
+
+function vpSwitchTab(tab) {
+  ['resumen','productos','tabla'].forEach(t => {
+    document.getElementById(`vp-tab-${t}`).style.display = t === tab ? 'block' : 'none';
+    document.querySelectorAll('.vp-tab').forEach(btn => {
+      const isActive = btn.dataset.tab === tab;
+      btn.style.color       = isActive ? '#111827' : '#6b7280';
+      btn.style.borderBottom = isActive ? '2px solid #111827' : 'none';
+      btn.style.fontWeight  = isActive ? '600' : '500';
+    });
+  });
+}
+
+function vpFmt(n) {
+  return '$' + Math.round(n).toLocaleString('es-CL');
+}
+
+function vpRenderSummaryCards() {
+  const totalUnidades = vpAllRows.reduce((s, r) => s + (parseInt(r['Cantidad']) || 0), 0);
+  const totalPesos    = vpAllRows.reduce((s, r) => s + (parseInt(r['Precio']) || 0), 0);
+  const totalVentas   = new Set(vpAllRows.map(r => r['Id. Venta'])).size;
+  const ticketProm    = totalVentas > 0 ? totalPesos / totalVentas : 0;
+  const margenGral    = vpCalcMargenPonderado(vpAllRows);
+
+  const cards = [
+    { label: 'Total Ingresos',   value: vpFmt(totalPesos),                          icon: '💰', color: '#10b981' },
+    { label: 'Ítems Vendidos',   value: totalUnidades.toLocaleString('es-CL'),       icon: '📦', color: '#3b82f6' },
+    { label: 'Boletas / Mesas',  value: totalVentas.toLocaleString('es-CL'),         icon: '🧾', color: '#8b5cf6' },
+    { label: 'Ticket Promedio',  value: vpFmt(ticketProm),                           icon: '📊', color: '#f59e0b' },
+    { label: 'Margen Teórico Pond. General', value: margenGral !== null ? margenGral + '%' : '—', icon: '📐', color: margenGral !== null && margenGral >= 60 ? '#10b981' : margenGral !== null && margenGral >= 40 ? '#f59e0b' : '#ef4444' },
+  ];
+
+  document.getElementById('vp-summary-cards').innerHTML = cards.map(c => `
+    <div style="background:#fff;border-radius:12px;padding:16px 20px;border:1px solid #e5e7eb;flex:1;min-width:160px">
+      <div style="font-size:22px;margin-bottom:6px">${c.icon}</div>
+      <div style="font-size:20px;font-weight:700;color:${c.color}">${c.value}</div>
+      <div style="font-size:12px;color:#6b7280;margin-top:2px">${c.label}</div>
+    </div>`).join('');
+}
+
+function vpRenderResumen() {
+  const byCateg = {};
+  vpAllRows.forEach(r => {
+    const cat = r['Categoría'] || 'Sin categoría';
+    if (!byCateg[cat]) byCateg[cat] = { unidades: 0, total: 0 };
+    byCateg[cat].unidades += parseInt(r['Cantidad']) || 0;
+    byCateg[cat].total    += parseInt(r['Precio'])   || 0;
+  });
+
+  const totalGlobal = Object.values(byCateg).reduce((s, v) => s + v.total, 0);
+  const sorted = Object.entries(byCateg).sort((a,b) => b[1].total - a[1].total);
+
+  const rowsByCateg = {};
+  vpAllRows.forEach(r => {
+    const cat = r['Categoría'] || 'Sin categoría';
+    if (!rowsByCateg[cat]) rowsByCateg[cat] = [];
+    rowsByCateg[cat].push(r);
+  });
+
+  document.getElementById('vp-tbody-resumen').innerHTML = sorted.map(([cat, v], i) => {
+    const pct    = totalGlobal > 0 ? (v.total / totalGlobal * 100).toFixed(1) : '0.0';
+    const margen = vpCalcMargenPonderado(rowsByCateg[cat] || []);
+    const mColor = margen === null ? '#9ca3af' : margen >= 60 ? '#10b981' : margen >= 40 ? '#f59e0b' : '#ef4444';
+    const mHtml  = margen !== null ? `<span style="font-weight:700;color:${mColor}">${margen}%</span>` : `<span style="color:#d1d5db">—</span>`;
+    return `<tr style="border-bottom:1px solid #f3f4f6;${i % 2 === 1 ? 'background:#fafafa' : ''};cursor:pointer" onclick="vpOpenDrilldown('${cat.replace(/'/g,"\\'")}')">
+      <td style="padding:9px 16px;color:#374151;font-weight:600">${cat}</td>
+      <td style="padding:9px 16px;text-align:right;color:#374151">${v.unidades.toLocaleString('es-CL')}</td>
+      <td style="padding:9px 16px;text-align:right;color:#374151;font-weight:600">${vpFmt(v.total)}</td>
+      <td style="padding:9px 16px;text-align:right">
+        <div style="display:flex;align-items:center;justify-content:flex-end;gap:8px">
+          <div style="width:60px;height:6px;background:#e5e7eb;border-radius:3px;overflow:hidden">
+            <div style="width:${pct}%;height:100%;background:#10b981;border-radius:3px"></div>
+          </div>
+          <span style="font-size:12px;color:#6b7280;min-width:36px;text-align:right">${pct}%</span>
+        </div>
+      </td>
+      <td style="padding:9px 16px;text-align:right">${mHtml}</td>
+      <td style="padding:9px 16px;text-align:center;color:#3b82f6;font-size:12px;font-weight:600">Ver →</td>
+    </tr>`;
+  }).join('');
+}
+
+async function vpOpenDrilldown(cat) {
+  await vpLoadMargenes();
+  const rows = vpAllRows.filter(r => (r['Categoría'] || 'Sin categoría') === cat);
+  const totalUnid  = rows.reduce((s,r) => s + (parseInt(r['Cantidad'])||0), 0);
+  const totalPesos = rows.reduce((s,r) => s + (parseInt(r['Precio'])||0), 0);
+  const nVentas    = new Set(rows.map(r => r['Id. Venta'])).size;
+  const ticketProm = nVentas > 0 ? totalPesos / nVentas : 0;
+
+  document.getElementById('vp-dd-title').textContent = cat;
+
+  const margenCateg = vpCalcMargenPonderado(rows);
+  const margenCategColor = margenCateg === null ? '#9ca3af' : margenCateg >= 60 ? '#10b981' : margenCateg >= 40 ? '#f59e0b' : '#ef4444';
+
+  // Mini cards
+  document.getElementById('vp-dd-cards').innerHTML = [
+    { label: 'Total $',        value: vpFmt(totalPesos), color: '#10b981' },
+    { label: 'Unidades',       value: totalUnid.toLocaleString('es-CL'), color: '#3b82f6' },
+    { label: 'Boletas/Mesas',  value: nVentas.toLocaleString('es-CL'), color: '#8b5cf6' },
+    { label: 'Ticket prom.',   value: vpFmt(ticketProm), color: '#f59e0b' },
+    { label: 'Margen Teórico Pond. Cat.',  value: margenCateg !== null ? margenCateg + '%' : '—', color: margenCategColor },
+  ].map(c => `<div style="background:#f9fafb;border-radius:10px;padding:12px 16px;min-width:130px">
+    <div style="font-size:16px;font-weight:700;color:${c.color}">${c.value}</div>
+    <div style="font-size:11px;color:#6b7280;margin-top:2px">${c.label}</div>
+  </div>`).join('');
+
+  // Productos dentro de la categoría
+  const byProd = {};
+  rows.forEach(r => {
+    const p = r['Producto'] || '—';
+    if (!byProd[p]) byProd[p] = { unidades: 0, total: 0 };
+    byProd[p].unidades += parseInt(r['Cantidad'])||0;
+    byProd[p].total    += parseInt(r['Precio'])||0;
+  });
+  const sortedProd = Object.entries(byProd).sort((a,b) => b[1].total - a[1].total);
+  document.getElementById('vp-dd-receta').style.display = 'none';
+  const tbodyProd = document.getElementById('vp-dd-productos');
+  tbodyProd.innerHTML = sortedProd.map(([p, v], i) => {
+    const pct    = totalPesos > 0 ? (v.total / totalPesos * 100).toFixed(1) : '0';
+    const margen = vpGetMargen(p);
+    const margenHtml = margen !== null
+      ? `<span style="color:${margen >= 60 ? '#10b981' : margen >= 40 ? '#f59e0b' : '#ef4444'};font-weight:600">${margen}%</span>`
+      : `<span style="color:#d1d5db;font-size:10px">—</span>`;
+    return `<tr class="vp-prod-row" style="border-bottom:1px solid #f9fafb;cursor:pointer">
+      <td class="vp-prod-nombre" style="padding:5px 0;color:#3b82f6;font-size:12px;text-decoration:underline;text-underline-offset:2px">${p}</td>
+      <td style="padding:5px 0;text-align:right;color:#6b7280;font-size:12px">${v.unidades}</td>
+      <td style="padding:5px 0;text-align:right;color:#374151;font-weight:600;font-size:12px">${vpFmt(v.total)}</td>
+      <td style="padding:5px 0;text-align:right;color:#6b7280;font-size:11px">${pct}%</td>
+      <td style="padding:5px 0;text-align:right;font-size:12px">${margenHtml}</td>
+    </tr>`;
+  }).join('');
+  tbodyProd.querySelectorAll('.vp-prod-row').forEach(tr => {
+    const nombre = tr.querySelector('.vp-prod-nombre').textContent;
+    tr.addEventListener('click', () => vpShowReceta(nombre));
+  });
+
+  // Ventas por día
+  const byDia = {};
+  rows.forEach(r => {
+    const fecha = (r['Creación'] || '').split(' ')[0]; // DD-MM-YYYY
+    if (!byDia[fecha]) byDia[fecha] = { unidades: 0, total: 0 };
+    byDia[fecha].unidades += parseInt(r['Cantidad'])||0;
+    byDia[fecha].total    += parseInt(r['Precio'])||0;
+  });
+  const sortedDias = Object.entries(byDia).sort((a,b) => {
+    const pa = a[0].split('-'); const pb = b[0].split('-');
+    return new Date(`${pa[2]}-${pa[1]}-${pa[0]}`) - new Date(`${pb[2]}-${pb[1]}-${pb[0]}`);
+  });
+  const maxDia = Math.max(...sortedDias.map(([,v]) => v.total), 1);
+  document.getElementById('vp-dd-dias').innerHTML = sortedDias.map(([dia, v]) => `
+    <div style="margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:#6b7280;margin-bottom:2px">
+        <span>${dia}</span>
+        <span style="font-weight:600;color:#374151">${vpFmt(v.total)} · ${v.unidades} und.</span>
+      </div>
+      <div style="height:6px;background:#e5e7eb;border-radius:3px;overflow:hidden">
+        <div style="width:${(v.total/maxDia*100).toFixed(1)}%;height:100%;background:#3b82f6;border-radius:3px"></div>
+      </div>
+    </div>`).join('');
+
+  // Por mozo
+  const byMozo = {};
+  rows.forEach(r => {
+    const m = r['Creada por'] || '—';
+    if (!byMozo[m]) byMozo[m] = { unidades: 0, total: 0 };
+    byMozo[m].unidades += parseInt(r['Cantidad'])||0;
+    byMozo[m].total    += parseInt(r['Precio'])||0;
+  });
+  const sortedMozo = Object.entries(byMozo).sort((a,b) => b[1].total - a[1].total);
+  const colors = ['#3b82f6','#10b981','#f59e0b','#8b5cf6','#ef4444','#06b6d4'];
+  document.getElementById('vp-dd-mozos').innerHTML = sortedMozo.map(([mozo, v], i) => `
+    <div style="background:#f9fafb;border-radius:10px;padding:10px 14px;min-width:110px;text-align:center">
+      <div style="width:32px;height:32px;border-radius:50%;background:${colors[i%colors.length]};color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;margin:0 auto 6px auto">${mozo[0]?.toUpperCase()}</div>
+      <div style="font-size:12px;font-weight:600;color:#374151;text-transform:capitalize">${mozo}</div>
+      <div style="font-size:12px;font-weight:700;color:${colors[i%colors.length]};margin-top:2px">${vpFmt(v.total)}</div>
+      <div style="font-size:11px;color:#6b7280">${v.unidades} und.</div>
+    </div>`).join('');
+
+  document.getElementById('vp-drilldown').style.display = 'block';
+  document.getElementById('vp-drilldown').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function vpCloseDrilldown() {
+  document.getElementById('vp-drilldown').style.display = 'none';
+}
+
+async function vpShowReceta(nombre) {
+  const panel   = document.getElementById('vp-dd-receta');
+  const content = document.getElementById('vp-dd-receta-content');
+  document.getElementById('vp-dd-receta-title').textContent = nombre;
+  panel.style.display = 'block';
+  content.innerHTML = '<div style="color:#9ca3af;font-size:13px">Cargando receta…</div>';
+  panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  try {
+    const r = await apiFetch(`/api/receta-detalle?nombre=${encodeURIComponent(nombre)}`);
+    if (!r.ok) {
+      content.innerHTML = '<div style="color:#f59e0b;font-size:13px;background:#fffbeb;padding:10px 14px;border-radius:8px;border:1px solid #fde68a">⚠️ Sin receta cargada en Márgenes para este producto.</div>';
+      return;
+    }
+    const receta = await r.json();
+    const ings = receta.ingredientes || [];
+    const fmt = n => '$' + Math.round(n).toLocaleString('es-CL');
+    const localesHtml = (receta.locales || []).map(l => `
+      <div style="background:#f9fafb;border-radius:8px;padding:8px 14px;font-size:12px;border:1px solid #e5e7eb">
+        <div style="color:#6b7280;font-size:11px;margin-bottom:4px">${l.nombre}</div>
+        <div style="display:flex;gap:10px;align-items:baseline">
+          <span style="color:#3b82f6;font-weight:700;font-size:14px">${fmt(l.precio)}</span>
+          <span style="color:#8b5cf6;font-weight:600;font-size:12px">${l.margen !== null ? l.margen + '% margen' : '—'}</span>
+        </div>
+      </div>`).join('');
+    content.innerHTML = `
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;align-items:flex-start">
+        <div style="background:#f0fdf4;border-radius:8px;padding:8px 14px;font-size:12px;border:1px solid #d1fae5"><span style="color:#6b7280">Costo receta</span><br><strong style="color:#10b981;font-size:15px">${fmt(receta.costo)}</strong></div>
+        ${localesHtml}
+      </div>
+      ${ings.length === 0
+        ? '<div style="color:#9ca3af;font-size:13px">Sin ingredientes cargados en esta receta.</div>'
+        : `<table style="width:100%;border-collapse:collapse;font-size:12px">
+            <thead><tr style="background:#f9fafb;border-bottom:2px solid #e5e7eb">
+              <th style="padding:7px 10px;text-align:left;color:#6b7280;font-weight:600">Ingrediente</th>
+              <th style="padding:7px 10px;text-align:right;color:#6b7280;font-weight:600">Cantidad</th>
+              <th style="padding:7px 10px;text-align:right;color:#6b7280;font-weight:600">Unidad</th>
+              <th style="padding:7px 10px;text-align:right;color:#6b7280;font-weight:600">$ / unidad</th>
+              <th style="padding:7px 10px;text-align:right;color:#6b7280;font-weight:600">$ total</th>
+            </tr></thead>
+            <tbody>${ings.map(i => `
+              <tr style="border-bottom:1px solid #f3f4f6">
+                <td style="padding:7px 10px;color:#374151">${i.nombre}${i.tipo==='preparacion'?' <span style="background:#fef3c7;color:#92400e;font-size:10px;padding:1px 5px;border-radius:3px;margin-left:4px">prep</span>':''}</td>
+                <td style="padding:7px 10px;text-align:right;color:#374151">${i.cantidad}</td>
+                <td style="padding:7px 10px;text-align:right;color:#6b7280">${i.unit||'—'}</td>
+                <td style="padding:7px 10px;text-align:right;color:#6b7280">${i.costoPorUnidad ? fmt(i.costoPorUnidad) : '—'}</td>
+                <td style="padding:7px 10px;text-align:right;font-weight:600;color:#374151">${i.costoTotal ? fmt(i.costoTotal) : '—'}</td>
+              </tr>`).join('')}
+            </tbody>
+          </table>`}`;
+  } catch(e) {
+    content.innerHTML = `<div style="color:#ef4444;font-size:13px">Error: ${e.message}</div>`;
+  }
+}
+
+function vpRenderProductos() {
+  const byProd = {};
+  vpAllRows.forEach(r => {
+    const key = `${r['Producto']}||${r['Categoría']}`;
+    if (!byProd[key]) byProd[key] = { nombre: r['Producto'], cat: r['Categoría'], unidades: 0, total: 0 };
+    byProd[key].unidades += parseInt(r['Cantidad']) || 0;
+    byProd[key].total    += parseInt(r['Precio'])   || 0;
+  });
+
+  const sorted = Object.values(byProd).sort((a,b) => b.total - a.total);
+
+  document.getElementById('vp-tbody-productos').innerHTML = sorted.map((p, i) => `
+    <tr style="border-bottom:1px solid #f3f4f6;${i % 2 === 1 ? 'background:#fafafa' : ''}">
+      <td style="padding:9px 16px;color:#9ca3af;font-size:11px;font-weight:600">${i+1}</td>
+      <td style="padding:9px 16px;color:#111827;font-weight:500">${p.nombre}</td>
+      <td style="padding:9px 16px"><span style="background:#f3f4f6;color:#374151;font-size:11px;padding:2px 8px;border-radius:99px">${p.cat}</span></td>
+      <td style="padding:9px 16px;text-align:right;color:#374151">${p.unidades.toLocaleString('es-CL')}</td>
+      <td style="padding:9px 16px;text-align:right;color:#111827;font-weight:600">${vpFmt(p.total)}</td>
+    </tr>`).join('');
+}
+
+function vpRenderTabla(rows) {
+  document.getElementById('vp-count').textContent = `${rows.length} registros`;
+  document.getElementById('vp-tbody-tabla').innerHTML = rows.map((r, i) => `
+    <tr style="border-bottom:1px solid #f3f4f6;${i % 2 === 1 ? 'background:#fafafa' : ''}">
+      <td style="padding:8px 14px;color:#6b7280">${r['Id. Venta']}</td>
+      <td style="padding:8px 14px;color:#374151;white-space:nowrap">${r['Creación']}</td>
+      <td style="padding:8px 14px;color:#111827;font-weight:500">${r['Producto']}</td>
+      <td style="padding:8px 14px"><span style="background:#f3f4f6;color:#374151;font-size:11px;padding:2px 8px;border-radius:99px">${r['Categoría']}</span></td>
+      <td style="padding:8px 14px;text-align:right;color:#374151">${r['Cantidad']}</td>
+      <td style="padding:8px 14px;text-align:right;color:#111827;font-weight:600">${vpFmt(parseInt(r['Precio'])||0)}</td>
+      <td style="padding:8px 14px;color:#374151">${r['Creada por']}</td>
+      <td style="padding:8px 14px"><span style="color:${r['Cancelada']==='Si'?'#ef4444':'#10b981'};font-size:11px;font-weight:600">${r['Cancelada']}</span></td>
+    </tr>`).join('');
+}
+
+function vpFilterTabla() {
+  const q = document.getElementById('vp-search').value.toLowerCase();
+  vpFilteredRows = q ? vpAllRows.filter(r =>
+    (r['Producto']   || '').toLowerCase().includes(q) ||
+    (r['Categoría']  || '').toLowerCase().includes(q) ||
+    (r['Creada por'] || '').toLowerCase().includes(q)
+  ) : [...vpAllRows];
+  vpRenderTabla(vpFilteredRows);
 }
 </script>
 
@@ -10489,7 +12700,7 @@ async function margenDeleteRecipe(id, name) {
         </div>
         <div style="display:flex;align-items:center;gap:10px;margin-top:8px">
           <label style="font-size:13px;color:#495057;font-weight:500">Porciones que rinde:</label>
-          <input type="number" id="marg-form-porciones" min="1" step="1" placeholder="1"
+          <input type="number" id="marg-form-porciones" min="0.1" step="0.5" placeholder="1"
             oninput="margenUpdateFormTotal()"
             style="width:80px;padding:6px 10px;border:1px solid #dee2e6;border-radius:7px;font-size:13px;color:#212529">
         </div>
@@ -10643,6 +12854,54 @@ async function margenDeleteRecipe(id, name) {
 </div>
 
 <!-- modal detalle receta -->
+<!-- ── GOKU Config modal ── -->
+<div id="goku-config-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1060;align-items:center;justify-content:center;padding:20px" onclick="if(event.target===this)document.getElementById('goku-config-modal').style.display='none'">
+  <div style="background:#fff;border-radius:16px;width:100%;max-width:560px;max-height:88vh;display:flex;flex-direction:column">
+    <div style="padding:20px 24px;border-bottom:1px solid #e5e7eb;flex-shrink:0">
+      <div style="font-size:17px;font-weight:700;color:#111827">Clasificar proveedores</div>
+      <div style="font-size:12px;color:#6b7280;margin-top:2px">Asigná una categoría a cada proveedor. Solo los <strong>Insumos</strong> se usan para calcular el margen real.</div>
+    </div>
+    <div style="padding:12px 24px;border-bottom:1px solid #f3f4f6;flex-shrink:0;display:flex;gap:6px;flex-wrap:wrap">
+      <span style="font-size:11px;color:#6b7280;align-self:center;margin-right:4px">Categorías:</span>
+      <span style="font-size:11px;background:#f0fdf4;color:#16a34a;border:1px solid #86efac;border-radius:10px;padding:2px 10px;font-weight:700">Insumo</span>
+      <span style="font-size:11px;background:#dcfce7;color:#15803d;border:1px solid #86efac;border-radius:10px;padding:2px 10px;font-weight:700">Desechables</span>
+      <span style="font-size:11px;background:#fff7ed;color:#ea580c;border:1px solid #fdba74;border-radius:10px;padding:2px 10px;font-weight:700">Gas</span>
+      <span style="font-size:11px;background:#fefce8;color:#ca8a04;border:1px solid #fde047;border-radius:10px;padding:2px 10px;font-weight:700">Luz</span>
+      <span style="font-size:11px;background:#eff6ff;color:#2563eb;border:1px solid #93c5fd;border-radius:10px;padding:2px 10px;font-weight:700">Agua</span>
+      <span style="font-size:11px;background:#faf5ff;color:#7c3aed;border:1px solid #c4b5fd;border-radius:10px;padding:2px 10px;font-weight:700">Arriendo</span>
+      <span style="font-size:11px;background:#ecfeff;color:#0891b2;border:1px solid #a5f3fc;border-radius:10px;padding:2px 10px;font-weight:700">Seguro</span>
+      <span style="font-size:11px;background:#fdf2f8;color:#9d174d;border:1px solid #f9a8d4;border-radius:10px;padding:2px 10px;font-weight:700">Remodelación</span>
+      <span style="font-size:11px;background:#f9fafb;color:#6b7280;border:1px solid #d1d5db;border-radius:10px;padding:2px 10px;font-weight:700">Otro</span>
+    </div>
+    <div id="goku-config-list" style="flex:1;overflow-y:auto;padding:12px 24px"></div>
+    <div style="padding:16px 24px;border-top:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;flex-shrink:0">
+      <span id="goku-config-status" style="font-size:12px;color:#6b7280"></span>
+      <div style="display:flex;gap:8px">
+        <button onclick="document.getElementById('goku-config-modal').style.display='none'" style="padding:8px 16px;border:1px solid #e5e7eb;border-radius:8px;background:#fff;cursor:pointer;font-size:13px;color:#374151">Cancelar</button>
+        <button onclick="gokuSaveConfig()" style="padding:8px 16px;border:none;border-radius:8px;background:#1d4ed8;color:#fff;cursor:pointer;font-size:13px;font-weight:600">Guardar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Manual de Cocina modal ── -->
+<div id="marg-manual-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1060;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto">
+  <div style="background:#fff;border-radius:16px;width:100%;max-width:860px;margin:0 auto;display:flex;flex-direction:column;min-height:calc(100vh - 40px)">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 24px;border-bottom:1px solid #e9ecef;flex-shrink:0;position:sticky;top:0;background:#fff;z-index:1;border-radius:16px 16px 0 0">
+      <div>
+        <div style="font-size:18px;font-weight:700;color:#1e40af">Manual de Cocina</div>
+        <div style="font-size:12px;color:#6b7280;margin-top:2px">Recetas, preparaciones, costos e ingredientes</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <select id="marg-manual-rest-sel" onchange="margenRenderManual()" style="border:1px solid #e5e7eb;border-radius:8px;padding:6px 12px;font-size:13px;background:#fff"></select>
+        <button onclick="margenDescargarManualPDF()" style="padding:7px 14px;background:#16a34a;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">&#8659; Descargar PDF</button>
+        <button onclick="document.getElementById('marg-manual-modal').style.display='none'" style="background:none;border:none;color:#6b7280;font-size:20px;cursor:pointer;width:32px;height:32px;display:flex;align-items:center;justify-content:center">✕</button>
+      </div>
+    </div>
+    <div id="marg-manual-body" style="flex:1;padding:28px 32px"></div>
+  </div>
+</div>
+
 <div id="marg-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1050;align-items:center;justify-content:center;padding:20px" onclick="if(event.target===this)margenCloseModal()">
   <div style="background:#fff;border-radius:16px;width:100%;max-width:600px;max-height:90vh;overflow-y:auto;display:flex;flex-direction:column">
     <div style="display:flex;align-items:center;justify-content:space-between;padding:20px 24px;border-bottom:1px solid #e9ecef;flex-shrink:0">

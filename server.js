@@ -72,7 +72,8 @@ async function chipaxGet(path, attempts = 3) {
 }
 
 const GOOGLE_SHEET_ID      = process.env.GOOGLE_SHEET_ID || '';
-const MONACO_EERR_SHEET_ID = '1civhBvKt9Cw6CHF7vl6DPlHtkzl7JlgBI7rGtCLYWLE';
+const MONACO_EERR_SHEET_ID    = '1civhBvKt9Cw6CHF7vl6DPlHtkzl7JlgBI7rGtCLYWLE';
+const VENTAS_SHEET_ID         = '1CVrtIe7TFz1FUOeMZaoD2ikS8cMeoJeep3UrTFHfO30';
 const GOOGLE_SA       = process.env.GOOGLE_SERVICE_ACCOUNT ? JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT) : null;
 
 async function getSheetsRows(range) {
@@ -124,6 +125,9 @@ app.get('/', (req, res) => {
 app.get('/admin', (req, res) => {
   res.set('Cache-Control', 'no-store');
   res.sendFile(path.join(__dirname, 'index.html'));
+});
+app.get('/api/today', (req, res) => {
+  res.json({ today: getTodayChile() });
 });
 app.get('/portal', (req, res) => {
   res.set('Cache-Control', 'no-store');
@@ -2101,7 +2105,7 @@ app.post('/api/recipes/import', requireAuth, async (req, res) => {
       rendimientoAgua: Number(r.rendimientoAgua) || 0,
       rendimientoAire: Number(r.rendimientoAire) || 0,
       merma: Number(r.merma) || 0,
-      porciones: Math.max(1, parseInt(r.porciones) || 1),
+      porciones: Math.max(0.1, parseFloat(r.porciones) || 1),
       category: r.category || r.categoria || '',
       subcategoria: r.subcategoria || '',
       comentario: r.comentario || '',
@@ -2137,7 +2141,7 @@ app.put('/api/recipes/:id', requireAuth, async (req, res) => {
   if (rendimientoAgua  !== undefined) update.rendimientoAgua  = Number(rendimientoAgua)  || 0;
   if (rendimientoAire  !== undefined) update.rendimientoAire  = Number(rendimientoAire)  || 0;
   if (merma            !== undefined) update.merma            = Number(merma)            || 0;
-  if (porciones        !== undefined) update.porciones        = Math.max(1, parseInt(porciones) || 1);
+  if (porciones        !== undefined) update.porciones        = Math.max(0.1, parseFloat(porciones) || 1);
   const catVal = category !== undefined ? category : categoria;
   if (catVal           !== undefined) { update.category = catVal || ''; update.categoria = admin.firestore.FieldValue.delete(); }
   if (subcategoria     !== undefined) update.subcategoria     = subcategoria || '';
@@ -2173,7 +2177,7 @@ app.post('/api/preparations', requireAuth, async (req, res) => {
     restaurantSections: restaurantSections || {},
     rendimientoAgua: Number(rendimientoAgua) || 0,
     rendimientoAire: Number(rendimientoAire) || 0,
-    porciones: Math.max(1, parseInt(porciones) || 1),
+    porciones: Math.max(0.1, parseFloat(porciones) || 1),
     comentario: comentario || '',
     createdAt: admin.firestore.FieldValue.serverTimestamp()
   });
@@ -2195,7 +2199,7 @@ app.put('/api/preparations/:id', requireAuth, async (req, res) => {
   if (rendimientoAgua    !== undefined) update.rendimientoAgua    = Number(rendimientoAgua)  || 0;
   if (rendimientoAire    !== undefined) update.rendimientoAire    = Number(rendimientoAire)  || 0;
   if (merma              !== undefined) update.merma              = Number(merma)            || 0;
-  if (porciones          !== undefined) update.porciones          = Math.max(1, parseInt(porciones) || 1);
+  if (porciones          !== undefined) update.porciones          = Math.max(0.1, parseFloat(porciones) || 1);
   if (comentario         !== undefined) update.comentario         = comentario || '';
   await db.collection('preparations').doc(req.params.id).update(update);
   res.json({ ok: true });
@@ -2817,6 +2821,249 @@ async function getEerrSheetRows(sheetName) {
   return data.values || [];
 }
 
+// ── Ventas Google Sheets ──────────────────────────────────
+async function getVentasSheetRows(sheetName) {
+  if (!GOOGLE_SA) throw new Error('GOOGLE_SERVICE_ACCOUNT no configurada');
+  const auth  = new GoogleAuth({ credentials: GOOGLE_SA, scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'] });
+  const token = await auth.getAccessToken();
+  const url   = `https://sheets.googleapis.com/v4/spreadsheets/${VENTAS_SHEET_ID}/values/${encodeURIComponent(sheetName + '!A:L')}`;
+  const resp  = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  if (!resp.ok) throw new Error(`Sheets ventas error ${resp.status}: ${await resp.text()}`);
+  const data  = await resp.json();
+  return data.values || [];
+}
+
+// GET /api/ventas-sheets/tabs — lista las pestañas del archivo de ventas
+app.get('/api/ventas-sheets/tabs', requireAuth, async (req, res) => {
+  try {
+    if (!GOOGLE_SA) throw new Error('GOOGLE_SERVICE_ACCOUNT no configurada');
+    const auth  = new GoogleAuth({ credentials: GOOGLE_SA, scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'] });
+    const token = await auth.getAccessToken();
+    const url   = `https://sheets.googleapis.com/v4/spreadsheets/${VENTAS_SHEET_ID}`;
+    const resp  = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    if (!resp.ok) throw new Error(`Sheets error ${resp.status}`);
+    const data  = await resp.json();
+    const tabs  = (data.sheets || []).map(s => s.properties.title);
+    res.json({ tabs });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/ventas-sheets?sheet=Ventas Monaco Maitencillo
+app.get('/api/ventas-sheets', requireAuth, async (req, res) => {
+  const sheetName = req.query.sheet;
+  if (!sheetName) return res.status(400).json({ error: 'Falta parámetro sheet' });
+  try {
+    const rows = await getVentasSheetRows(sheetName);
+    if (rows.length === 0) return res.json({ headers: [], rows: [] });
+    const [headers, ...dataRows] = rows;
+    const result = dataRows.map(row => {
+      const obj = {};
+      headers.forEach((h, i) => { obj[h] = row[i] || ''; });
+      return obj;
+    });
+    res.json({ sheet: sheetName, total: result.length, headers, rows: result });
+  } catch (e) {
+    console.error('ventas-sheets error:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/receta-detalle?nombre=Hamburguesa Juicy Lucy
+app.get('/api/receta-detalle', requireAuth, async (req, res) => {
+  const nombre = (req.query.nombre || '').trim().toLowerCase();
+  if (!nombre) return res.status(400).json({ error: 'nombre requerido' });
+  try {
+    const [rSnap, pSnap, iSnap, restSnap, priceSnap] = await Promise.all([
+      db.collection('recipes').get(),
+      db.collection('preparations').get(),
+      db.collection('products').get(),
+      db.collection('restaurants').get(),
+      db.collection('product_price_history').get()
+    ]);
+
+    // Build latest price map (same as /api/inv/products)
+    const latestPriceMap = {};
+    priceSnap.docs.forEach(d => {
+      const { productId, mes, precio } = d.data();
+      if (!productId) return;
+      if (!latestPriceMap[productId] || mes > latestPriceMap[productId].mes)
+        latestPriceMap[productId] = { mes, precio };
+    });
+
+    const preparations = pSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const ingMap = Object.fromEntries(iSnap.docs.map(d => {
+      const data = d.data();
+      return [d.id, { id: d.id, ...data, costPerUnit: latestPriceMap[d.id]?.precio ?? data.costPerUnit ?? 0 }];
+    }));
+    const restMap = Object.fromEntries(restSnap.docs.map(d => [d.id, d.data().name]));
+
+    const recipe = rSnap.docs.map(d => ({ id: d.id, ...d.data() }))
+      .find(r => (r.name || '').toLowerCase() === nombre);
+    if (!recipe) return res.status(404).json({ error: 'Receta no encontrada' });
+
+    // Mirror frontend calcPrepCost exactly (including merma)
+    function calcPrepCostSrv(prep) {
+      if (!prep) return 0;
+      const items = (prep.ingredients || []).filter(i => i.quantity > 0);
+      let cost = 0;
+      items.forEach(item => {
+        if (item.type === 'preparation') {
+          const sub = preparations.find(p => p.id === item.preparationId || p.name === item.name);
+          cost += calcPrepCostSrv(sub) * (item.quantity || 0);
+        } else {
+          const prod = ingMap[item.productId] || Object.values(ingMap).find(p => p.name === item.name);
+          cost += (prod?.costPerUnit || 0) * (item.quantity || 0);
+        }
+      });
+      if (prep.esPromedio && items.length > 1) cost /= items.length;
+      const agua = prep.rendimientoAgua || 0;
+      const aire = prep.rendimientoAire || 0;
+      const merma = prep.merma || 0;
+      if (agua > 0) cost /= (1 + agua / 100);
+      if (aire > 0) cost /= (1 + aire / 100);
+      if (merma > 0 && merma < 100) cost /= (1 - merma / 100);
+      const porciones = prep.porciones > 1 ? prep.porciones : 1;
+      return porciones > 1 ? cost / porciones : cost;
+    }
+
+    function calcRecipeCostSrv(r) {
+      const items = (r.ingredients || []).filter(i => i.quantity > 0);
+      let cost = 0;
+      items.forEach(item => {
+        if (item.type === 'preparation') {
+          const prep = preparations.find(p => p.id === item.preparationId || p.name === item.name);
+          cost += calcPrepCostSrv(prep) * (item.quantity || 0);
+        } else {
+          const prod = ingMap[item.productId] || Object.values(ingMap).find(p => p.name === item.name);
+          cost += (prod?.costPerUnit || 0) * (item.quantity || 0);
+        }
+      });
+      if (r.esPromedio && items.length > 1) cost /= items.length;
+      const agua = r.rendimientoAgua || 0;
+      const aire = r.rendimientoAire || 0;
+      const merma = r.merma || 0;
+      if (agua > 0) cost /= (1 + agua / 100);
+      if (aire > 0) cost /= (1 + aire / 100);
+      if (merma > 0 && merma < 100) cost /= (1 - merma / 100);
+      const porciones = r.porciones > 1 ? r.porciones : 1;
+      return porciones > 1 ? cost / porciones : cost;
+    }
+
+    function resolveItems(items) {
+      return (items || []).filter(i => i.quantity > 0).map(item => {
+        if (item.type === 'preparation') {
+          const prep = preparations.find(p => p.id === item.preparationId || p.name === item.name);
+          const costoPrep = calcPrepCostSrv(prep);
+          return { nombre: item.name, tipo: 'preparacion', cantidad: item.quantity, unit: prep?.unit || 'u', costoPorUnidad: costoPrep, costoTotal: costoPrep * item.quantity };
+        } else {
+          const prod = ingMap[item.productId] || Object.values(ingMap).find(p => p.name === item.name);
+          return { nombre: item.name, tipo: 'ingrediente', cantidad: item.quantity, unit: prod?.unit || '—', costoPorUnidad: prod?.costPerUnit || 0, costoTotal: (prod?.costPerUnit || 0) * item.quantity };
+        }
+      });
+    }
+
+    const cost = calcRecipeCostSrv(recipe);
+    const sellingPrices = recipe.sellingPrices || {};
+    const restaurantIds = recipe.restaurantIds || [];
+    const locales = restaurantIds.map(id => {
+      const precio = sellingPrices[id] || recipe.sellingPrice || 0;
+      const net    = precio > 0 ? precio / 1.19 : 0;
+      return { id, nombre: restMap[id] || id, precio, margen: net > 0 ? Math.round((net - cost) / net * 100) : null };
+    });
+    if (locales.length === 0 && recipe.restaurantName) {
+      const precio = recipe.sellingPrice || 0;
+      const net    = precio > 0 ? precio / 1.19 : 0;
+      locales.push({ nombre: recipe.restaurantName, precio, margen: net > 0 ? Math.round((net - cost) / net * 100) : null });
+    }
+
+    res.json({
+      nombre: recipe.name, categoria: recipe.category || '—',
+      costo: Math.round(cost), porciones: recipe.porciones || 1,
+      locales, ingredientes: resolveItems(recipe.ingredients)
+    });
+  } catch (e) {
+    console.error('receta-detalle error:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/recetas-margenes — returns { nombre → { margen, costo, sellingPrices } } for all recipes
+app.get('/api/recetas-margenes', requireAuth, async (req, res) => {
+  try {
+    const [rSnap, pSnap, iSnap, priceSnap, restSnap] = await Promise.all([
+      db.collection('recipes').get(),
+      db.collection('preparations').get(),
+      db.collection('products').get(),
+      db.collection('product_price_history').get(),
+      db.collection('restaurants').get()
+    ]);
+    const latestPriceMap = {};
+    priceSnap.docs.forEach(d => {
+      const { productId, mes, precio } = d.data();
+      if (!productId) return;
+      if (!latestPriceMap[productId] || mes > latestPriceMap[productId].mes) latestPriceMap[productId] = { mes, precio };
+    });
+    const preparations = pSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const ingMap = Object.fromEntries(iSnap.docs.map(d => {
+      const data = d.data();
+      return [d.id, { id: d.id, ...data, costPerUnit: latestPriceMap[d.id]?.precio ?? data.costPerUnit ?? 0 }];
+    }));
+    const restMap = Object.fromEntries(restSnap.docs.map(d => [d.id, d.data().name]));
+
+    function cpc(prep) {
+      if (!prep) return 0;
+      const items = (prep.ingredients || []).filter(i => i.quantity > 0);
+      let c = 0;
+      items.forEach(i => {
+        if (i.type === 'preparation') { const s = preparations.find(p => p.id === i.preparationId || p.name === i.name); c += cpc(s) * (i.quantity || 0); }
+        else { const p = ingMap[i.productId] || Object.values(ingMap).find(p => p.name === i.name); c += (p?.costPerUnit || 0) * (i.quantity || 0); }
+      });
+      if (prep.esPromedio && items.length > 1) c /= items.length;
+      const agua = prep.rendimientoAgua || 0, aire = prep.rendimientoAire || 0, merma = prep.merma || 0;
+      if (agua > 0) c /= (1 + agua / 100); if (aire > 0) c /= (1 + aire / 100);
+      if (merma > 0 && merma < 100) c /= (1 - merma / 100);
+      const por = prep.porciones > 1 ? prep.porciones : 1;
+      return por > 1 ? c / por : c;
+    }
+
+    function crc(r) {
+      const items = (r.ingredients || []).filter(i => i.quantity > 0);
+      let c = 0;
+      items.forEach(i => {
+        if (i.type === 'preparation') { const pr = preparations.find(p => p.id === i.preparationId || p.name === i.name); c += cpc(pr) * (i.quantity || 0); }
+        else { const p = ingMap[i.productId] || Object.values(ingMap).find(p => p.name === i.name); c += (p?.costPerUnit || 0) * (i.quantity || 0); }
+      });
+      if (r.esPromedio && items.length > 1) c /= items.length;
+      const agua = r.rendimientoAgua || 0, aire = r.rendimientoAire || 0, merma = r.merma || 0;
+      if (agua > 0) c /= (1 + agua / 100); if (aire > 0) c /= (1 + aire / 100);
+      if (merma > 0 && merma < 100) c /= (1 - merma / 100);
+      const por = r.porciones > 1 ? r.porciones : 1;
+      return por > 1 ? c / por : c;
+    }
+
+    const result = {};
+    rSnap.docs.forEach(d => {
+      const r = { id: d.id, ...d.data() };
+      const cost = crc(r);
+      const sellingPrices = r.sellingPrices || {};
+      const restaurantIds = r.restaurantIds || [];
+      const locales = restaurantIds.map(id => {
+        const precio = sellingPrices[id] || r.sellingPrice || 0;
+        const net = precio > 0 ? precio / 1.19 : 0;
+        return { nombre: restMap[id] || id, precio, margen: net > 0 ? Math.round((net - cost) / net * 100) : null };
+      });
+      if (locales.length === 0 && r.sellingPrice) {
+        const net = r.sellingPrice / 1.19;
+        locales.push({ nombre: r.restaurantName || '—', precio: r.sellingPrice, margen: Math.round((net - cost) / net * 100) });
+      }
+      result[r.name] = { costo: Math.round(cost), locales };
+    });
+    res.json(result);
+  } catch(e) { console.error('recetas-margenes error:', e); res.status(500).json({ error: e.message }); }
+});
+
 const MESES_ES = { enero:1,febrero:2,marzo:3,abril:4,mayo:5,junio:6,julio:7,agosto:8,septiembre:9,octubre:10,noviembre:11,diciembre:12 };
 
 // Parsear monto chileno: "1.234.567" → 1234567
@@ -3092,6 +3339,31 @@ app.get('/api/goku/gastos', requireAuth, async (req, res) => {
   }
 });
 
+// ── GOKU CONFIG (clasificación de proveedores) ──────────────
+app.get('/api/goku/config', requireAuth, async (req, res) => {
+  try {
+    const doc = await db.collection('settings').doc('goku').get();
+    if (!doc.exists) return res.json({ categorias: {} });
+    const data = doc.data();
+    // migración del formato antiguo { insumos[], noInsumos[] } → { categorias{} }
+    if (!data.categorias && (data.insumos || data.noInsumos)) {
+      const categorias = {};
+      (data.insumos  || []).forEach(p => { categorias[p] = 'insumo'; });
+      (data.noInsumos|| []).forEach(p => { categorias[p] = 'otro'; });
+      return res.json({ categorias });
+    }
+    res.json({ categorias: data.categorias || {} });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.put('/api/goku/config', requireAuth, async (req, res) => {
+  try {
+    const { categorias = {} } = req.body;
+    await db.collection('settings').doc('goku').set({ categorias }, { merge: false });
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // ── FLUJO DE CAJA PROYECTADO ────────────────────────────────
 
 function flujoDocId(restaurantId, year) { return `${restaurantId}_${year}`; }
@@ -3255,61 +3527,165 @@ app.patch('/api/vegeta/items/:restaurantId/:itemId', requireAuth, async (req, re
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-// GET calce semana
+// Tolerancias centralizadas para estados Vegeta
+const VEGETA_TOL = { OK: 5, ADVERTENCIA: 15 };
+
+// Recorre el árbol de ingredientes de una receta/prep y devuelve { productId → qty } por 1 unidad de output
+function vegetaFlattenIngs(recipeOrPrep, preparations, mult) {
+  if (mult === undefined) mult = 1;
+  const por = (recipeOrPrep.porciones > 1) ? recipeOrPrep.porciones : 1;
+  const result = {};
+  for (const item of (recipeOrPrep.ingredients || [])) {
+    if (!(item.quantity > 0)) continue;
+    const qty = item.quantity * mult / por;
+    if (item.type === 'preparation') {
+      const prep = preparations.find(p =>
+        p.id === (item.preparationId || item.productId) || p.name === item.name
+      );
+      if (prep) {
+        const sub = vegetaFlattenIngs(prep, preparations, qty);
+        for (const [pid, q] of Object.entries(sub)) {
+          result[pid] = (result[pid] || 0) + q;
+        }
+      }
+    } else {
+      const pid = item.productId;
+      if (pid) result[pid] = (result[pid] || 0) + qty;
+    }
+  }
+  return result;
+}
+
+// GET calce semana (extendido con consumo teórico, desviaciones, mermas)
 app.get('/api/vegeta/calce/:restaurantId', requireAuth, async (req, res) => {
   try {
     const { restaurantId } = req.params;
     const { from, to } = req.query;
     if (!from || !to) return res.status(400).json({ error: 'from y to requeridos' });
 
-    // 1. Ítems configurados
+    // 1. Config: items + sheetTab
     const cfgDoc = await db.collection('vegeta_config').doc(restaurantId).get();
-    const trackedItems = cfgDoc.exists ? (cfgDoc.data().items || []) : [];
-    if (!trackedItems.length) return res.json({ from, to, results: [], stockInicialDate: null, stockFinalDate: null });
+    const cfgData = cfgDoc.exists ? cfgDoc.data() : {};
+    const trackedItems = cfgData.items || [];
+    const sheetTab = cfgData.sheetTab || null;
+    if (!trackedItems.length) return res.json({
+      from, to, results: [], sheetTab, ventasError: null, productosSinReceta: [],
+      stockInicialDate: null, stockFinalDate: null, resumen: null
+    });
 
-    // 1b. Cargar recetas y preparaciones para vincular ingredientes
-    const [recipesSnap, prepsSnap] = await Promise.all([
+    // 2. Cargar todo en paralelo
+    const [recipesSnap, prepsSnap, invSnap, gddSnap, priceSnap, mermasSnap] = await Promise.all([
       db.collection('recipes').get(),
-      db.collection('preparations').get()
+      db.collection('preparations').get(),
+      db.collection('inventoryRecords').where('restaurantId', '==', restaurantId).get(),
+      db.collection('gdd_records').where('restaurantId', '==', restaurantId).get(),
+      db.collection('product_price_history').get(),
+      db.collection('vegeta_mermas').where('restaurantId', '==', restaurantId).get()
     ]);
-    const allRecipes = [
-      ...recipesSnap.docs.map(d => ({ id: d.id, ...d.data(), _type: 'recipe' })),
-      ...prepsSnap.docs.map(d => ({ id: d.id, ...d.data(), _type: 'preparation' }))
-    ];
 
-    // 2. Todos los inventarios del local (filtro en memoria para evitar índice compuesto)
-    const invSnap = await db.collection('inventoryRecords')
-      .where('restaurantId', '==', restaurantId).get();
+    const preparations = prepsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const allRecipes   = recipesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+    // Mapa de precio más reciente
+    const latestPriceMap = {};
+    priceSnap.docs.forEach(d => {
+      const { productId, mes, precio } = d.data();
+      if (!productId) return;
+      if (!latestPriceMap[productId] || mes > latestPriceMap[productId].mes)
+        latestPriceMap[productId] = { mes, precio };
+    });
+
+    // 3. Inventarios
     const allInv = invSnap.docs.map(d => ({ date: d.data().date, items: d.data().items || [] }))
       .filter(r => r.date).sort((a, b) => a.date.localeCompare(b.date));
+    const invInicial = (() => { const a = allInv.filter(r => r.date <= from); return a.length ? a[a.length - 1] : null; })();
+    const invFinal   = (() => { const a = allInv.filter(r => r.date <= to);   return a.length ? a[a.length - 1] : null; })();
 
-    // Stock inicial: inventario más reciente con fecha <= from
-    const invInicialArr = allInv.filter(r => r.date <= from);
-    const invInicial = invInicialArr.length ? invInicialArr[invInicialArr.length - 1] : null;
+    // 4. GDD del período
+    const gddRecords = gddSnap.docs.map(d => d.data()).filter(r => r.fecha >= from && r.fecha <= to);
 
-    // Stock final: inventario más reciente con fecha <= to
-    const invFinalArr = allInv.filter(r => r.date <= to);
-    const invFinal = invFinalArr.length ? invFinalArr[invFinalArr.length - 1] : null;
+    // 5. Mermas registradas del período
+    const mermasDelPeriodo = mermasSnap.docs.map(d => ({ id: d.id, ...d.data() }))
+      .filter(m => m.fecha >= from && m.fecha <= to);
 
-    // 4. GDD del local (filtro en memoria)
-    const gddSnap = await db.collection('gdd_records')
-      .where('restaurantId', '==', restaurantId).get();
-    const gddRecords = gddSnap.docs.map(d => d.data())
-      .filter(r => r.fecha >= from && r.fecha <= to);
+    // 6. Ventas del Google Sheets (si hay sheetTab configurado)
+    let ventasRows = [], ventasError = null, productosSinReceta = [];
+    if (sheetTab) {
+      try {
+        const rawRows = await getVentasSheetRows(sheetTab);
+        if (rawRows.length > 1) {
+          const [headers, ...dataRows] = rawRows;
+          const fromDate = new Date(from + 'T00:00:00');
+          const toDate   = new Date(to   + 'T23:59:59');
+          ventasRows = dataRows.map(row => {
+            const obj = {};
+            headers.forEach((h, i) => { obj[h] = row[i] || ''; });
+            return obj;
+          }).filter(row => {
+            if ((row['Cancelada'] || '').toLowerCase() === 'si') return false;
+            const parts = (row['Creación'] || '').split(' ')[0].split('-');
+            if (parts.length < 3) return false;
+            const d = new Date(`${parts[2]}-${parts[1]}-${parts[0]}T00:00:00`);
+            return d >= fromDate && d <= toDate;
+          });
+        }
+      } catch(e) { ventasError = e.message; }
+    }
 
-    // 5. Calce por ítem
+    // 7. Conteo de unidades vendidas por nombre de producto
+    const unitsSold = {};
+    ventasRows.forEach(row => {
+      const nombre = (row['Producto'] || '').trim();
+      const qty = parseInt(row['Cantidad']) || 1;
+      if (nombre) unitsSold[nombre] = (unitsSold[nombre] || 0) + qty;
+    });
+
+    // 8. Recetas activas en este local
+    const recipesForRest = allRecipes.filter(r => {
+      const rests = r.restaurantIds || (r.restaurantId ? [r.restaurantId] : []);
+      return rests.includes(restaurantId);
+    });
+    productosSinReceta = Object.keys(unitsSold).filter(p => !recipesForRest.some(r => r.name === p));
+
+    // 9. Consumo teórico por ingrediente vía traversal del árbol de recetas
+    const consumoTeoricoPorIng = {}; // productId → qty total
+    const detallePorIng = {};        // productId → [{ recipeName, units, qtyPerUnit, total }]
+    for (const recipe of recipesForRest) {
+      const units = unitsSold[recipe.name] || 0;
+      if (units === 0) continue;
+      const flattened = vegetaFlattenIngs(recipe, preparations, 1);
+      for (const [pid, qtyPerUnit] of Object.entries(flattened)) {
+        const total = qtyPerUnit * units;
+        consumoTeoricoPorIng[pid] = (consumoTeoricoPorIng[pid] || 0) + total;
+        if (!detallePorIng[pid]) detallePorIng[pid] = [];
+        detallePorIng[pid].push({ recipeName: recipe.name, units, qtyPerUnit: +(qtyPerUnit.toFixed(5)), total: +(total.toFixed(5)) });
+      }
+    }
+
+    // 10. Función de estado
+    function calcEstado(r) {
+      if (r.consumoReal == null || r.stockInicial == null || r.stockFinal == null) return 'sin-info';
+      if (r.consumoTeorico == null) return sheetTab ? 'sin-receta' : 'sin-ventas';
+      if (r.consumoTeorico === 0 && r.consumoReal === 0) return 'ok';
+      if (r.consumoTeorico === 0) return 'revisar';
+      if (r.consumoReal < 0) return 'revisar';
+      const pct = Math.abs((r.consumoReal - r.consumoTeorico) / r.consumoTeorico * 100);
+      if (pct <= VEGETA_TOL.OK)          return 'ok';
+      if (pct <= VEGETA_TOL.ADVERTENCIA) return 'advertencia';
+      return 'critico';
+    }
+
+    // 11. Construir resultado por ítem
     const results = trackedItems.map(item => {
       const keyword = (item.gddKeyword || item.name).toLowerCase();
 
-      // Stock inicial
+      // Stock
       const siMatch = (invInicial?.items || []).find(i => i.productId === item.id);
       const stockInicial = siMatch != null ? Number(siMatch.quantity) : null;
-
-      // Stock final
       const sfMatch = (invFinal?.items || []).find(i => i.productId === item.id);
       const stockFinal = sfMatch != null ? Number(sfMatch.quantity) : null;
 
-      // Entradas GDD (suma por keyword)
+      // GDD
       let entradasGDD = 0;
       const gddMatches = [];
       gddRecords.forEach(record => {
@@ -3326,36 +3702,144 @@ app.get('/api/vegeta/calce/:restaurantId', requireAuth, async (req, res) => {
       const consumoReal = (stockInicial != null && stockFinal != null)
         ? +(stockInicial + entradasGDD - stockFinal).toFixed(3) : null;
 
-      // Recetas/preparaciones que usan este ítem, filtradas por local
+      const consumoTeorico = consumoTeoricoPorIng[item.id] != null
+        ? +(consumoTeoricoPorIng[item.id].toFixed(4)) : null;
+
+      const costoPorUnidad = latestPriceMap[item.id]?.precio ?? null;
+
+      const desviacion = (consumoReal != null && consumoTeorico != null)
+        ? +(consumoReal - consumoTeorico).toFixed(4) : null;
+      const desviacionPct = (desviacion != null && consumoTeorico > 0)
+        ? +(desviacion / consumoTeorico * 100).toFixed(1) : null;
+      const desviacionPesos = (desviacion != null && costoPorUnidad != null)
+        ? Math.round(desviacion * costoPorUnidad) : null;
+
+      const mermaRegistrada = mermasDelPeriodo
+        .filter(m => m.productId === item.id)
+        .reduce((s, m) => s + (Number(m.cantidad) || 0), 0);
+
+      const desviacionNoExplicada = (desviacion != null)
+        ? +(desviacion - mermaRegistrada).toFixed(4) : null;
+      const desviacionNoExplicadaPesos = (desviacionNoExplicada != null && costoPorUnidad != null)
+        ? Math.round(desviacionNoExplicada * costoPorUnidad) : null;
+
+      // Recetas directamente vinculadas (para panel config)
       const linkedRecipes = [];
       allRecipes.forEach(recipe => {
-        const recipeRests = recipe.restaurantIds || (recipe.restaurantId ? [recipe.restaurantId] : []);
-        if (!recipeRests.includes(restaurantId)) return;
-        const ing = (recipe.ingredients || []).find(i =>
-          i.productId === item.id || i.preparationId === item.id
-        );
-        if (ing) linkedRecipes.push({
-          id: recipe.id,
-          name: recipe.name,
-          type: recipe._type,
-          quantity: ing.quantity || 0,
-          unit: item.unit
-        });
+        const rests = recipe.restaurantIds || (recipe.restaurantId ? [recipe.restaurantId] : []);
+        if (!rests.includes(restaurantId)) return;
+        const ing = (recipe.ingredients || []).find(i => i.productId === item.id || i.preparationId === item.id);
+        if (ing) linkedRecipes.push({ id: recipe.id, name: recipe.name, type: 'recipe', quantity: ing.quantity || 0, unit: item.unit });
       });
       linkedRecipes.sort((a, b) => b.quantity - a.quantity);
 
-      return { id: item.id, name: item.name, type: item.type, unit: item.unit,
-               stockInicial, stockFinal, entradasGDD, consumoReal,
-               consumoTeorico: null, merma: null, gddMatches, linkedRecipes };
+      const row = { id: item.id, name: item.name, type: item.type, unit: item.unit,
+        stockInicial, stockFinal, entradasGDD, consumoReal,
+        consumoTeorico, costoPorUnidad,
+        desviacion, desviacionPct, desviacionPesos,
+        mermaRegistrada, desviacionNoExplicada, desviacionNoExplicadaPesos,
+        gddMatches, linkedRecipes, ventasDetalle: detallePorIng[item.id] || [],
+        nivelControl: item.nivelControl || 'normal' };
+
+      row.estado = calcEstado(row);
+
+      const advertencias = [];
+      if (stockInicial == null) advertencias.push('Sin inventario inicial para el período');
+      if (stockFinal == null)   advertencias.push('Sin inventario final para el período');
+      if (costoPorUnidad == null) advertencias.push('Sin costo unitario registrado');
+      if (consumoReal != null && consumoReal < 0) advertencias.push('Consumo real negativo');
+      if (!sheetTab) advertencias.push('Sin hoja de ventas vinculada');
+      row.advertencias = advertencias;
+
+      return row;
     });
 
-    res.json({ from, to, results,
+    // 12. Resumen general
+    const withCosto = results.filter(r => r.costoPorUnidad != null);
+    const costoTeorico = withCosto.reduce((s, r) => s + ((r.consumoTeorico || 0) * r.costoPorUnidad), 0);
+    const costoReal    = withCosto.reduce((s, r) => s + ((r.consumoReal    || 0) * r.costoPorUnidad), 0);
+    const desviacionTotal            = results.reduce((s, r) => s + (r.desviacionPesos || 0), 0);
+    const mermaTotal                 = results.reduce((s, r) => s + r.mermaRegistrada * (r.costoPorUnidad || 0), 0);
+    const desviacionNoExplicadaTotal = results.reduce((s, r) => s + (r.desviacionNoExplicadaPesos || 0), 0);
+    const ingredientesConAlerta      = results.filter(r => r.estado === 'advertencia' || r.estado === 'critico').length;
+    const pctEnRango = results.length > 0 ? Math.round(results.filter(r => r.estado === 'ok').length / results.length * 100) : 0;
+
+    res.json({
+      from, to, results, sheetTab, ventasError, productosSinReceta,
       stockInicialDate: invInicial?.date || null,
-      stockFinalDate:   invFinal?.date   || null });
+      stockFinalDate:   invFinal?.date   || null,
+      resumen: {
+        costoTeorico: Math.round(costoTeorico), costoReal: Math.round(costoReal),
+        desviacionTotal: Math.round(desviacionTotal), mermaTotal: Math.round(mermaTotal),
+        desviacionNoExplicadaTotal: Math.round(desviacionNoExplicadaTotal),
+        ingredientesConAlerta, pctEnRango, totalIngredientes: results.length
+      }
+    });
   } catch(e) {
     console.error('vegeta calce error:', e.message);
     res.status(500).json({ error: e.message });
   }
+});
+
+// GET mermas del período
+app.get('/api/vegeta/mermas/:restaurantId', requireAuth, async (req, res) => {
+  try {
+    const { from, to } = req.query;
+    const snap = await db.collection('vegeta_mermas').where('restaurantId', '==', req.params.restaurantId).get();
+    let mermas = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    if (from) mermas = mermas.filter(m => m.fecha >= from);
+    if (to)   mermas = mermas.filter(m => m.fecha <= to);
+    mermas.sort((a, b) => b.fecha.localeCompare(a.fecha));
+    res.json({ mermas });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST registrar merma
+app.post('/api/vegeta/mermas/:restaurantId', requireAuth, async (req, res) => {
+  try {
+    const { productId, productName, cantidad, unidad, motivo, fecha, notas } = req.body;
+    if (!productId || !(cantidad > 0) || !fecha) return res.status(400).json({ error: 'productId, cantidad y fecha requeridos' });
+    const doc = await db.collection('vegeta_mermas').add({
+      restaurantId: req.params.restaurantId,
+      productId, productName: productName || '',
+      cantidad: Number(cantidad), unidad: unidad || '',
+      motivo: motivo || 'otro', fecha, notas: notas || '',
+      creadoEn: admin.firestore.FieldValue.serverTimestamp()
+    });
+    res.json({ ok: true, id: doc.id });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// DELETE merma
+app.delete('/api/vegeta/mermas/:restaurantId/:mermaId', requireAuth, async (req, res) => {
+  try {
+    await db.collection('vegeta_mermas').doc(req.params.mermaId).delete();
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// PATCH config general del local (sheetTab, etc.)
+app.patch('/api/vegeta/config/:restaurantId', requireAuth, async (req, res) => {
+  try {
+    const { sheetTab } = req.body;
+    await db.collection('vegeta_config').doc(req.params.restaurantId).set({ sheetTab: sheetTab || null }, { merge: true });
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// PATCH nivelControl de un ítem
+app.patch('/api/vegeta/items/:restaurantId/:itemId/control', requireAuth, async (req, res) => {
+  try {
+    const { nivelControl } = req.body;
+    const ref = db.collection('vegeta_config').doc(req.params.restaurantId);
+    const doc = await ref.get();
+    const items = doc.exists ? (doc.data().items || []) : [];
+    const item = items.find(i => i.id === req.params.itemId);
+    if (!item) return res.status(404).json({ error: 'Ítem no encontrado' });
+    item.nivelControl = nivelControl || 'normal';
+    await ref.set({ items }, { merge: true });
+    res.json({ ok: true, items });
+  } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
 // ── MCP Server (Streamable HTTP, stateless para Vercel) ───────────────────────
