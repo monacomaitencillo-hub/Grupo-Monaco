@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Grupo Mónaco — Restaurante & Sports Bar | Maitencillo y Zapallar</title>
-<meta name="description" content="Grupo Mónaco: dos locales únicos en la costa chilena. Sports bar frente al mar en Maitencillo y bar familiar en la Laguna de Zapallar. Carta, reservas y más.">
-<meta name="keywords" content="Mónaco, restaurante Maitencillo, bar Maitencillo, Fuente Zapallar, sports bar Chile, restaurante costa Chile, Grupo Mónaco">
+<meta name="description" content="Grupo Mónaco: cuatro locales en la costa de Chile. Mónaco Sports Bar en Maitencillo, Mónaco Zapallar, Mono Verde y Giardini en Quintero. Bar, cafetería, pizzas y más.">
+<meta name="keywords" content="Grupo Mónaco, restaurante Maitencillo, bar Maitencillo, Mono Verde Quintero, Giardini Quintero, Fuente Zapallar, sports bar Chile, cafetería Quintero, pizzas Quintero, restaurante costa Chile">
 <link rel="canonical" href="https://grupomonaco.cl/">
 
 <!-- Open Graph (redes sociales) -->
@@ -80,6 +80,39 @@
       "servesCuisine": "Chilena, Internacional",
       "menu": "https://menu.fu.do/fuentezapallar/qr-menu",
       "image": "https://grupomonaco.cl/img/photo-zpl.jpg",
+      "parentOrganization": { "@id": "https://grupomonaco.cl/#organization" }
+    },
+    {
+      "@type": "BarOrPub",
+      "@id": "https://grupomonaco.cl/#monoverde",
+      "name": "Mono Verde",
+      "description": "Bar familiar en Quintero con hamburguesas artesanales y pizzas.",
+      "url": "https://grupomonaco.cl",
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": "Luis Cousiño 2076",
+        "addressLocality": "Quintero",
+        "addressRegion": "Valparaíso",
+        "addressCountry": "CL"
+      },
+      "servesCuisine": "Chilena",
+      "menu": "https://grupomonaco.cl",
+      "parentOrganization": { "@id": "https://grupomonaco.cl/#organization" }
+    },
+    {
+      "@type": "CafeOrCoffeeShop",
+      "@id": "https://grupomonaco.cl/#giardini",
+      "name": "Giardini",
+      "description": "Cafetería en Quintero. Café de especialidad, helados artesanales y pizzas.",
+      "url": "https://grupomonaco.cl",
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": "Normandie 1957",
+        "addressLocality": "Quintero",
+        "addressRegion": "Valparaíso",
+        "addressCountry": "CL"
+      },
+      "servesCuisine": "Cafetería, Italiana",
       "parentOrganization": { "@id": "https://grupomonaco.cl/#organization" }
     }
   ]
@@ -318,6 +351,74 @@
   footer .social{margin-top:14px;font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.1em;color:var(--coral);}
 
   ::selection{background:var(--coral);color:var(--cream);}
+
+  /* ---------- GRUPO MÓNACO title ---------- */
+  .grupo-title{
+    font-family:'Northwest','Poppins',sans-serif;font-weight:400;text-transform:uppercase;
+    font-size:clamp(2.8rem,13vw,5.5rem);line-height:.92;letter-spacing:.01em;
+    color:var(--cream);margin-top:10px;
+  }
+
+  /* ---------- Cards: 2 columnas en desktop ---------- */
+  @media(min-width:640px){
+    .choice-wrap{flex-wrap:wrap;overflow-x:visible;justify-content:center;max-width:700px;}
+    .choice{min-width:calc(50% - 10px);max-width:calc(50% - 10px);flex-shrink:1;}
+  }
+
+  /* ---------- Logo overlay en card foto ---------- */
+  .card-logo-overlay{
+    position:absolute;top:50%;left:50%;
+    transform:translate(-50%,-50%);
+    width:80px;height:auto;z-index:3;
+    pointer-events:none;
+    filter:drop-shadow(0 2px 10px rgba(0,0,0,0.55));
+  }
+
+  /* ---------- Card backgrounds sin foto ---------- */
+  .choice .cphoto.cphoto-mv{
+    background:linear-gradient(135deg,#1e3320 0%,#152618 50%,#0c1a0e 100%);
+  }
+  .choice .cphoto.cphoto-mv::before{
+    content:"";position:absolute;inset:0;
+    background:repeating-linear-gradient(45deg,rgba(80,160,80,.06) 0,rgba(80,160,80,.06) 1px,transparent 1px,transparent 22px);
+  }
+  .choice .cphoto.cphoto-grd{
+    background:linear-gradient(135deg,#3d2410 0%,#2a1a0c 50%,#1a1008 100%);
+  }
+  .choice .cphoto.cphoto-grd::before{
+    content:"";position:absolute;inset:0;
+    background:repeating-linear-gradient(45deg,rgba(200,140,60,.07) 0,rgba(200,140,60,.07) 1px,transparent 1px,transparent 22px);
+  }
+  .cphoto-label{
+    position:absolute;bottom:10px;left:12px;z-index:4;
+    font-family:'Northwest','Poppins',sans-serif;text-transform:uppercase;
+    font-size:22px;color:var(--cream);letter-spacing:.02em;
+    text-shadow:0 1px 6px rgba(0,0,0,0.7);
+  }
+
+  /* ---------- Héroe sin foto ---------- */
+  .hero.hero-mv{
+    background:linear-gradient(180deg,rgba(20,40,22,.55),rgba(12,10,8,.95)),#1a2d1a;
+  }
+  .hero.hero-grd{
+    background:linear-gradient(180deg,rgba(40,28,14,.55),rgba(12,10,8,.95)),#2d1a0a;
+  }
+
+  /* ---------- FAQ ---------- */
+  .faq-section{padding:52px 22px;background:#F8F3EA;}
+  .faq-inner{max-width:680px;margin:0 auto;}
+  .faq-eyebrow{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--coral);margin-bottom:14px;}
+  .faq-section h2{font-size:1.5rem;color:var(--navy);margin-bottom:24px;}
+  .faq-item{border-bottom:1px solid rgba(18,33,31,0.12);}
+  .faq-item summary{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:16px 0;cursor:pointer;list-style:none;
+    font-size:14px;line-height:1.4;color:var(--navy);gap:12px;
+  }
+  .faq-item summary::-webkit-details-marker{display:none;}
+  .faq-item summary::after{content:"+";font-size:18px;color:var(--coral);flex-shrink:0;}
+  .faq-item[open]>summary::after{content:"−";}
+  .faq-item p{padding:2px 0 18px;font-size:14px;line-height:1.75;color:#5b6b68;}
 </style>
 </head>
 <body>
@@ -332,16 +433,20 @@
   </div>
   </div>
   <div class="selector-body">
-  <div class="brand-eyebrow">Grupo Mónaco</div>
+  <div class="brand-eyebrow">Maitencillo · Zapallar · Quintero</div>
   <div class="logo-img logo-selector" role="img" aria-label="Mónaco"></div>
-  <p class="sub-eyebrow">Elige tu local</p>
-  <p class="sub">Dos locales, una misma barra. Elige dónde quieres estar hoy.</p>
+  <p class="grupo-title">Grupo Mónaco</p>
+  <p class="sub-eyebrow" style="margin-top:22px;">Elige tu local</p>
+  <p class="sub">Cuatro locales en la costa chilena. Elige dónde quieres estar hoy.</p>
   <div class="choice-wrap">
+
     <div class="choice" onclick="showLoc('mte')">
-      <div class="cphoto cphoto-mte"></div>
+      <div class="cphoto cphoto-mte">
+        <img class="card-logo-overlay" src="/img/logo-monaco-white.png" alt="Mónaco">
+      </div>
       <div class="cbody">
-        <span class="place">Maitencillo</span>
-        <span class="tag">Abanico Centro</span>
+        <span class="place">Mónaco Sports Bar</span>
+        <span class="tag">Maitencillo · Abanico Centro</span>
         <div class="caddr">Av. del Mar 1408, Maitencillo</div>
         <div class="clinks">
           <a class="clink-primary" href="https://menu.fu.do/restaurantmonaco/qr-menu" target="_blank" onclick="event.stopPropagation()">Carta</a>
@@ -351,10 +456,13 @@
         <div class="enter"><span>Ver local</span><span class="arrow">→</span></div>
       </div>
     </div>
+
     <div class="choice" onclick="showLoc('zpl')">
-      <div class="cphoto cphoto-zpl"></div>
+      <div class="cphoto cphoto-zpl">
+        <img class="card-logo-overlay" src="/img/logo-monaco-white.png" alt="Mónaco">
+      </div>
       <div class="cbody">
-        <span class="place">Zapallar</span>
+        <span class="place">Mónaco Zapallar</span>
         <span class="tag">Laguna de Zapallar</span>
         <div class="caddr">Carlos León 677, Laguna de Zapallar</div>
         <div class="clinks">
@@ -365,8 +473,41 @@
         <div class="enter"><span>Ver local</span><span class="arrow">→</span></div>
       </div>
     </div>
+
+    <div class="choice" onclick="showLoc('mv')">
+      <div class="cphoto cphoto-mv">
+        <span class="cphoto-label">Mono Verde</span>
+      </div>
+      <div class="cbody">
+        <span class="place">Mono Verde</span>
+        <span class="tag">Quintero · Bar Familiar</span>
+        <div class="caddr">Luis Cousiño 2076, Quintero</div>
+        <div class="clinks">
+          <a class="clink-primary" href="#" onclick="event.stopPropagation()">Carta</a>
+          <a href="https://wa.me/56900000000?text=Hola%2C%20quiero%20info%20de%20Mono%20Verde" target="_blank" onclick="event.stopPropagation()">WhatsApp</a>
+        </div>
+        <div class="enter"><span>Ver local</span><span class="arrow">→</span></div>
+      </div>
+    </div>
+
+    <div class="choice" onclick="showLoc('grd')">
+      <div class="cphoto cphoto-grd">
+        <span class="cphoto-label">Giardini</span>
+      </div>
+      <div class="cbody">
+        <span class="place">Giardini</span>
+        <span class="tag">Quintero · Cafetería</span>
+        <div class="caddr">Normandie 1957, Quintero</div>
+        <div class="clinks">
+          <a class="clink-primary" href="#" onclick="event.stopPropagation()">Carta</a>
+          <a href="https://wa.me/56900000000?text=Hola%2C%20quiero%20info%20de%20Giardini" target="_blank" onclick="event.stopPropagation()">WhatsApp</a>
+        </div>
+        <div class="enter"><span>Ver local</span><span class="arrow">→</span></div>
+      </div>
+    </div>
+
   </div>
-  <div class="carousel-hint">← Desliza para ver ambos →</div>
+  <div class="carousel-hint">← Desliza para ver todos →</div>
   </div>
 </div>
 
@@ -435,6 +576,37 @@
     <p class="gallery-note">Más fotos próximamente.</p>
   </section>
 
+  <section class="faq-section">
+    <div class="faq-inner">
+      <p class="faq-eyebrow">Preguntas frecuentes</p>
+      <h2>Todo sobre Mónaco Sports Bar</h2>
+      <details class="faq-item">
+        <summary>¿Dónde está Mónaco Sports Bar en Maitencillo?</summary>
+        <p>Estamos en Av. del Mar 1408, Maitencillo, dentro del Abanico Centro, frente al mar. Es el punto de referencia del borde costero de Maitencillo.</p>
+      </details>
+      <details class="faq-item">
+        <summary>¿Cuáles son los horarios de Mónaco Maitencillo?</summary>
+        <p>Martes a viernes abrimos a las 17:00 y cerramos a las 24:00. Sábado y domingo abrimos desde las 13:00 hasta las 24:00. Lunes cerrado.</p>
+      </details>
+      <details class="faq-item">
+        <summary>¿Transmiten partidos de fútbol en Mónaco?</summary>
+        <p>Sí, somos sports bar con múltiples pantallas para ver los torneos nacionales e internacionales. Fútbol, tenis, básquetbol y más.</p>
+      </details>
+      <details class="faq-item">
+        <summary>¿Qué tipo de comida sirven?</summary>
+        <p>Pizzas artesanales, hamburguesas, snacks y una carta de tragos de autor. Ambiente relajado de día y animado de noche.</p>
+      </details>
+      <details class="faq-item">
+        <summary>¿Puedo reservar mesa en Mónaco Maitencillo?</summary>
+        <p>Sí, puedes reservar directamente por WhatsApp al +56 9 4490 5073. También puedes llegar sin reserva según disponibilidad.</p>
+      </details>
+      <details class="faq-item">
+        <summary>¿Hay estacionamiento cerca?</summary>
+        <p>Sí, el Abanico Centro cuenta con estacionamiento disponible para los clientes.</p>
+      </details>
+    </div>
+  </section>
+
   <footer>
     <div class="foot-inner">
       <div class="logo-img" style="width:150px;height:48px;margin:0 auto;"></div>
@@ -456,7 +628,7 @@
         </div>
       </div>
     </div>
-    <div class="foot-bottom">Grupo Mónaco · Maitencillo &amp; Zapallar</div>
+    <div class="foot-bottom">Grupo Mónaco · Maitencillo · Zapallar · Quintero</div>
   </footer>
 </div>
 
@@ -525,6 +697,33 @@
     <p class="gallery-note">Más fotos próximamente.</p>
   </section>
 
+  <section class="faq-section">
+    <div class="faq-inner">
+      <p class="faq-eyebrow">Preguntas frecuentes</p>
+      <h2>Todo sobre Mónaco Zapallar</h2>
+      <details class="faq-item">
+        <summary>¿Dónde está Mónaco Zapallar?</summary>
+        <p>Estamos en Carlos León 677, a orillas de la Laguna de Zapallar. Un entorno natural único en la costa de la Región de Valparaíso.</p>
+      </details>
+      <details class="faq-item">
+        <summary>¿Cuándo está abierto Mónaco Zapallar?</summary>
+        <p>Abrimos viernes, sábado y domingo, todos los feriados largos y durante toda la temporada de verano. Fuera de temporada se recomienda consultar disponibilidad.</p>
+      </details>
+      <details class="faq-item">
+        <summary>¿Qué tipo de comida sirven en Zapallar?</summary>
+        <p>Hamburguesas artesanales, pizzas, churrascos y ensaladas. Cocina propia con un ambiente familiar relajado frente a la laguna.</p>
+      </details>
+      <details class="faq-item">
+        <summary>¿Está abierto todo el año?</summary>
+        <p>No, Mónaco Zapallar opera en temporada: fines de semana, feriados largos y la temporada de verano completa (diciembre–marzo).</p>
+      </details>
+      <details class="faq-item">
+        <summary>¿Se puede ir con niños?</summary>
+        <p>Sí, es un ambiente totalmente familiar. La Laguna de Zapallar hace el lugar ideal para familias con niños.</p>
+      </details>
+    </div>
+  </section>
+
   <footer>
     <div class="foot-inner">
       <div class="logo-img" style="width:150px;height:48px;margin:0 auto;"></div>
@@ -546,21 +745,216 @@
         </div>
       </div>
     </div>
-    <div class="foot-bottom">Grupo Mónaco · Maitencillo &amp; Zapallar</div>
+    <div class="foot-bottom">Grupo Mónaco · Maitencillo · Zapallar · Quintero</div>
+  </footer>
+</div>
+
+
+<!-- ---------------- MONO VERDE ---------------- -->
+<div class="locpage" id="page-mv">
+  <div class="topbar topbar-dark">
+    <a class="back" onclick="showSelector()">← Locales</a>
+    <nav class="topnav">
+      <a href="#ubicacion-mv">Ubicación</a>
+    </nav>
+    <div class="portal-btns">
+      <a href="/admin" class="portal-btn">Ir al portal →</a>
+      <a href="/portal" class="portal-btn btn-helados">Portal helados 🍦</a>
+    </div>
+    <span class="locname">Mono Verde</span>
+  </div>
+
+  <div class="hero hero-mv">
+    <div class="hero-eyebrow">Bar Familiar · Quintero</div>
+    <h2>Mono<br>Verde</h2>
+    <p class="tagline">Hamburguesas artesanales y pizzas en el corazón de Quintero.</p>
+    <div class="cta-row">
+      <a class="btn btn-outline" href="https://wa.me/56900000000?text=Hola%2C%20quiero%20info%20de%20Mono%20Verde" target="_blank">Reservar por WhatsApp</a>
+    </div>
+  </div>
+
+  <section class="welcome">
+    <div class="welcome-inner">
+      <div>
+        <span class="welcome-eyebrow">Bienvenido</span>
+        <h3>Bar Familiar en Quintero</h3>
+        <p>Mono Verde es el punto de encuentro familiar de Quintero. Hamburguesas artesanales con ingredientes frescos, pizzas al molde y una barra animada. Un lugar para quedarse.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="info-strip" id="ubicacion-mv">
+    <div class="info-cell">
+      <div class="label">Tipo</div>
+      <div class="value">Bar Familiar</div>
+    </div>
+    <div class="info-cell">
+      <div class="label">Ubicación</div>
+      <div class="value">Luis Cousiño 2076<br>Quintero, Chile</div>
+    </div>
+  </div>
+
+  <section class="mapsec">
+    <a class="map-embed" href="https://www.google.com/maps/search/?api=1&query=Luis+Cousiño+2076,+Quintero,+Chile" target="_blank">
+      <img src="https://staticmap.openstreetmap.de/staticmap.php?center=-32.7820,-71.5320&zoom=16&size=650x280&maptype=mapnik&markers=-32.7820,-71.5320,red-pushpin" alt="Ubicación Mono Verde Quintero" loading="lazy">
+    </a>
+    <div class="map-link"><a href="https://www.google.com/maps/search/?api=1&query=Luis+Cousiño+2076,+Quintero,+Chile" target="_blank">Abrir en Google Maps →</a></div>
+  </section>
+
+  <section class="faq-section">
+    <div class="faq-inner">
+      <p class="faq-eyebrow">Preguntas frecuentes</p>
+      <h2>Todo sobre Mono Verde</h2>
+      <details class="faq-item">
+        <summary>¿Dónde está Mono Verde en Quintero?</summary>
+        <p>Mono Verde se ubica en Luis Cousiño 2076, Quintero, en la Región de Valparaíso.</p>
+      </details>
+      <details class="faq-item">
+        <summary>¿Qué sirven en Mono Verde?</summary>
+        <p>Hamburguesas artesanales preparadas con ingredientes frescos y pizzas al molde. Ideal para compartir en familia o con amigos.</p>
+      </details>
+      <details class="faq-item">
+        <summary>¿Tienen delivery o retiro en tienda?</summary>
+        <p>Contáctanos por WhatsApp para consultar disponibilidad de delivery y opciones de retiro.</p>
+      </details>
+      <details class="faq-item">
+        <summary>¿Qué es Grupo Mónaco?</summary>
+        <p>Grupo Mónaco es el grupo de restaurantes y bares que reúne Mónaco Sports Bar (Maitencillo), Mónaco Zapallar, Mono Verde (Quintero) y Giardini (Quintero).</p>
+      </details>
+    </div>
+  </section>
+
+  <footer>
+    <div class="foot-inner">
+      <div class="foot-cols">
+        <div class="foot-col">
+          <span class="flabel">Ubicación</span>
+          <div class="fval">Luis Cousiño 2076<br>Quintero, Chile</div>
+        </div>
+        <div class="foot-col">
+          <span class="flabel">WhatsApp</span>
+          <div class="fval"><a href="https://wa.me/56900000000" target="_blank">Contáctanos</a></div>
+        </div>
+        <div class="foot-col">
+          <span class="flabel">Grupo</span>
+          <div class="fval">Mónaco · Mono Verde · Giardini</div>
+        </div>
+      </div>
+    </div>
+    <div class="foot-bottom">Grupo Mónaco · Maitencillo · Zapallar · Quintero</div>
+  </footer>
+</div>
+
+
+<!-- ---------------- GIARDINI ---------------- -->
+<div class="locpage" id="page-grd">
+  <div class="topbar topbar-dark">
+    <a class="back" onclick="showSelector()">← Locales</a>
+    <nav class="topnav">
+      <a href="#ubicacion-grd">Ubicación</a>
+    </nav>
+    <div class="portal-btns">
+      <a href="/admin" class="portal-btn">Ir al portal →</a>
+      <a href="/portal" class="portal-btn btn-helados">Portal helados 🍦</a>
+    </div>
+    <span class="locname">Giardini</span>
+  </div>
+
+  <div class="hero hero-grd">
+    <div class="hero-eyebrow">Cafetería · Quintero</div>
+    <h2>Giardini</h2>
+    <p class="tagline">Café de especialidad, helados artesanales y pizzas en Quintero.</p>
+    <div class="cta-row">
+      <a class="btn btn-outline" href="https://wa.me/56900000000?text=Hola%2C%20quiero%20info%20de%20Giardini" target="_blank">Contáctanos por WhatsApp</a>
+    </div>
+  </div>
+
+  <section class="welcome">
+    <div class="welcome-inner">
+      <div>
+        <span class="welcome-eyebrow">Bienvenido</span>
+        <h3>La cafetería de Quintero</h3>
+        <p>Giardini es la cafetería de Quintero donde el café de especialidad se encuentra con los helados artesanales. Un espacio acogedor con pizzas, pastelería y ambiente familiar para disfrutar a cualquier hora del día.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="info-strip" id="ubicacion-grd">
+    <div class="info-cell">
+      <div class="label">Tipo</div>
+      <div class="value">Cafetería</div>
+    </div>
+    <div class="info-cell">
+      <div class="label">Ubicación</div>
+      <div class="value">Normandie 1957<br>Quintero, Chile</div>
+    </div>
+  </div>
+
+  <section class="mapsec">
+    <a class="map-embed" href="https://www.google.com/maps/search/?api=1&query=Normandie+1957,+Quintero,+Chile" target="_blank">
+      <img src="https://staticmap.openstreetmap.de/staticmap.php?center=-32.7850,-71.5295&zoom=16&size=650x280&maptype=mapnik&markers=-32.7850,-71.5295,red-pushpin" alt="Ubicación Giardini Quintero" loading="lazy">
+    </a>
+    <div class="map-link"><a href="https://www.google.com/maps/search/?api=1&query=Normandie+1957,+Quintero,+Chile" target="_blank">Abrir en Google Maps →</a></div>
+  </section>
+
+  <section class="faq-section">
+    <div class="faq-inner">
+      <p class="faq-eyebrow">Preguntas frecuentes</p>
+      <h2>Todo sobre Giardini</h2>
+      <details class="faq-item">
+        <summary>¿Dónde está Giardini en Quintero?</summary>
+        <p>Giardini está en Normandie 1957, Quintero, Región de Valparaíso.</p>
+      </details>
+      <details class="faq-item">
+        <summary>¿Qué sirven en Giardini?</summary>
+        <p>Café de especialidad, helados artesanales en varios sabores, pizzas y pastelería. Ideal para una tarde en familia o un café de trabajo.</p>
+      </details>
+      <details class="faq-item">
+        <summary>¿Tienen helados artesanales en Quintero?</summary>
+        <p>Sí, Giardini es uno de los pocos lugares en Quintero que ofrece helados artesanales de elaboración propia con sabores de temporada.</p>
+      </details>
+      <details class="faq-item">
+        <summary>¿Es bueno para ir con niños?</summary>
+        <p>Absolutamente. Giardini es una cafetería familiar con helados y ambiente tranquilo, ideal para todas las edades.</p>
+      </details>
+      <details class="faq-item">
+        <summary>¿Dónde tomar un buen café en Quintero?</summary>
+        <p>Giardini en Normandie 1957 es la opción de café de especialidad en Quintero. Ofrecemos espresso, lattes, cappuccinos y más.</p>
+      </details>
+    </div>
+  </section>
+
+  <footer>
+    <div class="foot-inner">
+      <div class="foot-cols">
+        <div class="foot-col">
+          <span class="flabel">Ubicación</span>
+          <div class="fval">Normandie 1957<br>Quintero, Chile</div>
+        </div>
+        <div class="foot-col">
+          <span class="flabel">WhatsApp</span>
+          <div class="fval"><a href="https://wa.me/56900000000" target="_blank">Contáctanos</a></div>
+        </div>
+        <div class="foot-col">
+          <span class="flabel">Grupo</span>
+          <div class="fval">Mónaco · Mono Verde · Giardini</div>
+        </div>
+      </div>
+    </div>
+    <div class="foot-bottom">Grupo Mónaco · Maitencillo · Zapallar · Quintero</div>
   </footer>
 </div>
 
 <script>
+  var PAGES = ['mte','zpl','mv','grd'];
   function showLoc(loc){
     document.getElementById('selector').style.display = 'none';
-    document.getElementById('page-mte').classList.remove('active');
-    document.getElementById('page-zpl').classList.remove('active');
+    PAGES.forEach(function(p){ document.getElementById('page-'+p).classList.remove('active'); });
     document.getElementById('page-' + loc).classList.add('active');
     window.scrollTo(0,0);
   }
   function showSelector(){
-    document.getElementById('page-mte').classList.remove('active');
-    document.getElementById('page-zpl').classList.remove('active');
+    PAGES.forEach(function(p){ document.getElementById('page-'+p).classList.remove('active'); });
     document.getElementById('selector').style.display = 'flex';
     window.scrollTo(0,0);
   }
