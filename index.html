@@ -20,9 +20,23 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2.0/dist/css/adminlte.min.css">
   <!-- Font Awesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-  <!-- Google Fonts Nunito -->
+  <!-- Google Fonts -->
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,800&display=swap">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
+    @font-face {
+      font-family: 'Northwest';
+      src: url('/fonts/NORTHWEST-Regular.woff') format('woff');
+      font-weight: 400;
+      font-style: normal;
+    }
+    @font-face {
+      font-family: 'Northwest';
+      src: url('/fonts/NORTHWEST-Bold.woff') format('woff');
+      font-weight: 700;
+      font-style: normal;
+    }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f0f0f; color: #e5e5e5; min-height: 100vh; }
 
@@ -55,7 +69,7 @@
 
     .login-company { font-size: 11px; color: rgba(255,255,255,.45); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 14px; }
     .login-headline { font-size: 36px; font-weight: 700; color: #fff; line-height: 1.2; margin-bottom: 16px; text-shadow: 0 2px 20px rgba(0,0,0,.4); }
-    .login-headline span { color: #ff5023; }
+    .login-headline span { color: #8B5A2B; }
     .login-sub { font-size: 14px; color: rgba(255,255,255,.45); line-height: 1.6; max-width: 320px; }
     .login-left-bottom { position: relative; z-index: 1; }
     .login-footer-text { font-size: 12px; color: rgba(255,255,255,.2); }
@@ -71,10 +85,10 @@
     .field { margin-bottom: 18px; }
     .field label { display: block; font-size: 12px; color: #555; margin-bottom: 8px; letter-spacing: .3px; text-transform: uppercase; }
     .field input  { width: 100%; padding: 12px 16px; background: #161616; border: 1px solid #222; border-radius: 8px; color: #fff; font-size: 14px; outline: none; transition: border-color .2s; }
-    .field input:focus { border-color: #ff5023; background: #111; }
+    .field input:focus { border-color: #8B5A2B; background: #111; }
     .field input::placeholder { color: #333; }
 
-    .btn-primary   { width: 100%; padding: 13px; background: #ff5023; color: #fff; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; margin-top: 8px; letter-spacing: .3px; transition: opacity .15s; }
+    .btn-primary   { width: 100%; padding: 13px; background: #8B5A2B; color: #fff; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; margin-top: 8px; letter-spacing: .3px; transition: opacity .15s; }
     .btn-primary:hover    { opacity: .88; }
     .btn-primary:disabled { opacity: .4; cursor: not-allowed; }
     .error-msg { background: #1a0a0a; border: 1px solid #3a1515; color: #f87171; padding: 10px 14px; border-radius: 8px; font-size: 13px; margin-top: 14px; display: none; }
@@ -93,8 +107,8 @@
     #mob-overlay.open { display: block; }
     #mob-sidebar {
       position: fixed; top: 0; left: 0; bottom: 0;
-      width: 280px; background: #0f0f0f;
-      border-right: 1px solid #1f1f1f;
+      width: 280px; background: #1A1613;
+      border-right: 1px solid rgba(201,165,118,0.15);
       z-index: 901; display: flex; flex-direction: column;
       transform: translateX(-100%);
       transition: transform .28s cubic-bezier(.4,0,.2,1);
@@ -103,15 +117,15 @@
     .mob-sidebar-header {
       display: flex; align-items: center; justify-content: space-between;
       padding: 20px 20px 16px;
-      border-bottom: 1px solid #1a1a1a;
+      border-bottom: 1px solid rgba(201,165,118,0.15);
     }
     .mob-sidebar-close {
       background: transparent; border: none;
-      color: #444; font-size: 20px; cursor: pointer;
+      color: rgba(201,165,118,0.4); font-size: 20px; cursor: pointer;
       width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
       border-radius: 6px; transition: color .15s;
     }
-    .mob-sidebar-close:hover { color: #aaa; }
+    .mob-sidebar-close:hover { color: #C9A576; }
     #mob-sidebar-nav { flex: 1; overflow-y: auto; padding: 12px 12px; display: flex; flex-direction: column; gap: 4px; }
     .mob-nav-item {
       display: flex; align-items: center; gap: 14px;
@@ -119,26 +133,26 @@
       cursor: pointer; transition: background .15s;
       border: none; background: transparent; width: 100%; text-align: left;
     }
-    .mob-nav-item:hover { background: #1a1a1a; }
-    .mob-nav-item:active { background: #222; }
+    .mob-nav-item:hover { background: rgba(201,165,118,0.08); }
+    .mob-nav-item:active { background: rgba(139,90,43,0.25); }
     .mob-nav-icon {
       width: 38px; height: 38px; border-radius: 10px;
       display: flex; align-items: center; justify-content: center;
       font-size: 18px; flex-shrink: 0;
     }
-    .mob-nav-label { font-size: 14px; font-weight: 600; color: #ddd; }
-    .mob-nav-section { font-size: 10px; font-weight: 700; color: #555; text-transform: uppercase; letter-spacing: .8px; padding: 12px 14px 4px; }
+    .mob-nav-label { font-size: 14px; font-weight: 600; color: rgba(243,236,224,0.85); }
+    .mob-nav-section { font-size: 10px; font-weight: 700; color: rgba(201,165,118,0.45); text-transform: uppercase; letter-spacing: .8px; padding: 12px 14px 4px; }
     .mob-sidebar-footer {
-      padding: 16px 20px; border-top: 1px solid #1a1a1a;
+      padding: 16px 20px; border-top: 1px solid rgba(201,165,118,0.15);
       display: flex; align-items: center; justify-content: space-between;
     }
-    .mob-sidebar-user { font-size: 13px; color: #444; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 160px; }
+    .mob-sidebar-user { font-size: 13px; color: rgba(201,165,118,0.7); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 160px; }
     #mob-ham-btn {
       display: none;
       position: fixed; top: 10px; left: 12px; z-index: 800;
-      background: rgba(15,15,15,.85); backdrop-filter: blur(8px);
-      border: 1px solid #2a2a2a; border-radius: 8px;
-      color: #aaa; font-size: 18px; cursor: pointer;
+      background: rgba(26,22,19,.92); backdrop-filter: blur(8px);
+      border: 1px solid rgba(201,165,118,0.2); border-radius: 8px;
+      color: #C9A576; font-size: 18px; cursor: pointer;
       width: 38px; height: 38px; align-items: center; justify-content: center;
     }
     @media (max-width: 768px) {
@@ -173,21 +187,21 @@
     #dashboard { display: none; }
 
     .topbar { background: #fff; border-bottom: 1px solid #dee2e6; padding: 0 28px; display: flex; align-items: center; gap: 0; height: 52px; }
-    .topbar-brand { font-size: 14px; font-weight: 700; color: #ff5023; margin-right: 24px; white-space: nowrap; }
+    .topbar-brand { font-size: 14px; font-weight: 700; color: #8B5A2B; margin-right: 24px; white-space: nowrap; }
 
     .rest-tabs { display: flex; align-items: center; gap: 2px; flex: 1; min-width: 0; overflow-x: auto; scrollbar-width: none; }
     .rest-tabs::-webkit-scrollbar { display: none; }
     .rest-tab  { display: flex; align-items: center; gap: 8px; padding: 0 16px; height: 52px; border-bottom: 2px solid transparent; color: #adb5bd; font-size: 13px; cursor: pointer; white-space: nowrap; transition: all .15s; user-select: none; }
     .rest-tab:hover  { color: #495057; }
-    .rest-tab.active { color: #212529; border-bottom-color: #ff5023; }
+    .rest-tab.active { color: #212529; border-bottom-color: #8B5A2B; }
     .rest-tab .dot   { width: 7px; height: 7px; border-radius: 50%; background: #ced4da; flex-shrink: 0; }
-    .rest-tab.active .dot { background: #ff5023; }
+    .rest-tab.active .dot { background: #8B5A2B; }
 
     .topbar-right { display: flex; align-items: center; gap: 10px; margin-left: 12px; flex-shrink: 0; }
 
     .view-toggle { display: flex; border: 1px solid #dee2e6; border-radius: 20px; overflow: hidden; }
     .view-btn    { padding: 5px 14px; background: transparent; border: none; color: #6c757d; font-size: 12px; cursor: pointer; transition: all .15s; white-space: nowrap; }
-    .view-btn.active          { background: #ff5023; color: #fff; }
+    .view-btn.active          { background: #8B5A2B; color: #fff; }
     .view-btn:hover:not(.active) { color: #343a40; }
 
     .btn-admin  { display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; background: transparent; border: 1px solid #dee2e6; border-radius: 50%; color: #6c757d; cursor: pointer; font-size: 15px; transition: all .15s; }
@@ -203,15 +217,15 @@
     /* FILTERS */
     .filters { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
     .filter-btn { padding: 6px 14px; border-radius: 20px; border: 1px solid #dee2e6; background: transparent; color: #6c757d; font-size: 13px; cursor: pointer; transition: all .15s; white-space: nowrap; }
-    .filter-btn.active           { background: #ff5023; border-color: #ff5023; color: #fff; }
+    .filter-btn.active           { background: #8B5A2B; border-color: #8B5A2B; color: #fff; }
     .filter-btn:hover:not(.active) { border-color: #adb5bd; color: #343a40; }
     .date-sep { flex: 1; min-width: 8px; }
     .filters input[type="date"] { padding: 6px 10px; background: #fff; border: 1px solid #dee2e6; border-radius: 8px; color: #495057; font-size: 13px; outline: none; cursor: pointer; }
-    .filters input[type="date"]:focus { border-color: #ff5023; }
+    .filters input[type="date"]:focus { border-color: #8B5A2B; }
     .month-filters { display: flex; align-items: center; gap: 6px; margin-bottom: 20px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
     .month-filters::-webkit-scrollbar { display: none; }
     .month-btn { padding: 4px 12px; border-radius: 20px; border: 1px solid #dee2e6; background: transparent; color: #6c757d; font-size: 12px; cursor: pointer; transition: all .15s; white-space: nowrap; flex-shrink: 0; }
-    .month-btn.active           { background: #ff5023; border-color: #ff5023; color: #fff; }
+    .month-btn.active           { background: #8B5A2B; border-color: #8B5A2B; color: #fff; }
     .month-btn:hover:not(.active) { border-color: #adb5bd; color: #343a40; }
 
     /* STATS */
@@ -237,12 +251,12 @@
     tbody td { padding: 10px 10px; border-bottom: 1px solid #e9ecef; color: #495057; }
     tbody td:not(:first-child) { text-align: right; }
     .bar-bg   { background: #e9ecef; border-radius: 3px; height: 5px; width: 100%; margin-top: 4px; }
-    .bar-fill { background: #ff5023; border-radius: 3px; height: 5px; }
+    .bar-fill { background: #8B5A2B; border-radius: 3px; height: 5px; }
 
     /* CATEGORY FILTER */
     .cat-filter { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
     .cat-btn    { padding: 4px 12px; border-radius: 16px; border: 1px solid #2a2a2a; background: transparent; color: #666; font-size: 12px; cursor: pointer; transition: all .15s; white-space: nowrap; }
-    .cat-btn.active           { background: #ff5023; border-color: #ff5023; color: #fff; }
+    .cat-btn.active           { background: #8B5A2B; border-color: #8B5A2B; color: #fff; }
     .cat-btn:hover:not(.active) { border-color: #444; color: #ccc; }
 
     /* RESUMEN POR LOCAL */
@@ -258,7 +272,7 @@
 
     /* LOADING / ERROR */
     .loading  { display: flex; align-items: center; justify-content: center; min-height: 300px; flex-direction: column; gap: 12px; color: #6c757d; }
-    .spinner  { width: 28px; height: 28px; border: 3px solid #dee2e6; border-top-color: #ff5023; border-radius: 50%; animation: spin .8s linear infinite; }
+    .spinner  { width: 28px; height: 28px; border: 3px solid #dee2e6; border-top-color: #8B5A2B; border-radius: 50%; animation: spin .8s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
     /* ── ADMIN MODAL ── */
@@ -271,7 +285,7 @@
     .modal-close:hover { color: #495057; }
     .modal-tabs { display: flex; border-bottom: 1px solid #dee2e6; flex-shrink: 0; }
     .modal-tab  { flex: 1; padding: 12px; background: transparent; border: none; color: #6c757d; font-size: 13px; cursor: pointer; border-bottom: 2px solid transparent; transition: all .15s; }
-    .modal-tab.active { color: #212529; border-bottom-color: #ff5023; }
+    .modal-tab.active { color: #212529; border-bottom-color: #8B5A2B; }
     .modal-body { padding: 20px 24px; flex: 1; }
 
     .admin-section { margin-bottom: 28px; }
@@ -279,10 +293,10 @@
 
     .admin-form { display: flex; flex-direction: column; gap: 10px; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 10px; padding: 16px; margin-bottom: 16px; }
     .admin-form input, .admin-form select { padding: 9px 12px; background: #fff; border: 1px solid #dee2e6; border-radius: 8px; color: #212529; font-size: 13px; outline: none; }
-    .admin-form input:focus, .admin-form select:focus { border-color: #ff5023; }
+    .admin-form input:focus, .admin-form select:focus { border-color: #8B5A2B; }
     .admin-form select option { background: #fff; }
     .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .btn-add  { padding: 9px 16px; background: #ff5023; color: #fff; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; align-self: flex-start; }
+    .btn-add  { padding: 9px 16px; background: #8B5A2B; color: #fff; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; align-self: flex-start; }
     .btn-add:hover    { opacity: .9; }
     .btn-add:disabled { opacity: .5; cursor: not-allowed; }
 
@@ -297,17 +311,17 @@
     .btn-edit:hover { border-color: #adb5bd; color: #343a40; }
 
     .inv-input { width: 100%; padding: 9px 12px; border: 1px solid #dee2e6; border-radius: 8px; font-size: 13px; color: #212529; background: #fff; outline: none; transition: border-color .15s; }
-    .inv-input:focus { border-color: #ff5023; }
+    .inv-input:focus { border-color: #8B5A2B; }
     .rest-checkboxes { display: flex; flex-direction: column; gap: 8px; max-height: 150px; overflow-y: auto; padding: 10px; background: #fff; border: 1px solid #dee2e6; border-radius: 8px; }
     .rest-checkboxes label { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #495057; cursor: pointer; }
-    .rest-checkboxes input[type="checkbox"] { accent-color: #ff5023; width: 14px; height: 14px; }
+    .rest-checkboxes input[type="checkbox"] { accent-color: #8B5A2B; width: 14px; height: 14px; }
     .rest-check-row { display: flex; flex-direction: column; gap: 4px; }
     .prod-sections-wrap { display: flex; flex-wrap: wrap; gap: 4px 12px; padding: 4px 0 4px 22px; }
     .prod-section-label { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #6c757d; cursor: pointer; }
     .field-label { font-size: 12px; color: #6c757d; margin-bottom: 4px; }
     .cierres-tabs { display:flex;gap:2px;margin-left:16px; }
     .cierres-tab { padding:6px 18px;background:transparent;border:none;border-bottom:2px solid transparent;color:#adb5bd;font-size:13px;cursor:pointer;transition:all .15s;letter-spacing:.01em; }
-    .cierres-tab.active { color:#212529;border-bottom-color:#ff5023; }
+    .cierres-tab.active { color:#212529;border-bottom-color:#8B5A2B; }
     .analytics-kpi-grid { display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px; }
     .analytics-kpi { background:#fff;border:1px solid #dee2e6;border-radius:12px;padding:18px 20px;box-shadow:0 1px 3px rgba(0,0,0,.06); }
     .analytics-kpi-label { font-size:10px;color:#6c757d;text-transform:uppercase;letter-spacing:.7px;margin-bottom:10px; }
@@ -321,9 +335,9 @@
     .chart-card.span3 { grid-column:1/-1; }
     .chart-card.span2 { grid-column:span 2; }
     .analytics-year-sel { background:#fff;border:1px solid #dee2e6;border-radius:8px;color:#495057;font-size:12px;padding:5px 10px;outline:none;cursor:pointer; }
-    .analytics-year-sel:focus { border-color:#ff5023; }
+    .analytics-year-sel:focus { border-color:#8B5A2B; }
     .cierre-input { width:100%;padding:9px 12px;background:#fff;border:1px solid #dee2e6;border-radius:8px;color:#212529;font-size:13px;outline:none; }
-    .cierre-input:focus { border-color:#ff5023; }
+    .cierre-input:focus { border-color:#8B5A2B; }
     .cierres-table { width:100%;border-collapse:collapse;font-size:13px; }
     .cierres-table th { color:#6c757d;font-size:11px;text-transform:uppercase;letter-spacing:.4px;padding:0 12px 10px;text-align:right;font-weight:500; }
     .cierres-table th:first-child { text-align:left; }
@@ -334,13 +348,13 @@
     .cierre-calce-neg  { color:#dc3545;font-weight:600; }
     .prod-filters { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
     .prod-filter-sel { background: #fff; border: 1px solid #dee2e6; border-radius: 8px; color: #495057; font-size: 13px; padding: 7px 12px; cursor: pointer; outline: none; }
-    .prod-filter-sel:focus { border-color: #ff5023; }
+    .prod-filter-sel:focus { border-color: #8B5A2B; }
     .prod-filter-clear { background: none; border: 1px solid #dee2e6; border-radius: 8px; color: #6c757d; font-size: 12px; padding: 6px 10px; cursor: pointer; }
     .prod-filter-clear:hover { border-color: #adb5bd; color: #343a40; }
 
     .role-badge      { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
     .role-superadmin { background: #f3e8ff; color: #7c3aed; }
-    .role-admin      { background: #fff3ee; color: #ff5023; }
+    .role-admin      { background: #fff3ee; color: #8B5A2B; }
     .role-user       { background: #f8f9fa; color: #6c757d; }
 
     .inline-error { color: #dc3545; font-size: 12px; margin-top: 6px; }
@@ -351,13 +365,13 @@
     .inv-topbar  { background: #fff; border-bottom: 1px solid #dee2e6; padding: 0 28px; display: flex; align-items: center; height: 52px; gap: 0; }
     .inv-tabs    { display: flex; align-items: center; gap: 2px; flex: 1; }
     .inv-tab     { padding: 0 18px; height: 52px; border-bottom: 2px solid transparent; color: #adb5bd; font-size: 13px; cursor: pointer; background: transparent; border-top: none; border-left: none; border-right: none; transition: all .15s; white-space: nowrap; }
-    .inv-tab.active { color: #212529; border-bottom-color: #ff5023; }
+    .inv-tab.active { color: #212529; border-bottom-color: #8B5A2B; }
     .inv-tab:hover:not(.active) { color: #495057; }
     .inv-main    { padding: 24px 28px; max-width: 1000px; margin: 0 auto; width: 100%; }
 
     .inv-toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; flex-wrap: wrap; gap: 10px; }
     .inv-toolbar h2 { font-size: 15px; font-weight: 600; color: #212529; }
-    .btn-new { padding: 8px 16px; background: #ff5023; color: #fff; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; }
+    .btn-new { padding: 8px 16px; background: #8B5A2B; color: #fff; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; }
     .btn-new:hover { opacity: .9; }
 
     .inv-table { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -370,8 +384,8 @@
     .stock-none { color: #adb5bd !important; }
 
     .qty-input { width: 80px; padding: 5px 8px; background: #fff; border: 1px solid #dee2e6; border-radius: 6px; color: #212529; font-size: 13px; outline: none; text-align: right; }
-    .qty-input:focus { border-color: #ff5023; }
-    .btn-save-row { padding: 5px 10px; background: #ff5023; color: #fff; border: none; border-radius: 6px; font-size: 12px; cursor: pointer; margin-left: 6px; }
+    .qty-input:focus { border-color: #8B5A2B; }
+    .btn-save-row { padding: 5px 10px; background: #8B5A2B; color: #fff; border: none; border-radius: 6px; font-size: 12px; cursor: pointer; margin-left: 6px; }
     .btn-save-row:hover { opacity: .9; }
 
     /* modal inventario */
@@ -386,7 +400,7 @@
 
     .stock-selector { display: flex; gap: 8px; margin-bottom: 18px; flex-wrap: wrap; }
     .stock-rest-btn { padding: 6px 14px; border-radius: 20px; border: 1px solid #dee2e6; background: transparent; color: #6c757d; font-size: 13px; cursor: pointer; transition: all .15s; }
-    .stock-rest-btn.active { background: #ff5023; border-color: #ff5023; color: #fff; }
+    .stock-rest-btn.active { background: #8B5A2B; border-color: #8B5A2B; color: #fff; }
 
     /* Historial inventarios */
     .hist-rest-sel { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
@@ -427,7 +441,7 @@
     .stock-form-name  { flex: 1; font-size: 14px; color: #212529; font-weight: 500; }
     .stock-form-cur   { font-size: 13px; color: #495057; min-width: 60px; text-align: right; font-weight: 600; }
     .stock-form-input { width: 90px; padding: 7px 10px; background: #fff; border: 1px solid #dee2e6; border-radius: 8px; color: #212529; font-size: 14px; outline: none; text-align: right; transition: border-color .15s; }
-    .stock-form-input:focus { border-color: #ff5023; }
+    .stock-form-input:focus { border-color: #8B5A2B; }
     .stock-form-input.sf-error { border-color: #dc3545; background: #fff5f5; }
     .stock-form-unit  { font-size: 12px; color: #495057; min-width: 40px; }
     .sf-error-hint { font-size: 11px; color: #dc3545; margin-top: 2px; display: none; }
@@ -443,7 +457,7 @@
     #stock-validation-toast.show {
       opacity: 1; transform: translateX(-50%) translateY(0);
     }
-    .btn-guardar-todo { width: 100%; padding: 14px; background: #ff5023; color: #fff; border: none; border-radius: 10px; font-size: 15px; font-weight: 600; cursor: pointer; margin-top: 24px; }
+    .btn-guardar-todo { width: 100%; padding: 14px; background: #8B5A2B; color: #fff; border: none; border-radius: 10px; font-size: 15px; font-weight: 600; cursor: pointer; margin-top: 24px; }
     .btn-guardar-todo:hover    { opacity: .9; }
     .btn-guardar-todo:disabled { opacity: .5; cursor: not-allowed; }
 
@@ -452,7 +466,7 @@
       background: #fff; border: 2px dashed #dee2e6; border-radius: 16px;
       padding: 40px 24px; text-align: center; transition: all .2s;
     }
-    .gdd-upload-card:hover { border-color: #ff5023; background: #fff8f6; }
+    .gdd-upload-card:hover { border-color: #8B5A2B; background: #fff8f6; }
 
     /* ── Reuniones ── */
     .reun-section-item {
@@ -461,7 +475,7 @@
       display: flex; align-items: center; justify-content: space-between; gap: 6px;
     }
     .reun-section-item:hover { background: #f1f3f5; color: #343a40; }
-    .reun-section-item.active { color: #212529; background: #e9ecef; border-left-color: #ff5023; }
+    .reun-section-item.active { color: #212529; background: #e9ecef; border-left-color: #8B5A2B; }
     .reun-section-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
     .reun-page-item {
       padding: 9px 12px; cursor: pointer; font-size: 13px; color: #6c757d;
@@ -487,18 +501,20 @@
     .reun-sect-btn { background: none; border: none; color: #adb5bd; font-size: 11px; cursor: pointer; padding: 0 2px; }
     .reun-sect-btn:hover { color: #495057; }
 
-    /* ── AdminLTE colores (sidebar negro, content blanco) ── */
-    /* Sidebar: negro como AdminLTE default dark sidebar */
+    /* ── AdminLTE colores Monaco (sidebar navy café) ── */
     .main-sidebar,
-    .main-sidebar .sidebar { background: #343a40 !important; }
-    .main-sidebar .brand-link { background: #2c3136 !important; border-bottom: 1px solid #4b545c !important; }
-    .main-sidebar .brand-text { color: #fff !important; }
-    .main-sidebar .user-panel { border-bottom: 1px solid #4b545c !important; }
-    .nav-sidebar .nav-item .nav-link { color: #c2c7d0 !important; font-size: 13px; }
-    .nav-sidebar .nav-item .nav-link:hover { background: rgba(255,255,255,0.1) !important; color: #fff !important; }
-    .nav-sidebar .nav-item .nav-link.active { background: #ff5023 !important; color: #fff !important; }
-    .nav-sidebar .nav-item .nav-link .nav-icon { color: #c2c7d0; }
-    .brand-link:hover { background: #2c3136 !important; }
+    .main-sidebar .sidebar { background: #1A1613 !important; }
+    .main-sidebar .brand-link { background: #0C0A08 !important; border-bottom: 1px solid rgba(201,165,118,0.2) !important; padding: 10px 16px !important; }
+    .main-sidebar .brand-text { color: #F3ECE0 !important; font-family: 'Northwest', sans-serif !important; font-size: 20px !important; letter-spacing: .05em !important; }
+    .main-sidebar .user-panel { border-bottom: 1px solid rgba(201,165,118,0.15) !important; }
+    .main-sidebar .user-panel .info a { color: #C9A576 !important; font-size: 12px !important; }
+    .nav-sidebar .nav-item .nav-link { color: rgba(243,236,224,0.65) !important; font-size: 12.5px; letter-spacing: .01em; }
+    .nav-sidebar .nav-item .nav-link:hover { background: rgba(201,165,118,0.1) !important; color: #F3ECE0 !important; }
+    .nav-sidebar .nav-item .nav-link.active { background: #8B5A2B !important; color: #F3ECE0 !important; }
+    .nav-sidebar .nav-item .nav-link .nav-icon { color: rgba(201,165,118,0.6) !important; }
+    .nav-sidebar .nav-item .nav-link.active .nav-icon { color: #F3ECE0 !important; }
+    .nav-sidebar .nav-header { color: rgba(201,165,118,0.45) !important; font-size: 10px !important; letter-spacing: .08em !important; }
+    .brand-link:hover { background: #0C0A08 !important; }
     .sidebar-mini.sidebar-collapse .main-sidebar { width: 4.6rem !important; }
 
     /* Navbar: blanco */
@@ -578,7 +594,7 @@
       .reun-back-btn {
         display: flex !important;
         align-items: center; gap: 6px;
-        background: none; border: none; color: #ff5023;
+        background: none; border: none; color: #8B5A2B;
         font-size: 13px; font-weight: 600; cursor: pointer;
         padding: 10px 12px 4px;
       }
@@ -605,7 +621,7 @@
       height: calc(100vh - 57px);
     }
     /* Override Bootstrap conflicting button class */
-    .btn-primary { width: 100%; padding: 13px; background: #ff5023 !important; color: #fff !important; border: none !important; border-radius: 8px !important; font-size: 14px; font-weight: 600; cursor: pointer; margin-top: 8px; letter-spacing: .3px; transition: opacity .15s; }
+    .btn-primary { width: 100%; padding: 13px; background: #8B5A2B !important; color: #fff !important; border: none !important; border-radius: 8px !important; font-size: 14px; font-weight: 600; cursor: pointer; margin-top: 8px; letter-spacing: .3px; transition: opacity .15s; }
     .btn-primary:hover { opacity: .88 !important; }
     .btn-primary:disabled { opacity: .4 !important; cursor: not-allowed !important; }
     /* Override Bootstrap table styles inside modules */
@@ -1488,7 +1504,7 @@
     <div id="reun-sections-panel" style="width:200px;min-width:160px;background:#f8f9fa;border-right:1px solid #dee2e6;display:flex;flex-direction:column;overflow:hidden">
       <div style="padding:14px 12px 8px;display:flex;align-items:center;justify-content:space-between">
         <span style="font-size:11px;color:#6c757d;text-transform:uppercase;letter-spacing:.5px">Secciones</span>
-        <button id="btn-new-section" onclick="openNewSectionModal()" style="display:none;background:none;border:none;color:#ff5023;font-size:18px;cursor:pointer;line-height:1" title="Nueva sección">+</button>
+        <button id="btn-new-section" onclick="openNewSectionModal()" style="display:none;background:none;border:none;color:#8B5A2B;font-size:18px;cursor:pointer;line-height:1" title="Nueva sección">+</button>
       </div>
       <div id="reun-sections-list" style="flex:1;overflow-y:auto"></div>
     </div>
@@ -1497,7 +1513,7 @@
       <button class="reun-back-btn" onclick="reunGoBack('sections')">‹ Secciones</button>
       <div style="padding:14px 12px 8px;display:flex;align-items:center;justify-content:space-between">
         <span id="reun-pages-title" style="font-size:11px;color:#6c757d;text-transform:uppercase;letter-spacing:.5px">Páginas</span>
-        <button id="btn-new-page" onclick="addNewPage()" style="background:none;border:none;color:#ff5023;font-size:18px;cursor:pointer;line-height:1;display:none" title="Nueva página">+</button>
+        <button id="btn-new-page" onclick="addNewPage()" style="background:none;border:none;color:#8B5A2B;font-size:18px;cursor:pointer;line-height:1;display:none" title="Nueva página">+</button>
       </div>
       <div id="reun-pages-list" style="flex:1;overflow-y:auto"></div>
     </div>
@@ -1560,7 +1576,7 @@
       <div class="field-label">Nombre</div>
       <input type="text" id="mreun-name" placeholder="Ej: Reuniones de equipo">
       <div class="field-label" style="margin-top:12px">Color</div>
-      <input type="color" id="mreun-color" value="#ff5023" style="width:60px;height:36px;padding:2px;border:1px solid #dee2e6;border-radius:6px;background:#fff;cursor:pointer">
+      <input type="color" id="mreun-color" value="#8B5A2B" style="width:60px;height:36px;padding:2px;border:1px solid #dee2e6;border-radius:6px;background:#fff;cursor:pointer">
       <div class="field-label" style="margin-top:12px">Acceso (usuarios)</div>
       <div id="mreun-users" style="max-height:180px;overflow-y:auto;background:#f8f9fa;border:1px solid #dee2e6;border-radius:8px;padding:8px"></div>
     </div>
@@ -1618,7 +1634,7 @@
       <div><div class="field-label">Proveedores</div><div class="rest-checkboxes" id="mprod-suppliers"></div></div>
       <div style="margin-top:12px">
         <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:#212529">
-          <input type="checkbox" id="mprod-gdd" style="width:16px;height:16px;accent-color:#ff5023">
+          <input type="checkbox" id="mprod-gdd" style="width:16px;height:16px;accent-color:#8B5A2B">
           Viene por Guía de Despacho (GDD)
         </label>
       </div>
@@ -2176,7 +2192,7 @@ function renderVentas(from, to, results, partial = false) {
           <div class="card-title" style="margin:0">${data.restaurantName}</div>
           <span style="font-size:13px;color:#6c757d">${data.salesCount} ventas</span>
         </div>
-        <div style="font-size:26px;font-weight:700;color:#ff5023;margin-bottom:12px">${fmt(data.total)}</div>
+        <div style="font-size:26px;font-weight:700;color:#8B5A2B;margin-bottom:12px">${fmt(data.total)}</div>
         ${methods}
       </div>`;
   }).join('');
@@ -2457,7 +2473,7 @@ function renderGoku(state, loading) {
           <span style="font-size:12px;font-weight:600;color:#6c757d;text-transform:uppercase;letter-spacing:.4px">Ventas Brutas</span>
           <span style="font-size:12px;color:#9ca3af">${totalSales} ventas${loading ? ' · cargando...' : ''}</span>
         </div>
-        <div style="font-size:28px;font-weight:800;color:#ff5023;margin-bottom:4px">${fmt(totalVentas)}</div>
+        <div style="font-size:28px;font-weight:800;color:#8B5A2B;margin-bottom:4px">${fmt(totalVentas)}</div>
         <div style="font-size:12px;color:#6c757d;margin-bottom:10px">Neto: ${fmt(ventasNetas)}</div>
         ${ventasMethods}
         ${ventasErrors.length ? `<div style="font-size:11px;color:#f87171;margin-top:8px">Error: ${ventasErrors.join(', ')}</div>` : ''}
@@ -3338,7 +3354,7 @@ async function flujoLoad() {
       chkBox.innerHTML = (restaurants||[]).map(r => `
         <label style="display:flex;align-items:center;gap:5px;cursor:pointer;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600;background:#374151;color:#e5e7eb;border:1px solid #4b5563;transition:all .15s"
           id="flujo-chk-lbl-${r.id}">
-          <input type="checkbox" checked value="${r.id}" style="accent-color:#ff5023;width:13px;height:13px"
+          <input type="checkbox" checked value="${r.id}" style="accent-color:#8B5A2B;width:13px;height:13px"
             onchange="flujoToggleConsolidadoRest('${r.id}',this.checked)"> ${r.name}
         </label>`).join('');
     }
@@ -3770,12 +3786,12 @@ function flujoRenderHistoricoModal() {
   const allOptions = [...years, 'promedio'];
   const btnsSel = allOptions.map(opt => `
     <button onclick="flujoHistoricoSel='${opt}';flujoRenderHistoricoModal()"
-      style="padding:5px 14px;border-radius:20px;font-size:12px;cursor:pointer;border:1px solid ${flujoHistoricoSel===opt?'#ff5023':'#dee2e6'};background:${flujoHistoricoSel===opt?'#ff5023':'#fff'};color:${flujoHistoricoSel===opt?'#fff':'#374151'};font-weight:${flujoHistoricoSel===opt?'600':'400'}">
+      style="padding:5px 14px;border-radius:20px;font-size:12px;cursor:pointer;border:1px solid ${flujoHistoricoSel===opt?'#8B5A2B':'#dee2e6'};background:${flujoHistoricoSel===opt?'#8B5A2B':'#fff'};color:${flujoHistoricoSel===opt?'#fff':'#374151'};font-weight:${flujoHistoricoSel===opt?'600':'400'}">
       ${opt === 'promedio' ? 'Promedio' : opt}
     </button>`).join('');
 
   // Tabla: filas = meses, columnas = años + promedio
-  const colHeaders = [...years.map(y => `<th style="${thStyle}" colspan="2">${y}</th>`), `<th style="${thStyle};color:#ff5023" colspan="2">Promedio</th>`].join('');
+  const colHeaders = [...years.map(y => `<th style="${thStyle}" colspan="2">${y}</th>`), `<th style="${thStyle};color:#8B5A2B" colspan="2">Promedio</th>`].join('');
   const subHeaders = [...years.map(() => `<th style="${thStyle}">Transbank</th><th style="${thStyle}">Efectivo</th>`), `<th style="${thStyle}">Transbank</th><th style="${thStyle}">Efectivo</th>`].join('');
 
   const rows = FLUJO_MONTHS.map((m, i) => {
@@ -3787,8 +3803,8 @@ function flujoRenderHistoricoModal() {
     return `<tr>
       <td style="${tdName}">${m}</td>
       ${yearCols}
-      <td style="${tdStyle};color:#ff5023;font-weight:600">${fmt(promedioTB[i])}</td>
-      <td style="${tdStyle};color:#ff5023;font-weight:600">${fmt(promedioEf[i])}</td>
+      <td style="${tdStyle};color:#8B5A2B;font-weight:600">${fmt(promedioTB[i])}</td>
+      <td style="${tdStyle};color:#8B5A2B;font-weight:600">${fmt(promedioEf[i])}</td>
     </tr>`;
   }).join('');
 
@@ -4207,7 +4223,7 @@ async function editPermisos(uid, name) {
   const current = user.restaurantIds || [];
   const checks  = rests.map(r => `
     <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#aaa;cursor:pointer">
-      <input type="checkbox" value="${r.id}" ${current.includes(r.id) ? 'checked' : ''} style="accent-color:#ff5023"> ${r.name}
+      <input type="checkbox" value="${r.id}" ${current.includes(r.id) ? 'checked' : ''} style="accent-color:#8B5A2B"> ${r.name}
     </label>`).join('');
 
   // Simple inline edit — replace the user list with a permission editor
@@ -4355,7 +4371,7 @@ async function usuariosShowForm() {
   const formEl = document.getElementById('usuarios-form-wrap');
   const restChecks = _upRests.map(r => `
     <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#aaa;cursor:pointer">
-      <input type="checkbox" class="nu-rest" value="${r.id}" style="accent-color:#ff5023"> ${r.name}
+      <input type="checkbox" class="nu-rest" value="${r.id}" style="accent-color:#8B5A2B"> ${r.name}
     </label>`).join('');
   const catChecks = await getCatChecks([]);
 
@@ -4442,7 +4458,7 @@ async function usuariosEditUser(uid, name) {
   const current = user.restaurantIds || [];
   const checks  = rests.map(r => `
     <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#aaa;cursor:pointer">
-      <input type="checkbox" value="${r.id}" ${current.includes(r.id) ? 'checked' : ''} style="accent-color:#ff5023"> ${r.name}
+      <input type="checkbox" value="${r.id}" ${current.includes(r.id) ? 'checked' : ''} style="accent-color:#8B5A2B"> ${r.name}
     </label>`).join('');
   const currentMods = user.modules    || ['ventas'];
   const currentCats = user.categories || [];
@@ -5091,7 +5107,7 @@ async function loadAddStockForm() {
           <div class="field-label" style="font-size:11px;color:#555;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Fecha del inventario</div>
           <input type="date" id="inv-date" value="${getTodayClient()}"
             style="padding:9px 14px;background:#161616;border:1px solid #222;border-radius:8px;color:#fff;font-size:14px;outline:none;cursor:pointer;"
-            onfocus="this.style.borderColor='#ff5023'" onblur="this.style.borderColor='#222'">
+            onfocus="this.style.borderColor='#8B5A2B'" onblur="this.style.borderColor='#222'">
         </div>
         <div style="text-align:right;line-height:1.6">
           <div style="font-size:12px;color:#444">${addStockItems.length} ingredientes</div>
@@ -5306,7 +5322,7 @@ function renderProdTable() {
         ${restaurants.map(r => `<option value="${r.id}" ${prodFilterRest===r.id?'selected':''}>${r.name}</option>`).join('')}
       </select>
       <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#495057;cursor:pointer;white-space:nowrap;flex-shrink:0">
-        <input type="checkbox" ${prodFilterGDD?'checked':''} onchange="prodFilterGDD=this.checked;renderProdTable()" style="accent-color:#ff5023;width:14px;height:14px">
+        <input type="checkbox" ${prodFilterGDD?'checked':''} onchange="prodFilterGDD=this.checked;renderProdTable()" style="accent-color:#8B5A2B;width:14px;height:14px">
         Solo GDD
       </label>
       ${(prodFilterCat||prodFilterSup||prodFilterSearch||prodFilterGDD||prodFilterRest) ? `<button class="prod-filter-clear" onclick="prodFilterCat='';prodFilterSup='';prodFilterSearch='';prodFilterGDD=false;prodFilterRest='';renderProdTable()">✕ Limpiar</button>` : ''}
@@ -5367,7 +5383,7 @@ function openModalProducto(id) {
         const hasSections = (r.sections || []).length > 0;
         return `<div class="rest-check-row">
           <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#495057;cursor:pointer">
-            <input type="checkbox" value="${r.id}" onchange="toggleProdRestaurant('${r.id}',this.checked)" ${checked?'checked':''} style="accent-color:#ff5023;width:15px;height:15px"> ${r.name}
+            <input type="checkbox" value="${r.id}" onchange="toggleProdRestaurant('${r.id}',this.checked)" ${checked?'checked':''} style="accent-color:#8B5A2B;width:15px;height:15px"> ${r.name}
           </label>
           ${hasSections ? `<div id="psec-${r.id}" class="prod-sections-wrap" ${checked?'':'style="display:none"'}>${r.sections.map(s=>`<label class="prod-section-label"><input type="checkbox" name="psec-${r.id}" value="${s}" ${(currentSections[r.id]||[]).includes(s)?'checked':''}> ${s}</label>`).join('')}</div>` : ''}
         </div>`;
@@ -5375,7 +5391,7 @@ function openModalProducto(id) {
     : '<span style="color:#888;font-size:13px">Sin locales creados</span>';
 
   const supsHtml = invSuppliers.length
-    ? invSuppliers.map(s => `<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#495057;cursor:pointer"><input type="checkbox" value="${s.id}" ${currentSups.includes(s.id)?'checked':''} style="accent-color:#ff5023;width:15px;height:15px"> ${s.name}</label>`).join('')
+    ? invSuppliers.map(s => `<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#495057;cursor:pointer"><input type="checkbox" value="${s.id}" ${currentSups.includes(s.id)?'checked':''} style="accent-color:#8B5A2B;width:15px;height:15px"> ${s.name}</label>`).join('')
     : '<span style="color:#888;font-size:13px">Sin proveedores creados</span>';
 
   document.getElementById('inv-productos').innerHTML = `
@@ -5450,7 +5466,7 @@ function openModalProducto(id) {
 
       <div style="margin-bottom:20px">
         <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;color:#212529;padding:12px 14px;border:1px solid #dee2e6;border-radius:8px;width:fit-content">
-          <input type="checkbox" id="mprod-gdd" ${p?.esGDD?'checked':''} style="width:16px;height:16px;accent-color:#ff5023">
+          <input type="checkbox" id="mprod-gdd" ${p?.esGDD?'checked':''} style="width:16px;height:16px;accent-color:#8B5A2B">
           Viene por Guía de Despacho (GDD)
         </label>
       </div>
@@ -6823,7 +6839,7 @@ function destroyCharts() {
   analyticsCharts = {};
 }
 
-const CC = { orange:'#ff5023', blue:'#3b82f6', green:'#10b981', purple:'#8b5cf6', yellow:'#f59e0b', red:'ef4444' };
+const CC = { orange:'#8B5A2B', blue:'#3b82f6', green:'#10b981', purple:'#8b5cf6', yellow:'#f59e0b', red:'ef4444' };
 
 function fmtCLP(v) {
   if (v == null || isNaN(v)) return '—';
@@ -7789,7 +7805,7 @@ async function openNewSectionModal() {
   document.getElementById('mreun-title').textContent = 'Nueva sección';
   document.getElementById('mreun-id').value = '';
   document.getElementById('mreun-name').value = '';
-  document.getElementById('mreun-color').value = '#ff5023';
+  document.getElementById('mreun-color').value = '#8B5A2B';
   await loadUsersForModal([]);
   document.getElementById('modal-new-section').classList.add('open');
 }
@@ -7800,7 +7816,7 @@ async function openEditSectionModal(sectionId) {
   document.getElementById('mreun-title').textContent = 'Editar sección';
   document.getElementById('mreun-id').value = sectionId;
   document.getElementById('mreun-name').value = s.name;
-  document.getElementById('mreun-color').value = s.color || '#ff5023';
+  document.getElementById('mreun-color').value = s.color || '#8B5A2B';
   await loadUsersForModal(s.allowedUids || []);
   document.getElementById('modal-new-section').classList.add('open');
 }
@@ -8867,7 +8883,7 @@ function gddRenderHistory(records) {
                   onchange="gddUpdateFecha('${r.id}',this.value)">
               </div>
               <span>· ${itemsConCantidad.length} producto${itemsConCantidad.length !== 1 ? 's' : ''} · ${r.createdByName || r.createdBy || ''}</span>
-              ${r.imageUrl ? `<a href="${r.imageUrl}" target="_blank" style="color:#ff5023;font-size:11px;text-decoration:none;font-weight:500">📎 Ver imagen</a>` : ''}
+              ${r.imageUrl ? `<a href="${r.imageUrl}" target="_blank" style="color:#8B5A2B;font-size:11px;text-decoration:none;font-weight:500">📎 Ver imagen</a>` : ''}
             </div>
           </div>
           <div style="display:flex;align-items:center;gap:8px">
@@ -10494,7 +10510,7 @@ function renderMargenPreparaciones() {
               oninput="clearTimeout(this._t);this._t=setTimeout(()=>{margenPrepSearch=this.value;renderMargenPrepContent()},300)"
               style="border:none;outline:none;padding:6px 10px 6px 0;font-size:13px;width:160px;color:#212529">
           </div>
-          <button id="marg-prep-gdd-btn" onclick="margenPrepFilterGDD=!margenPrepFilterGDD;this.style.background=margenPrepFilterGDD?'#ff5023':'#fff';this.style.color=margenPrepFilterGDD?'#fff':'#6c757d';renderMargenPrepContent()"
+          <button id="marg-prep-gdd-btn" onclick="margenPrepFilterGDD=!margenPrepFilterGDD;this.style.background=margenPrepFilterGDD?'#8B5A2B':'#fff';this.style.color=margenPrepFilterGDD?'#fff':'#6c757d';renderMargenPrepContent()"
             style="padding:6px 12px;font-size:12px;font-weight:600;border:1px solid #dee2e6;border-radius:8px;cursor:pointer;background:#fff;color:#6c757d">GDD</button>
           <div style="display:flex;border:1px solid #dee2e6;border-radius:8px;overflow:hidden">
             <button id="marg-prep-view-list" onclick="margenPrepView='list';margenUpdatePrepViewBtns();renderMargenPrepContent()"
@@ -10781,7 +10797,7 @@ function margenOpenPrepModal(id) {
         const hasSections = (r.sections || []).length > 0;
         return `<div class="rest-check-row">
           <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#495057;cursor:pointer">
-            <input type="checkbox" value="${r.id}" onchange="togglePrepRestaurant('${r.id}',this.checked)" ${checked?'checked':''} style="accent-color:#ff5023;width:15px;height:15px"> ${r.name}
+            <input type="checkbox" value="${r.id}" onchange="togglePrepRestaurant('${r.id}',this.checked)" ${checked?'checked':''} style="accent-color:#8B5A2B;width:15px;height:15px"> ${r.name}
           </label>
           ${hasSections ? `<div id="prepsec-${r.id}" class="prod-sections-wrap" ${checked?'':'style="display:none"'}>${r.sections.map(s=>`<label class="prod-section-label"><input type="checkbox" name="prepsec-${r.id}" value="${s}" ${(currentSections[r.id]||[]).includes(s)?'checked':''}> ${s}</label>`).join('')}</div>` : ''}
         </div>`;
@@ -11036,7 +11052,7 @@ function margenOpenPromoModal(id) {
         <label style="display:flex;align-items:center;gap:8px;padding:7px 0;cursor:pointer;font-size:13px;color:#212529;border-bottom:1px solid #f8f9fa">
           <input type="checkbox" value="${r.id}" ${saved ? 'checked' : ''}
             onchange="margenPromoUpdatePreview()"
-            style="width:15px;height:15px;accent-color:#ff5023;flex-shrink:0">
+            style="width:15px;height:15px;accent-color:#8B5A2B;flex-shrink:0">
           <span style="flex:1">${r.name}${r.restaurantName ? ` <span style="color:#aaa;font-size:11px">(${r.restaurantName})</span>` : ''}</span>
           <input type="number" id="marg-promo-qty-${r.id}" value="${saved?.quantity || 1}" min="1" step="1"
             oninput="margenPromoUpdatePreview()" onclick="event.stopPropagation()"
@@ -11358,10 +11374,10 @@ function margenOpenFormModal(id) {
   const invIds = recipe?.inventoryRestaurantIds || [];
   document.getElementById('marg-form-inv-rests').innerHTML = restaurants.map(r => {
     const checked = invIds.includes(r.id);
-    return `<label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:13px;color:#212529;padding:7px 12px;border:1px solid ${checked?'#ff5023':'#dee2e6'};border-radius:8px;background:${checked?'#fff5f2':'#fff'};transition:all .15s">
+    return `<label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:13px;color:#212529;padding:7px 12px;border:1px solid ${checked?'#8B5A2B':'#dee2e6'};border-radius:8px;background:${checked?'#fff5f2':'#fff'};transition:all .15s">
       <input type="checkbox" id="marg-inv-chk-${r.id}" value="${r.id}"
         onchange="margenToggleInvChk('${r.id}')"
-        style="width:14px;height:14px;accent-color:#ff5023;flex-shrink:0" ${checked?'checked':''}> ${r.name}
+        style="width:14px;height:14px;accent-color:#8B5A2B;flex-shrink:0" ${checked?'checked':''}> ${r.name}
     </label>`;
   }).join('');
 
@@ -11373,7 +11389,7 @@ function margenOpenFormModal(id) {
     return `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border:1px solid #e9ecef;border-radius:8px;background:${checked?'#f8f9fa':'#fff'}">
       <input type="checkbox" id="marg-rest-chk-${r.id}" value="${r.id}"
         onchange="margenToggleRestPrice('${r.id}')"
-        style="width:15px;height:15px;accent-color:#ff5023;flex-shrink:0" ${checked ? 'checked' : ''}>
+        style="width:15px;height:15px;accent-color:#8B5A2B;flex-shrink:0" ${checked ? 'checked' : ''}>
       <label for="marg-rest-chk-${r.id}" style="font-size:13px;color:#495057;cursor:pointer;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.name}</label>
       <div id="marg-rest-price-wrap-${r.id}" style="display:${checked?'flex':'none'};align-items:center;border:1px solid #dee2e6;border-radius:7px;overflow:hidden;background:#fff;flex-shrink:0">
         <span style="padding:0 7px;color:#888;font-size:12px;background:#f8f9fa;border-right:1px solid #dee2e6">$</span>
@@ -11409,7 +11425,7 @@ function margenToggleInvChk(restId) {
   const chk = document.getElementById('marg-inv-chk-' + restId);
   const lbl = chk?.closest('label');
   if (lbl) {
-    lbl.style.borderColor = chk?.checked ? '#ff5023' : '#dee2e6';
+    lbl.style.borderColor = chk?.checked ? '#8B5A2B' : '#dee2e6';
     lbl.style.background  = chk?.checked ? '#fff5f2' : '#fff';
   }
 }
@@ -12709,7 +12725,7 @@ function vpFilterTabla() {
       <!-- Promedio -->
       <div style="margin-bottom:14px">
         <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;color:#212529;user-select:none">
-          <input type="checkbox" id="marg-form-promedio" onchange="margenUpdateFormTotal()" style="width:16px;height:16px;accent-color:#ff5023">
+          <input type="checkbox" id="marg-form-promedio" onchange="margenUpdateFormTotal()" style="width:16px;height:16px;accent-color:#8B5A2B">
           <span style="font-weight:600">Calcular costo como promedio</span>
         </label>
         <div style="font-size:12px;color:#6c757d;margin-top:4px;padding-left:26px">En vez de sumar los ingredientes, divide el total entre la cantidad de ingredientes.</div>
@@ -12718,7 +12734,7 @@ function vpFilterTabla() {
       <!-- Rendimiento -->
       <div style="margin-bottom:16px">
         <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;color:#212529;user-select:none">
-          <input type="checkbox" id="marg-rend-enabled" onchange="margenToggleRendimiento()" style="width:16px;height:16px;accent-color:#ff5023">
+          <input type="checkbox" id="marg-rend-enabled" onchange="margenToggleRendimiento()" style="width:16px;height:16px;accent-color:#8B5A2B">
           <span style="font-weight:600">Tiene rendimiento</span>
         </label>
         <div id="marg-rend-fields" style="display:none;margin-top:12px;background:#fff8f0;border:1px solid #fed7aa;border-radius:10px;padding:14px;display:none">
@@ -12762,7 +12778,7 @@ function vpFilterTabla() {
       <!-- Merma -->
       <div style="margin-bottom:16px">
         <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;color:#212529;user-select:none">
-          <input type="checkbox" id="marg-merma-enabled" onchange="margenToggleMerma()" style="width:16px;height:16px;accent-color:#ff5023">
+          <input type="checkbox" id="marg-merma-enabled" onchange="margenToggleMerma()" style="width:16px;height:16px;accent-color:#8B5A2B">
           <span style="font-weight:600">Tiene merma</span>
         </label>
         <div id="marg-merma-fields" style="display:none;margin-top:12px;background:#fff0f0;border:1px solid #fca5a5;border-radius:10px;padding:14px">
@@ -12791,20 +12807,20 @@ function vpFilterTabla() {
         <div class="field-label" style="margin-bottom:8px">Locales donde se usa</div>
         <div id="marg-form-prep-rests" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px"></div>
         <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;color:#212529;padding:10px 14px;border:1px solid #dee2e6;border-radius:8px;width:fit-content">
-          <input type="checkbox" id="marg-form-gdd" style="width:16px;height:16px;accent-color:#ff5023" onchange="gddPrepPricesToggle()">
+          <input type="checkbox" id="marg-form-gdd" style="width:16px;height:16px;accent-color:#8B5A2B" onchange="gddPrepPricesToggle()">
           Viene por Guía de Despacho (GDD)
         </label>
-        <button id="marg-gdd-prices-btn" onclick="gddPrepPricesOpen()" style="display:none;margin-top:10px;padding:8px 16px;background:transparent;border:1px solid #ff5023;border-radius:8px;font-size:13px;color:#ff5023;cursor:pointer;font-weight:600">
+        <button id="marg-gdd-prices-btn" onclick="gddPrepPricesOpen()" style="display:none;margin-top:10px;padding:8px 16px;background:transparent;border:1px solid #8B5A2B;border-radius:8px;font-size:13px;color:#8B5A2B;cursor:pointer;font-weight:600">
           📋 Ver/editar precios GDD
         </button>
       </div>
       <!-- GDD para recetas (oculto para preparaciones) -->
       <div id="marg-form-recipe-gdd-section" style="display:none;margin-bottom:14px">
         <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;color:#212529;padding:10px 14px;border:1px solid #dee2e6;border-radius:8px;width:fit-content">
-          <input type="checkbox" id="marg-form-recipe-gdd" style="width:16px;height:16px;accent-color:#ff5023" onchange="gddRecipePricesToggle()">
+          <input type="checkbox" id="marg-form-recipe-gdd" style="width:16px;height:16px;accent-color:#8B5A2B" onchange="gddRecipePricesToggle()">
           Viene por Guía de Despacho (GDD)
         </label>
-        <button id="marg-recipe-gdd-prices-btn" onclick="gddEntityPricesOpen(document.getElementById('marg-form-id').value, document.getElementById('marg-form-name').value)" style="display:none;margin-top:10px;padding:8px 16px;background:transparent;border:1px solid #ff5023;border-radius:8px;font-size:13px;color:#ff5023;cursor:pointer;font-weight:600">
+        <button id="marg-recipe-gdd-prices-btn" onclick="gddEntityPricesOpen(document.getElementById('marg-form-id').value, document.getElementById('marg-form-name').value)" style="display:none;margin-top:10px;padding:8px 16px;background:transparent;border:1px solid #8B5A2B;border-radius:8px;font-size:13px;color:#8B5A2B;cursor:pointer;font-weight:600">
           📋 Ver/editar precios GDD
         </button>
       </div>
@@ -13016,7 +13032,7 @@ async function unitsEliminar(value) {
 <div id="agent-window" style="display:none;position:fixed;bottom:90px;right:24px;z-index:2000;width:390px;max-height:560px;background:#141414;border:1px solid #252525;border-radius:18px;box-shadow:0 24px 64px rgba(0,0,0,.65);flex-direction:column;overflow:hidden">
   <div style="padding:16px 20px 14px;border-bottom:1px solid #1e1e1e;display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
     <div style="display:flex;align-items:center;gap:10px">
-      <div style="width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#ff5023,#ff8c00);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">✦</div>
+      <div style="width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#8B5A2B,#ff8c00);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">✦</div>
       <div>
         <div style="font-size:14px;font-weight:700;color:#fff">Asistente Monaco</div>
         <div style="font-size:11px;color:#444;margin-top:1px">Análisis de márgenes · costos · promos</div>
@@ -13040,7 +13056,7 @@ async function unitsEliminar(value) {
     <textarea id="agent-input" rows="1" placeholder="Preguntá algo..."
       style="flex:1;background:#1c1c1c;border:1px solid #2a2a2a;border-radius:12px;color:#ddd;padding:9px 13px;font-size:13px;outline:none;resize:none;font-family:inherit;line-height:1.4;max-height:100px;overflow-y:auto;transition:border-color .15s"
       onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();agentSend()}"
-      onfocus="this.style.borderColor='#ff5023'" onblur="this.style.borderColor='#2a2a2a'"
+      onfocus="this.style.borderColor='#8B5A2B'" onblur="this.style.borderColor='#2a2a2a'"
       oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,100)+'px'"></textarea>
     <button onclick="agentSend()" id="agent-send-btn"
       style="background:#374151;border:none;border-radius:12px;color:#fff;width:38px;height:38px;font-size:18px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:opacity .15s"
@@ -13070,7 +13086,7 @@ function agentAppend(role, text) {
   const msgs = document.getElementById('agent-messages');
   const isUser = role === 'user';
   const div = document.createElement('div');
-  div.style.cssText = `background:${isUser?'#ff5023':'#1c1c1c'};border-radius:${isUser?'14px 14px 4px 14px':'14px 14px 14px 4px'};padding:10px 15px;font-size:13px;color:${isUser?'#fff':'#bbb'};line-height:1.6;max-width:88%;align-self:${isUser?'flex-end':'flex-start'};white-space:pre-wrap;word-break:break-word`;
+  div.style.cssText = `background:${isUser?'#8B5A2B':'#1c1c1c'};border-radius:${isUser?'14px 14px 4px 14px':'14px 14px 14px 4px'};padding:10px 15px;font-size:13px;color:${isUser?'#fff':'#bbb'};line-height:1.6;max-width:88%;align-self:${isUser?'flex-end':'flex-start'};white-space:pre-wrap;word-break:break-word`;
   div.textContent = text;
   msgs.appendChild(div);
   msgs.scrollTop = msgs.scrollHeight;
