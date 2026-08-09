@@ -3,7 +3,88 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Mónaco — Maitencillo & Zapallar</title>
+<title>Grupo Mónaco — Restaurante & Sports Bar | Maitencillo y Zapallar</title>
+<meta name="description" content="Grupo Mónaco: dos locales únicos en la costa chilena. Sports bar frente al mar en Maitencillo y bar familiar en la Laguna de Zapallar. Carta, reservas y más.">
+<meta name="keywords" content="Mónaco, restaurante Maitencillo, bar Maitencillo, Fuente Zapallar, sports bar Chile, restaurante costa Chile, Grupo Mónaco">
+<link rel="canonical" href="https://grupomonaco.cl/">
+
+<!-- Open Graph (redes sociales) -->
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://grupomonaco.cl/">
+<meta property="og:title" content="Grupo Mónaco — Maitencillo & Zapallar">
+<meta property="og:description" content="Dos locales en la costa chilena. Sports bar frente al mar en Maitencillo y bar familiar en Laguna de Zapallar.">
+<meta property="og:image" content="https://grupomonaco.cl/img/photo-mte.jpg">
+<meta property="og:locale" content="es_CL">
+<meta property="og:site_name" content="Grupo Mónaco">
+
+<!-- Twitter Card -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Grupo Mónaco — Maitencillo & Zapallar">
+<meta name="twitter:description" content="Dos locales en la costa chilena. Sports bar frente al mar en Maitencillo y bar familiar en Laguna de Zapallar.">
+<meta name="twitter:image" content="https://grupomonaco.cl/img/photo-mte.jpg">
+
+<!-- Schema.org: Organización + dos locales -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://grupomonaco.cl/#organization",
+      "name": "Grupo Mónaco",
+      "url": "https://grupomonaco.cl",
+      "logo": "https://grupomonaco.cl/img/logo-monaco-white.png",
+      "sameAs": [
+        "https://instagram.com/monaco.maitencillo",
+        "https://instagram.com/monacozapallar"
+      ]
+    },
+    {
+      "@type": "Restaurant",
+      "@id": "https://grupomonaco.cl/#maitencillo",
+      "name": "Mónaco Maitencillo",
+      "description": "Sports bar frente al mar. De día bar familiar con pantallas y fútbol, de noche el punto de encuentro de Maitencillo.",
+      "url": "https://grupomonaco.cl",
+      "telephone": "+56944905073",
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": "Av. del Mar 1408",
+        "addressLocality": "Maitencillo",
+        "addressRegion": "Valparaíso",
+        "addressCountry": "CL"
+      },
+      "geo": {
+        "@type": "GeoCoordinates",
+        "latitude": -32.6446776,
+        "longitude": -71.4323715
+      },
+      "openingHours": ["Tu-Fr 17:00-24:00", "Sa-Su 13:00-24:00"],
+      "servesCuisine": "Chilena, Internacional",
+      "menu": "https://menu.fu.do/restaurantmonaco/qr-menu",
+      "image": "https://grupomonaco.cl/img/photo-mte.jpg",
+      "parentOrganization": { "@id": "https://grupomonaco.cl/#organization" }
+    },
+    {
+      "@type": "Restaurant",
+      "@id": "https://grupomonaco.cl/#zapallar",
+      "name": "Mónaco Zapallar",
+      "description": "Bar y cocina familiar a orillas de la laguna. Abierto fines de semana, largos y verano.",
+      "url": "https://grupomonaco.cl",
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": "Carlos León 677",
+        "addressLocality": "Laguna de Zapallar",
+        "addressRegion": "Valparaíso",
+        "addressCountry": "CL"
+      },
+      "servesCuisine": "Chilena, Internacional",
+      "menu": "https://menu.fu.do/fuentezapallar/qr-menu",
+      "image": "https://grupomonaco.cl/img/photo-zpl.jpg",
+      "parentOrganization": { "@id": "https://grupomonaco.cl/#organization" }
+    }
+  ]
+}
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700;800&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
