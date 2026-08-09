@@ -365,14 +365,9 @@
     .choice{min-width:calc(50% - 10px);max-width:calc(50% - 10px);flex-shrink:1;}
   }
 
-  /* ---------- Logo overlay en card foto ---------- */
-  .card-logo-overlay{
-    position:absolute;top:12px;left:50%;
-    transform:translateX(-50%);
-    width:80px;height:auto;z-index:3;
-    pointer-events:none;
-    filter:drop-shadow(0 2px 10px rgba(0,0,0,0.55));
-  }
+  /* ---------- Logo encima de la foto ---------- */
+  .card-logo-top{display:flex;justify-content:center;padding:14px 0 10px;background:var(--navy);}
+  .card-logo-top img{width:80px;height:auto;}
 
   /* ---------- Card backgrounds sin foto ---------- */
   .choice .cphoto.cphoto-mv{
@@ -441,9 +436,8 @@
   <div class="choice-wrap">
 
     <div class="choice" onclick="showLoc('mte')">
-      <div class="cphoto cphoto-mte">
-        <img class="card-logo-overlay" src="/img/logo-monaco-white.png" alt="Mónaco">
-      </div>
+      <div class="card-logo-top"><img src="/img/logo-monaco-white.png" alt="Mónaco"></div>
+      <div class="cphoto cphoto-mte"></div>
       <div class="cbody">
         <span class="place">Mónaco Sports Bar</span>
         <span class="tag">Maitencillo · Abanico Centro</span>
@@ -458,9 +452,8 @@
     </div>
 
     <div class="choice" onclick="showLoc('zpl')">
-      <div class="cphoto cphoto-zpl">
-        <img class="card-logo-overlay" src="/img/logo-monaco-white.png" alt="Mónaco">
-      </div>
+      <div class="card-logo-top"><img src="/img/logo-monaco-white.png" alt="Mónaco"></div>
+      <div class="cphoto cphoto-zpl"></div>
       <div class="cbody">
         <span class="place">Mónaco Zapallar</span>
         <span class="tag">Laguna de Zapallar</span>
