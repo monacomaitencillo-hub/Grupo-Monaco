@@ -1106,12 +1106,16 @@
           </select>
         </div>
         <div>
-          <label style="font-size:12px;font-weight:600;color:#6b7280;display:block;margin-bottom:4px">DESDE</label>
-          <input type="date" id="vp-date-from" style="border:1px solid #d1d5db;border-radius:8px;padding:7px 12px;font-size:13px;color:#374151">
-        </div>
-        <div>
-          <label style="font-size:12px;font-weight:600;color:#6b7280;display:block;margin-bottom:4px">HASTA</label>
-          <input type="date" id="vp-date-to" style="border:1px solid #d1d5db;border-radius:8px;padding:7px 12px;font-size:13px;color:#374151">
+          <label style="font-size:12px;font-weight:600;color:#6b7280;display:block;margin-bottom:8px">SEMANA</label>
+          <div style="display:flex;align-items:center;gap:6px">
+            <button onclick="shiftVpWeek(-1)" style="background:none;border:1px solid #dee2e6;border-radius:6px;padding:4px 12px;font-size:16px;cursor:pointer;color:#374151;line-height:1">‹</button>
+            <span id="vp-week-label" style="font-size:13px;color:#374151;font-weight:500;white-space:nowrap"></span>
+            <button onclick="shiftVpWeek(1)" style="background:none;border:1px solid #dee2e6;border-radius:6px;padding:4px 12px;font-size:16px;cursor:pointer;color:#374151;line-height:1">›</button>
+            <input type="date" id="vp-week-picker" onchange="vpJumpToDate(this.value)" style="padding:4px 8px;border:1px solid #dee2e6;border-radius:6px;font-size:12px;color:#374151;cursor:pointer">
+            <button onclick="vpWeekOffset=0;vpApplyWeek()" style="padding:4px 10px;border:1px solid #dee2e6;border-radius:6px;background:#fff;font-size:12px;cursor:pointer;color:#374151;font-weight:500">Hoy</button>
+          </div>
+          <input type="hidden" id="vp-date-from">
+          <input type="hidden" id="vp-date-to">
         </div>
         <div style="padding-bottom:1px;display:flex;gap:8px;align-items:flex-end;margin-top:20px">
           <button onclick="ventasProductosLoad()" style="background:#374151;color:#fff;border:none;border-radius:8px;padding:8px 24px;font-size:13px;font-weight:600;cursor:pointer">Cargar</button>
@@ -12099,15 +12103,49 @@ function vpCalcMargenPonderado(rows) {
   return sumaBase > 0 ? Math.round(sumaMargenPesos / sumaBase * 100) : null;
 }
 
+let vpWeekOffset = 0;
+
+function getVpWeekRange() {
+  const today = gokuServerToday || getTodayClient();
+  const d = new Date(today + 'T12:00:00Z');
+  const dow = d.getUTCDay();
+  const mondayOffset = (dow === 0 ? -6 : 1 - dow) + vpWeekOffset * 7;
+  const monday = new Date(d.getTime() + mondayOffset * 86400000);
+  const sunday = new Date(monday.getTime() + 6 * 86400000);
+  return { from: monday.toISOString().slice(0, 10), to: sunday.toISOString().slice(0, 10) };
+}
+
+function vpApplyWeek() {
+  const { from, to } = getVpWeekRange();
+  const fmtDate = d => new Date(d + 'T12:00:00Z').toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' });
+  document.getElementById('vp-week-label').textContent = `${fmtDate(from)} → ${fmtDate(to)}`;
+  const picker = document.getElementById('vp-week-picker');
+  if (picker) picker.value = from;
+  document.getElementById('vp-date-from').value = from;
+  document.getElementById('vp-date-to').value = to;
+}
+
+function shiftVpWeek(delta) {
+  vpWeekOffset += delta;
+  vpApplyWeek();
+}
+
+function vpJumpToDate(dateStr) {
+  if (!dateStr) return;
+  const today = gokuServerToday || getTodayClient();
+  const todayD = new Date(today + 'T12:00:00Z');
+  const todayDow = todayD.getUTCDay();
+  const mondayNow = new Date(todayD.getTime() + (todayDow === 0 ? -6 : 1 - todayDow) * 86400000);
+  const picked = new Date(dateStr + 'T12:00:00Z');
+  const pickedDow = picked.getUTCDay();
+  const mondayPicked = new Date(picked.getTime() + (pickedDow === 0 ? -6 : 1 - pickedDow) * 86400000);
+  vpWeekOffset = Math.round((mondayPicked - mondayNow) / (7 * 86400000));
+  vpApplyWeek();
+}
+
 async function ventasProductosInit() {
-  // Fechas por defecto: últimos 7 días
-  const today = new Date();
-  const from  = new Date(today); from.setDate(today.getDate() - 6);
-  const fmt   = d => d.toISOString().slice(0,10);
-  const fromEl = document.getElementById('vp-date-from');
-  const toEl   = document.getElementById('vp-date-to');
-  if (!fromEl.value) fromEl.value = fmt(from);
-  if (!toEl.value)   toEl.value   = fmt(today);
+  vpWeekOffset = 0;
+  vpApplyWeek();
 
   // Cargar pestañas disponibles
   const sel = document.getElementById('vp-sheet-select');
