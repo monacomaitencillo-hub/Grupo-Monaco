@@ -3842,6 +3842,349 @@ app.patch('/api/vegeta/items/:restaurantId/:itemId/control', requireAuth, async 
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// ── RRHH ──────────────────────────────────────────────────────
+app.get('/api/rrhh/employees', requireAuth, async (req, res) => {
+  try {
+    const snap = await db.collection('rrhh_employees').orderBy('createdAt','desc').get();
+    res.json({ employees: snap.docs.map(d => ({ id: d.id, ...d.data() })) });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/rrhh/employees', requireAuth, async (req, res) => {
+  try {
+    const data = { ...req.body, createdAt: new Date().toISOString(), createdBy: req.email };
+    const ref = await db.collection('rrhh_employees').add(data);
+    res.json({ id: ref.id, ...data });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.put('/api/rrhh/employees/:id', requireAuth, async (req, res) => {
+  try {
+    const data = { ...req.body, updatedAt: new Date().toISOString(), updatedBy: req.email };
+    await db.collection('rrhh_employees').doc(req.params.id).set(data, { merge: true });
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/api/rrhh/employees/:id', requireAuth, async (req, res) => {
+  try {
+    await db.collection('rrhh_employees').doc(req.params.id).delete();
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/rrhh/liquidaciones', requireAuth, async (req, res) => {
+  try {
+    const snap = await db.collection('rrhh_liquidaciones').orderBy('createdAt','desc').limit(200).get();
+    res.json({ liquidaciones: snap.docs.map(d => ({ id: d.id, ...d.data() })) });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/rrhh/liquidaciones', requireAuth, async (req, res) => {
+  try {
+    const data = { ...req.body, createdAt: new Date().toISOString(), createdBy: req.email };
+    const ref = await db.collection('rrhh_liquidaciones').add(data);
+    res.json({ id: ref.id, ...data });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/api/rrhh/liquidaciones/:id', requireAuth, async (req, res) => {
+  try {
+    await db.collection('rrhh_liquidaciones').doc(req.params.id).delete();
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── CONTROL ING vs INVENTARIO ─────────────────────────────────────────────────
+
+// Inventarios con items completos (para calce)
+app.get('/api/ctrl/inventories/:restaurantId', requireAuth, async (req, res) => {
+  try {
+    const { restaurantId } = req.params;
+    const snap = await db.collection('inventoryRecords')
+      .where('restaurantId', '==', restaurantId)
+      .orderBy('date', 'desc')
+      .limit(60)
+      .get();
+    const inventories = snap.docs.map(d => ({
+      id: d.id,
+      date:          toDateStr(d.data().date),
+      section:       d.data().section || '',
+      createdByName: d.data().createdByName || '',
+      itemCount:     (d.data().items || []).length,
+      items:         d.data().items || []
+    }));
+    res.json({ inventories });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Normaliza cualquier valor de fecha (Firestore Timestamp, string, Date) a "YYYY-MM-DD"
+function toDateStr(val) {
+  if (!val) return '';
+  if (typeof val === 'string') return val.slice(0, 10);
+  if (val && typeof val.toDate === 'function') return val.toDate().toISOString().slice(0, 10);
+  if (val instanceof Date) return val.toISOString().slice(0, 10);
+  if (val && typeof val._seconds === 'number') return new Date(val._seconds * 1000).toISOString().slice(0, 10);
+  return String(val).slice(0, 10);
+}
+
+// stopAt = Set de productIds que se están inventariando — no expandir más allá de ellos
+function ctrlFlattenIngs(recipeOrPrep, preparations, mult, stopAt) {
+  if (mult === undefined) mult = 1;
+  const por = (recipeOrPrep.porciones > 1) ? recipeOrPrep.porciones : 1;
+  const result = {};
+  for (const item of (recipeOrPrep.ingredients || [])) {
+    if (!(item.quantity > 0)) continue;
+    const qty = item.quantity * mult / por;
+    if (item.type === 'preparation') {
+      const prepId = item.preparationId || item.productId;
+      // Si la preparación es un ítem inventariado, contarla directamente sin expandir
+      if (stopAt && stopAt.has(prepId)) {
+        if (prepId) result[prepId] = (result[prepId] || 0) + qty;
+      } else {
+        const prep = preparations.find(p => p.id === prepId || p.name === item.name);
+        if (prep) {
+          const sub = ctrlFlattenIngs(prep, preparations, qty, stopAt);
+          for (const [pid, q] of Object.entries(sub)) result[pid] = (result[pid] || 0) + q;
+        }
+      }
+    } else {
+      const pid = item.productId;
+      if (pid) result[pid] = (result[pid] || 0) + qty;
+    }
+  }
+  return result;
+}
+
+app.post('/api/ctrl/ing/calce', requireAuth, async (req, res) => {
+  try {
+    const { restaurantId, invInicialId, invFinalId, productIds, sheetTab, ventasFrom, ventasTo } = req.body;
+    if (!restaurantId || !invInicialId || !invFinalId || !productIds?.length)
+      return res.status(400).json({ error: 'Faltan campos' });
+
+    // 1. Cargar datos base en paralelo
+    const [invIniDoc, invFinDoc, recipesSnap, prepsSnap, prodsSnap, gddSnap] = await Promise.all([
+      db.collection('inventories').doc(invInicialId).get(),
+      db.collection('inventories').doc(invFinalId).get(),
+      db.collection('recipes').get(),
+      db.collection('preparations').get(),
+      db.collection('products').get(),
+      db.collection('gdd').where('restaurantId', '==', restaurantId).get(),
+    ]);
+    if (!invIniDoc.exists || !invFinDoc.exists)
+      return res.status(404).json({ error: 'Inventario no encontrado' });
+
+    const invIni = { id: invIniDoc.id, ...invIniDoc.data() };
+    const invFin = { id: invFinDoc.id, ...invFinDoc.data() };
+
+    // Normalizar fechas de inventario — pueden ser Timestamp o string
+    const invIniDateStr = toDateStr(invIni.date);
+    const invFinDateStr = toDateStr(invFin.date);
+
+    // Determinar período (de menor a mayor fecha)
+    const from = invIniDateStr <= invFinDateStr ? invIniDateStr : invFinDateStr;
+    const to   = invIniDateStr <= invFinDateStr ? invFinDateStr : invIniDateStr;
+    const invInicial = invIniDateStr === from ? invIni : invFin;
+    const invFinal   = invIniDateStr === from ? invFin : invIni;
+
+    // Filtrar recetas por restaurante (igual que el módulo inventario usa inventoryRestaurantIds)
+    const recipes = recipesSnap.docs.map(d => ({ id: d.id, ...d.data() }))
+      .filter(r => {
+        const ids = r.inventoryRestaurantIds || [];
+        return ids.length === 0 || ids.includes(restaurantId);
+      });
+    // Preparaciones: filtrar por restaurante si tienen el campo, sino son globales
+    const preparations = prepsSnap.docs.map(d => ({ id: d.id, ...d.data() }))
+      .filter(p => {
+        const ids = p.restaurantIds || p.inventoryRestaurantIds || [];
+        return ids.length === 0 || ids.includes(restaurantId);
+      });
+    const products     = prodsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+    // 2. GDD del período — siempre usa fechas de inventario (from/to)
+    const allGdd = gddSnap.docs.map(d => ({ ...d.data(), _fechaStr: toDateStr(d.data().fecha) }));
+    console.log(`[calce] GDD total: ${allGdd.length}, from=${from}, to=${to}`);
+    if (allGdd.length) console.log(`[calce] GDD fechas: ${allGdd.map(g => g._fechaStr).join(', ')}`);
+    const gddRecords = allGdd.filter(r => r._fechaStr >= from && r._fechaStr <= to);
+    console.log(`[calce] GDD en período: ${gddRecords.length}`);
+
+    // 3. Ventas del Google Sheets (opcional)
+    // La hoja tiene columnas: Creación (DD-MM-YYYY HH:MM), Producto, Cantidad, Cancelada
+    let ventasRows = [], hasVentas = false;
+    let iNombreV = -1, iCantV = -1;
+    if (sheetTab) {
+      try {
+        const rawRows = await getVentasSheetRows(sheetTab);
+        if (rawRows.length > 1) {
+          const [headers, ...dataRows] = rawRows;
+          iNombreV        = headers.findIndex(h => /nombre|producto/i.test(h));
+          iCantV          = headers.findIndex(h => /cantidad|qty/i.test(h));
+          const iCreacion  = headers.findIndex(h => /creaci[oó]n|fecha|date/i.test(h));
+          const iCancelada = headers.findIndex(h => /cancelada/i.test(h));
+          const fromD = new Date((ventasFrom || from) + 'T00:00:00');
+          const toD   = new Date((ventasTo   || to)   + 'T23:59:59');
+          dataRows.forEach(row => {
+            if (iCancelada >= 0 && (row[iCancelada] || '').toLowerCase() === 'si') return;
+            const dateStr = row[iCreacion] || '';
+            // formato DD-MM-YYYY HH:MM o YYYY-MM-DD
+            let dt;
+            const parts = dateStr.split(' ')[0].split('-');
+            if (parts.length === 3) {
+              if (parts[0].length === 4) dt = new Date(`${parts[0]}-${parts[1]}-${parts[2]}T00:00:00`);
+              else                       dt = new Date(`${parts[2]}-${parts[1]}-${parts[0]}T00:00:00`);
+            }
+            if (dt && !isNaN(dt) && dt >= fromD && dt <= toD) ventasRows.push(row);
+          });
+          hasVentas = ventasRows.length > 0;
+        }
+      } catch(e) { console.warn('ctrl ventas error:', e.message); }
+    }
+
+    // 4. Calcular consumo teórico por productId si hay ventas
+    const consumoTeoricoPorProd = {};
+    const consumoTeoricoDetalle = {};
+    if (hasVentas) {
+      // Agrupar ventas por nombre de producto
+      const ventasPorNombre = {};
+      ventasRows.forEach(row => {
+        const nombre = (row[iNombreV] || '').trim();
+        const cant   = parseFloat((row[iCantV] || '0').toString().replace(',', '.')) || 0;
+        if (nombre && cant > 0) ventasPorNombre[nombre] = (ventasPorNombre[nombre] || 0) + cant;
+      });
+      // Para cada producto vendido, encontrar su receta y aplanar ingredientes
+      // stopAt = productIds inventariados: detiene la expansión al llegar a esos items
+      const stopAt = new Set(productIds);
+      Object.entries(ventasPorNombre).forEach(([nombre, cantVendida]) => {
+        const recipe = recipes.find(r => r.name?.toLowerCase().trim() === nombre.toLowerCase().trim());
+        if (!recipe) return;
+        const flattened = ctrlFlattenIngs(recipe, preparations, cantVendida, stopAt);
+        Object.entries(flattened).forEach(([pid, qty]) => {
+          consumoTeoricoPorProd[pid] = (consumoTeoricoPorProd[pid] || 0) + qty;
+          if (!consumoTeoricoDetalle[pid]) consumoTeoricoDetalle[pid] = [];
+          consumoTeoricoDetalle[pid].push({
+            recipeName: nombre,
+            cantVendida: +cantVendida.toFixed(2),
+            usoPorUnidad: +(qty / cantVendida).toFixed(4),
+            subtotal: +qty.toFixed(4)
+          });
+        });
+      });
+    }
+
+    // 5. Calcular resultados por producto seleccionado
+    const allItems = [...products, ...preparations, ...recipes];
+    const results = productIds.map(productId => {
+      const prod = allItems.find(p => p.id === productId);
+      const name = prod?.name || productId;
+      const unit = prod?.unit || '';
+      const sku  = prod?.sku  || null;
+
+      // Stock
+      const siItem = (invInicial.items || []).find(i => i.productId === productId);
+      const sfItem = (invFinal.items   || []).find(i => i.productId === productId);
+      // fallback: use name from inventory item if not found in collections
+      const resolvedName = prod?.name || siItem?.name || sfItem?.name || productId;
+      const stockInicial = siItem != null ? Number(siItem.quantity) : null;
+      const stockFinal   = sfItem != null ? Number(sfItem.quantity) : null;
+
+      // GDD: SKU match exacto primero; fallback a nombre completo (no por palabra suelta)
+      const nameLow = resolvedName.toLowerCase().trim();
+      let entradasGDD = 0;
+      gddRecords.forEach(record => {
+        (record.items || []).forEach(gi => {
+          const skuMatch = sku && gi.sku && gi.sku === sku;
+          const gddNombre = (gi.producto || '').toLowerCase().trim();
+          // el nombre del GDD debe contener el nombre completo del producto (no solo la primera palabra)
+          const strMatch = !skuMatch && nameLow.length >= 4 && gddNombre.includes(nameLow);
+          if (skuMatch || strMatch) entradasGDD += Number(gi.cantidad) || 0;
+        });
+      });
+
+      // Consumo real = stockInicial + entradas - stockFinal
+      const consumoReal = (stockInicial != null && stockFinal != null)
+        ? +(stockInicial + entradasGDD - stockFinal).toFixed(4)
+        : null;
+
+      const consumoTeorico = consumoTeoricoPorProd[productId] != null
+        ? +consumoTeoricoPorProd[productId].toFixed(4)
+        : null;
+
+      const desviacion = (consumoReal != null && consumoTeorico != null)
+        ? +(consumoReal - consumoTeorico).toFixed(4)
+        : null;
+
+      const detalle = (consumoTeoricoDetalle || {})[productId] || [];
+      return { productId, name: resolvedName, unit, sku, stockInicial, stockFinal, entradasGDD, consumoReal, consumoTeorico, desviacion, detalle };
+    });
+
+    // Resumen GDD para mostrar en la UI
+    const gddSummary = gddRecords.map(r => ({
+      fecha: r._fechaStr,
+      proveedor: r.proveedor || r.supplier || '',
+      itemCount: (r.items || []).length,
+    })).sort((a, b) => a.fecha.localeCompare(b.fecha));
+
+    // Info inventarios usados
+    const invInfo = {
+      inicial: { date: toDateStr(invInicial.date), createdByName: invInicial.createdByName || '', section: invInicial.section || '' },
+      final:   { date: toDateStr(invFinal.date),   createdByName: invFinal.createdByName   || '', section: invFinal.section   || '' },
+    };
+
+    res.json({ from, to, ventasFrom: ventasFrom || from, ventasTo: ventasTo || to, results, hasVentas, gddSummary, invInfo });
+  } catch(e) {
+    console.error('ctrl calce error:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/ctrl/config/:restaurantId', requireAuth, async (req, res) => {
+  try {
+    const doc = await db.collection('ctrl_config').doc(req.params.restaurantId).get();
+    res.json(doc.exists ? doc.data() : { sheetTab: '', productIds: [] });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.put('/api/ctrl/config/:restaurantId', requireAuth, async (req, res) => {
+  try {
+    const { sheetTab, productIds, sectionCategories } = req.body;
+    await db.collection('ctrl_config').doc(req.params.restaurantId).set(
+      { sheetTab: sheetTab || '', productIds: productIds || [], sectionCategories: sectionCategories || {}, updatedAt: new Date().toISOString() },
+      { merge: true }
+    );
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Categorías por sección — configuración global (un solo documento para todos los locales)
+app.get('/api/ctrl/section-categories', requireAuth, async (req, res) => {
+  try {
+    const doc = await db.collection('ctrl_config').doc('_global').get();
+    res.json(doc.exists ? doc.data() : { sectionCategories: {} });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.put('/api/ctrl/section-categories', requireAuth, async (req, res) => {
+  try {
+    const { sectionCategories } = req.body;
+    await db.collection('ctrl_config').doc('_global').set(
+      { sectionCategories: sectionCategories || {}, updatedAt: new Date().toISOString() },
+      { merge: true }
+    );
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Categorías de productos + mapa productId→category (para el selector de sección-categoría)
+app.get('/api/ctrl/product-categories', requireAuth, async (req, res) => {
+  try {
+    const snap = await db.collection('products').get();
+    const catMap = {};
+    snap.docs.forEach(d => { if (d.data().category) catMap[d.id] = d.data().category; });
+    const cats = [...new Set(Object.values(catMap))].sort((a,b) => a.localeCompare(b,'es'));
+    res.json({ categories: cats, catMap });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // ── MCP Server (Streamable HTTP, stateless para Vercel) ───────────────────────
 const MCP_ACCESS_TOKEN = (process.env.MCP_ACCESS_TOKEN || '').trim();
 

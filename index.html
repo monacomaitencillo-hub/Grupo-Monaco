@@ -875,6 +875,77 @@
   </div>
 </div>
 
+<!-- ── CTRL-ING ── -->
+<div id="ctrl-ing-module" style="display:none;flex-direction:column;background:#f4f6f9;min-height:100vh">
+  <!-- Header -->
+  <div style="background:#fff;border-bottom:1px solid #dee2e6;padding:0 20px;display:flex;align-items:center;gap:12px;height:52px;flex-shrink:0">
+    <span style="font-size:15px;font-weight:700;color:#212529">📊 Control Ing. vs Inventario</span>
+    <select id="ctrl-rest-sel" onchange="ctrlIngRestChange()" style="border:1px solid #dee2e6;border-radius:8px;padding:4px 10px;font-size:13px;color:#212529;background:#fff;cursor:pointer"></select>
+    <div style="margin-left:auto;display:flex;border:1px solid #dee2e6;border-radius:8px;overflow:hidden">
+      <button id="ctrl-tab-btn-calce" onclick="ctrlIngSwitchTab('calce')"
+        style="padding:6px 18px;border:none;font-size:13px;cursor:pointer;background:#f0f4ff;color:#1d4ed8;font-weight:700">Calce</button>
+      <button id="ctrl-tab-btn-config" onclick="ctrlIngSwitchTab('config')"
+        style="padding:6px 18px;border:none;font-size:13px;cursor:pointer;background:#fff;color:#374151;font-weight:400;border-left:1px solid #dee2e6">⚙️ Configurar</button>
+    </div>
+  </div>
+
+  <!-- Tab: Calce -->
+  <div id="ctrl-tab-calce" style="padding:24px 28px;max-width:1600px;width:100%;margin:0 auto">
+    <!-- Barra de fechas global (estilo Ventas Productos) -->
+    <div style="background:#fff;border-radius:14px;padding:20px 24px;border:1px solid #e5e7eb;margin-bottom:20px">
+      <div style="display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap">
+        <div>
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+            <label style="font-size:12px;font-weight:600;color:#6b7280">PERÍODO</label>
+            <div style="display:flex;border:1px solid #d1d5db;border-radius:6px;overflow:hidden;font-size:12px">
+              <button id="ctrl-mode-semana" onclick="ctrlSetMode('semana')" style="padding:3px 10px;border:none;background:#374151;color:#fff;cursor:pointer;font-weight:600">Semana</button>
+              <button id="ctrl-mode-rango"  onclick="ctrlSetMode('rango')"  style="padding:3px 10px;border:none;background:#fff;color:#6b7280;cursor:pointer">Rango</button>
+            </div>
+          </div>
+          <div id="ctrl-semana-ctrl" style="display:flex;align-items:center;gap:6px">
+            <button onclick="ctrlShiftWeek(-1)" style="background:none;border:1px solid #dee2e6;border-radius:6px;padding:4px 12px;font-size:16px;cursor:pointer;color:#374151;line-height:1">‹</button>
+            <span id="ctrl-week-label" style="font-size:13px;color:#374151;font-weight:500;white-space:nowrap"></span>
+            <button onclick="ctrlShiftWeek(1)"  style="background:none;border:1px solid #dee2e6;border-radius:6px;padding:4px 12px;font-size:16px;cursor:pointer;color:#374151;line-height:1">›</button>
+            <input type="date" id="ctrl-week-picker" onchange="ctrlJumpToDate(this.value)" style="padding:4px 8px;border:1px solid #dee2e6;border-radius:6px;font-size:12px;color:#374151;cursor:pointer">
+            <button onclick="ctrlWeekOffset=0;ctrlApplyWeek()" style="padding:4px 10px;border:1px solid #dee2e6;border-radius:6px;background:#fff;font-size:12px;cursor:pointer;color:#374151;font-weight:500">Hoy</button>
+          </div>
+          <div id="ctrl-rango-ctrl" style="display:none;align-items:center;gap:8px">
+            <input type="date" id="ctrl-rango-from" onchange="ctrlApplyRango()" style="padding:6px 10px;border:1px solid #dee2e6;border-radius:6px;font-size:13px;color:#374151">
+            <span style="color:#9ca3af;font-size:13px">→</span>
+            <input type="date" id="ctrl-rango-to"   onchange="ctrlApplyRango()" style="padding:6px 10px;border:1px solid #dee2e6;border-radius:6px;font-size:13px;color:#374151">
+          </div>
+          <input type="hidden" id="ctrl-date-from">
+          <input type="hidden" id="ctrl-date-to">
+        </div>
+        <div style="display:flex;gap:8px;align-items:flex-end;padding-bottom:1px;margin-top:20px">
+          <button onclick="ctrlIngCargar()" style="background:#374151;color:#fff;border:none;border-radius:8px;padding:8px 24px;font-size:13px;font-weight:600;cursor:pointer">Cargar</button>
+          <button onclick="ctrlIngInformeTodo()" id="ctrl-informe-btn"
+            style="background:#4f46e5;color:#fff;border:none;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px">
+            <span>📋</span> Crear Informe
+          </button>
+        </div>
+      </div>
+    </div>
+    <!-- Ventas summary: full width, encima del calce -->
+    <div id="ctrl-ventas-summary" style="margin-bottom:20px"><span style="color:#9ca3af;font-size:13px">Presioná Cargar para ver ventas.</span></div>
+
+    <!-- Secciones de calce -->
+    <div id="ctrl-sections-preview">
+      <span style="color:#9ca3af;font-size:13px">Seleccioná un local para comenzar.</span>
+    </div>
+    <button onclick="ctrlIngCalcularTodo()" id="ctrl-calc-all-btn"
+      style="display:none;width:100%;padding:12px;background:#1d4ed8;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;margin-top:16px">
+      Calcular todo →
+    </button>
+    <div id="ctrl-informe-all" style="margin-top:24px"></div>
+  </div>
+
+  <!-- Tab: Configurar (contenido generado por JS) -->
+  <div id="ctrl-tab-config" style="display:none;padding:24px 28px;width:100%;margin:0 auto">
+    <span style="color:#9ca3af;font-size:13px">Seleccioná un local para configurar.</span>
+  </div>
+</div>
+
 <!-- ── VEGETA ── -->
 <div id="vegeta-module" style="display:none;flex-direction:column;background:#f4f6f9;min-height:100vh">
   <div style="background:#fff;border-bottom:1px solid #dee2e6;padding:0 20px;display:flex;align-items:center;gap:10px;height:52px;flex-shrink:0;flex-wrap:wrap">
@@ -1401,6 +1472,277 @@
   </div>
 </div>
 
+<!-- ── RRHH MODULE ── -->
+<div id="rrhh-module" style="display:none;flex-direction:column;min-height:100vh;background:#f4f6f9">
+  <!-- Header -->
+  <div style="background:#0f4c75;padding:16px 28px;display:flex;align-items:center;gap:16px">
+    <button onclick="goTo('hub')" style="background:rgba(255,255,255,.15);border:none;color:#fff;border-radius:8px;padding:6px 12px;cursor:pointer;font-size:13px">← Hub</button>
+    <div style="font-size:20px;font-weight:800;color:#fff">👷 RRHH — Recursos Humanos</div>
+    <!-- Tabs -->
+    <div style="margin-left:auto;display:flex;gap:8px">
+      <button id="rrhh-tab-trab-btn" onclick="rrhhSwitchTab('trabajadores')" style="padding:7px 18px;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;background:#fff;color:#0f4c75">Trabajadores</button>
+      <button id="rrhh-tab-liq-btn" onclick="rrhhSwitchTab('liquidaciones')" style="padding:7px 18px;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;background:rgba(255,255,255,.2);color:#fff">Liquidaciones</button>
+    </div>
+  </div>
+  <!-- Tab: Trabajadores -->
+  <div id="rrhh-tab-trabajadores" style="padding:24px 28px;max-width:1400px;width:100%;margin:0 auto">
+    <div style="display:flex;gap:12px;align-items:center;margin-bottom:20px;flex-wrap:wrap">
+      <select id="rrhh-filter-local" onchange="rrhhRenderTrabajadores()" style="padding:8px 12px;border:1px solid #dee2e6;border-radius:8px;font-size:13px;background:#fff">
+        <option value="">Todos los locales</option>
+      </select>
+      <select id="rrhh-filter-status" onchange="rrhhRenderTrabajadores()" style="padding:8px 12px;border:1px solid #dee2e6;border-radius:8px;font-size:13px;background:#fff">
+        <option value="activo">Activos</option>
+        <option value="inactivo">Inactivos</option>
+        <option value="">Todos</option>
+      </select>
+      <input id="rrhh-search" oninput="rrhhRenderTrabajadores()" placeholder="Buscar trabajador..." style="padding:8px 12px;border:1px solid #dee2e6;border-radius:8px;font-size:13px;flex:1;min-width:200px">
+      <button onclick="rrhhOpenModal()" style="padding:8px 18px;background:#0f4c75;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">+ Agregar trabajador</button>
+    </div>
+    <div id="rrhh-trab-list"></div>
+  </div>
+  <!-- Tab: Liquidaciones -->
+  <div id="rrhh-tab-liquidaciones" style="display:none;padding:24px 28px;max-width:1400px;width:100%;margin:0 auto">
+    <div style="display:grid;grid-template-columns:360px 1fr;gap:24px;align-items:start">
+      <!-- Panel izquierdo: inputs -->
+      <div style="background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:22px">
+        <div style="font-size:15px;font-weight:700;color:#0f4c75;margin-bottom:16px">📋 Datos de la liquidación</div>
+
+        <div style="margin-bottom:12px">
+          <label style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;display:block;margin-bottom:4px">Trabajador</label>
+          <select id="rrhh-liq-emp" onchange="rrhhLiqLoadEmployee()" style="width:100%;padding:8px 10px;border:1px solid #dee2e6;border-radius:8px;font-size:13px;background:#fff">
+            <option value="">— Seleccionar —</option>
+          </select>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+          <div>
+            <label style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;display:block;margin-bottom:4px">Mes</label>
+            <select id="rrhh-liq-mes" onchange="rrhhLiqAutoUF()" style="width:100%;padding:8px 10px;border:1px solid #dee2e6;border-radius:8px;font-size:13px;background:#fff">
+              <option value="1">Enero</option><option value="2">Febrero</option><option value="3">Marzo</option>
+              <option value="4">Abril</option><option value="5">Mayo</option><option value="6">Junio</option>
+              <option value="7">Julio</option><option value="8">Agosto</option><option value="9">Septiembre</option>
+              <option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;display:block;margin-bottom:4px">Año</label>
+            <input id="rrhh-liq-anio" type="number" value="2026" oninput="rrhhLiqAutoUF()" style="width:100%;padding:8px 10px;border:1px solid #dee2e6;border-radius:8px;font-size:13px;box-sizing:border-box">
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+          <div>
+            <label style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;display:block;margin-bottom:4px">Días trabajados</label>
+            <input id="rrhh-liq-dias" type="number" value="30" min="0" max="31" oninput="rrhhLiqCalc()" style="width:100%;padding:8px 10px;border:1px solid #dee2e6;border-radius:8px;font-size:13px;box-sizing:border-box">
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;display:block;margin-bottom:4px">Días del mes</label>
+            <input id="rrhh-liq-dias-mes" type="number" value="30" min="28" max="31" oninput="rrhhLiqCalc()" style="width:100%;padding:8px 10px;border:1px solid #dee2e6;border-radius:8px;font-size:13px;box-sizing:border-box">
+          </div>
+        </div>
+
+        <div style="font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;margin-bottom:8px;margin-top:4px">Horas extra</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+          <div>
+            <label style="font-size:11px;color:#6b7280;display:block;margin-bottom:4px">Ordinarias (50%)</label>
+            <input id="rrhh-liq-he-ord" type="number" value="0" min="0" oninput="rrhhLiqCalc()" style="width:100%;padding:8px 10px;border:1px solid #dee2e6;border-radius:8px;font-size:13px;box-sizing:border-box">
+          </div>
+          <div>
+            <label style="font-size:11px;color:#6b7280;display:block;margin-bottom:4px">Domingos — horas (30%)</label>
+            <input id="rrhh-liq-he-dom" type="number" value="0" min="0" oninput="rrhhLiqCalc()" style="width:100%;padding:8px 10px;border:1px solid #dee2e6;border-radius:8px;font-size:13px;box-sizing:border-box">
+          </div>
+        </div>
+
+        <div style="margin-bottom:12px">
+          <label style="font-size:11px;color:#6b7280;display:block;margin-bottom:4px">Feriado irrenunciable — horas (50%)</label>
+          <input id="rrhh-liq-he-fer" type="number" value="0" min="0" oninput="rrhhLiqCalc()" style="width:100%;padding:8px 10px;border:1px solid #dee2e6;border-radius:8px;font-size:13px;box-sizing:border-box">
+        </div>
+
+        <div style="margin-bottom:12px">
+          <label style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;display:block;margin-bottom:4px">Otros bonos ($)</label>
+          <input id="rrhh-liq-bonos" type="number" value="0" min="0" oninput="rrhhLiqCalc()" style="width:100%;padding:8px 10px;border:1px solid #dee2e6;border-radius:8px;font-size:13px;box-sizing:border-box">
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+          <div>
+            <label style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;display:block;margin-bottom:4px">UTM del mes ($)</label>
+            <input id="rrhh-liq-utm" type="number" value="68306" oninput="rrhhLiqCalc()" style="width:100%;padding:8px 10px;border:1px solid #dee2e6;border-radius:8px;font-size:13px;box-sizing:border-box">
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;display:block;margin-bottom:4px">UF del mes ($)</label>
+            <input id="rrhh-liq-uf" type="number" value="40853" oninput="rrhhLiqCalc()" style="width:100%;padding:8px 10px;border:1px solid #dee2e6;border-radius:8px;font-size:13px;box-sizing:border-box">
+          </div>
+        </div>
+
+        <!-- Employee data preview -->
+        <div id="rrhh-liq-emp-info" style="background:#f0f7ff;border-radius:10px;padding:12px 14px;font-size:12px;color:#374151;display:none;margin-bottom:16px"></div>
+
+        <button onclick="rrhhLiqGuardar()" style="width:100%;padding:10px;background:#0f4c75;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">💾 Guardar liquidación</button>
+        <div id="rrhh-liq-msg" style="text-align:center;font-size:12px;margin-top:8px;height:16px"></div>
+      </div>
+
+      <!-- Panel derecho: resultado -->
+      <div style="position:sticky;top:16px">
+        <div id="rrhh-liq-result" style="background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:24px;max-height:82vh;overflow-y:auto">
+          <div style="color:#9ca3af;font-size:13px;text-align:center;padding:60px 0">Seleccioná un trabajador para calcular</div>
+        </div>
+        <!-- Historial -->
+        <div style="margin-top:20px">
+          <div style="font-size:13px;font-weight:700;color:#374151;margin-bottom:10px">Historial de liquidaciones</div>
+          <div id="rrhh-liq-historial"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal agregar/editar trabajador -->
+  <div id="rrhh-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9000;overflow-y:auto">
+    <div style="background:#fff;border-radius:16px;max-width:720px;margin:40px auto;padding:28px 32px;position:relative">
+      <button onclick="rrhhCloseModal()" style="position:absolute;top:16px;right:16px;background:none;border:none;font-size:22px;cursor:pointer;color:#9ca3af">×</button>
+      <div id="rrhh-modal-title" style="font-size:18px;font-weight:800;color:#0f4c75;margin-bottom:20px">Agregar trabajador</div>
+      <form id="rrhh-form" onsubmit="rrhhSaveEmployee(event)">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+          <!-- col 1 -->
+          <div style="grid-column:1/-1">
+            <label style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;display:block;margin-bottom:4px">Nombre completo *</label>
+            <input id="rf-nombre" required style="width:100%;padding:9px 12px;border:1px solid #dee2e6;border-radius:8px;font-size:14px;box-sizing:border-box">
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;display:block;margin-bottom:4px">RUT *</label>
+            <input id="rf-rut" required placeholder="12.345.678-9" style="width:100%;padding:9px 12px;border:1px solid #dee2e6;border-radius:8px;font-size:14px;box-sizing:border-box">
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;display:block;margin-bottom:4px">Fecha nacimiento</label>
+            <input id="rf-fecnac" type="date" style="width:100%;padding:9px 12px;border:1px solid #dee2e6;border-radius:8px;font-size:14px;box-sizing:border-box">
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;display:block;margin-bottom:4px">Nacionalidad</label>
+            <input id="rf-nacionalidad" value="Chilena/o" style="width:100%;padding:9px 12px;border:1px solid #dee2e6;border-radius:8px;font-size:14px;box-sizing:border-box">
+          </div>
+          <div style="grid-column:1/-1">
+            <label style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;display:block;margin-bottom:4px">Dirección</label>
+            <input id="rf-direccion" style="width:100%;padding:9px 12px;border:1px solid #dee2e6;border-radius:8px;font-size:14px;box-sizing:border-box">
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;display:block;margin-bottom:4px">Celular</label>
+            <input id="rf-celular" placeholder="56 9 XXXX XXXX" style="width:100%;padding:9px 12px;border:1px solid #dee2e6;border-radius:8px;font-size:14px;box-sizing:border-box">
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;display:block;margin-bottom:4px">Correo</label>
+            <input id="rf-correo" type="email" style="width:100%;padding:9px 12px;border:1px solid #dee2e6;border-radius:8px;font-size:14px;box-sizing:border-box">
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;display:block;margin-bottom:4px">Sexo</label>
+            <select id="rf-sexo" style="width:100%;padding:9px 12px;border:1px solid #dee2e6;border-radius:8px;font-size:14px;background:#fff">
+              <option>Mujer</option><option>Hombre</option><option>Otro</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;display:block;margin-bottom:4px">Estado civil</label>
+            <select id="rf-ecivil" style="width:100%;padding:9px 12px;border:1px solid #dee2e6;border-radius:8px;font-size:14px;background:#fff">
+              <option>Soltero/a</option><option>Casado/a</option><option>Divorciado/a</option><option>Viudo/a</option>
+            </select>
+          </div>
+
+          <div style="grid-column:1/-1;border-top:1px solid #f3f4f6;margin:4px 0;padding-top:12px;font-size:12px;font-weight:700;color:#374151;text-transform:uppercase">Datos laborales</div>
+
+          <div>
+            <label style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;display:block;margin-bottom:4px">Local *</label>
+            <select id="rf-local" required style="width:100%;padding:9px 12px;border:1px solid #dee2e6;border-radius:8px;font-size:14px;background:#fff">
+              <option value="">— Seleccionar —</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;display:block;margin-bottom:4px">Cargo *</label>
+            <input id="rf-cargo" required list="rrhh-cargos-list" style="width:100%;padding:9px 12px;border:1px solid #dee2e6;border-radius:8px;font-size:14px;box-sizing:border-box">
+            <datalist id="rrhh-cargos-list">
+              <option>Cocinero/a</option><option>Jefe/a de Local</option><option>Jefe/a de Cocina</option>
+              <option>Barman/Bartender</option><option>Camarero/a - Garzón/a</option><option>Administrador/a</option>
+              <option>Jefe/a de Operaciones</option><option>Encargado/a de Producción</option>
+            </datalist>
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;display:block;margin-bottom:4px">Sueldo base ($) *</label>
+            <input id="rf-sueldo" type="number" required min="0" style="width:100%;padding:9px 12px;border:1px solid #dee2e6;border-radius:8px;font-size:14px;box-sizing:border-box">
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;display:block;margin-bottom:4px">Jornada</label>
+            <select id="rf-jornada" style="width:100%;padding:9px 12px;border:1px solid #dee2e6;border-radius:8px;font-size:14px;background:#fff">
+              <option>Completo</option><option>Parcial</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;display:block;margin-bottom:4px">Tipo contrato</label>
+            <select id="rf-contrato" onchange="document.getElementById('rf-fecterm-row').style.display=this.value==='Plazo fijo'?'block':'none'" style="width:100%;padding:9px 12px;border:1px solid #dee2e6;border-radius:8px;font-size:14px;background:#fff">
+              <option>Indefinido</option><option>Plazo fijo</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;display:block;margin-bottom:4px">Fecha inicio</label>
+            <input id="rf-fecing" type="date" style="width:100%;padding:9px 12px;border:1px solid #dee2e6;border-radius:8px;font-size:14px;box-sizing:border-box">
+          </div>
+          <div id="rf-fecterm-row" style="display:none">
+            <label style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;display:block;margin-bottom:4px">Fecha término</label>
+            <input id="rf-fecterm" type="date" style="width:100%;padding:9px 12px;border:1px solid #dee2e6;border-radius:8px;font-size:14px;box-sizing:border-box">
+          </div>
+
+          <div style="grid-column:1/-1;border-top:1px solid #f3f4f6;margin:4px 0;padding-top:12px;font-size:12px;font-weight:700;color:#374151;text-transform:uppercase">Previsión</div>
+
+          <div>
+            <label style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;display:block;margin-bottom:4px">AFP</label>
+            <select id="rf-afp" style="width:100%;padding:9px 12px;border:1px solid #dee2e6;border-radius:8px;font-size:14px;background:#fff">
+              <option>CAPITAL</option><option>CUPRUM</option><option>HABITAT</option><option>MODELO</option>
+              <option>PLANVITAL</option><option>PROVIDA</option><option>UNO</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;display:block;margin-bottom:4px">Salud</label>
+            <select id="rf-salud" onchange="document.getElementById('rf-isapre-row').style.display=this.value==='ISAPRE'?'block':'none'" style="width:100%;padding:9px 12px;border:1px solid #dee2e6;border-radius:8px;font-size:14px;background:#fff">
+              <option>FONASA</option><option>ISAPRE</option>
+            </select>
+          </div>
+          <div id="rf-isapre-row" style="display:none;grid-column:1/-1">
+            <label style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;display:block;margin-bottom:4px">Monto ISAPRE (UF)</label>
+            <input id="rf-isapre-uf" type="number" step="0.01" placeholder="ej: 3.50" style="width:200px;padding:9px 12px;border:1px solid #dee2e6;border-radius:8px;font-size:14px;box-sizing:border-box">
+          </div>
+
+          <div style="grid-column:1/-1;border-top:1px solid #f3f4f6;margin:4px 0;padding-top:12px;font-size:12px;font-weight:700;color:#374151;text-transform:uppercase">Haberes no imponibles</div>
+
+          <div>
+            <label style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;display:block;margin-bottom:4px">Colación ($)</label>
+            <input id="rf-colacion" type="number" value="0" min="0" style="width:100%;padding:9px 12px;border:1px solid #dee2e6;border-radius:8px;font-size:14px;box-sizing:border-box">
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;display:block;margin-bottom:4px">Movilización ($)</label>
+            <input id="rf-movil" type="number" value="0" min="0" style="width:100%;padding:9px 12px;border:1px solid #dee2e6;border-radius:8px;font-size:14px;box-sizing:border-box">
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;display:block;margin-bottom:4px">Asignación fija ($)</label>
+            <input id="rf-asig-monto" type="number" value="0" min="0" style="width:100%;padding:9px 12px;border:1px solid #dee2e6;border-radius:8px;font-size:14px;box-sizing:border-box">
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;display:block;margin-bottom:4px">Concepto asignación</label>
+            <input id="rf-asig-concepto" style="width:100%;padding:9px 12px;border:1px solid #dee2e6;border-radius:8px;font-size:14px;box-sizing:border-box">
+          </div>
+
+          <div style="grid-column:1/-1">
+            <label style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;display:block;margin-bottom:4px">Estado</label>
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+              <input id="rf-activo" type="checkbox" checked style="width:16px;height:16px;accent-color:#0f4c75">
+              <span style="font-size:13px;color:#374151">Trabajador activo</span>
+            </label>
+          </div>
+        </div>
+        <div style="margin-top:20px;display:flex;gap:10px">
+          <button type="submit" style="flex:1;padding:11px;background:#0f4c75;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer">Guardar</button>
+          <button type="button" onclick="rrhhCloseModal()" style="padding:11px 20px;background:#f3f4f6;color:#374151;border:none;border-radius:8px;font-size:14px;cursor:pointer">Cancelar</button>
+        </div>
+        <div id="rrhh-form-msg" style="text-align:center;font-size:13px;margin-top:8px;height:18px"></div>
+      </form>
+    </div>
+  </div>
+</div>
+
 <!-- ── GDD MODULE ── -->
 <div id="gdd-module" style="display:none;flex-direction:column;min-height:100vh">
   <div class="inv-topbar">
@@ -1879,15 +2221,16 @@ async function doLogout() {
   document.getElementById('login-screen').style.display = 'flex';
 }
 
-const ALL_MODULES_EL = ['hub','dashboard','inventario','registro-inv-module','add-stock-module','cierres-module','pdf-upload-module','pdf-view-module','usuarios-module','locales-module','pedidos-module','reuniones-module','gdd-module','margenes-module','orden-compra-module','eerr-module','eerr-config-module','goku-module','vegeta-module','flujo-module','ventas-productos-module'];
+const ALL_MODULES_EL = ['hub','dashboard','inventario','registro-inv-module','add-stock-module','cierres-module','pdf-upload-module','pdf-view-module','usuarios-module','locales-module','pedidos-module','reuniones-module','gdd-module','margenes-module','orden-compra-module','eerr-module','eerr-config-module','goku-module','ctrl-ing-module','vegeta-module','flujo-module','rrhh-module'];
 function hideAll() { ALL_MODULES_EL.forEach(id => { const el = document.getElementById(id); if(el) el.style.display = 'none'; }); }
 // Note: hideAll() does NOT hide #admin-wrapper — goToHub() handles that separately
 
 function goTo(module) {
+  if (module === 'hub') { goToHub(); return; }
   hideAll();
   closeSidebar();
   if (window._sidebarExpandGroup) window._sidebarExpandGroup(module);
-  setSidebarVisibility(module !== 'hub');
+  setSidebarVisibility(true);
   // Mostrar AdminLTE wrapper
   document.getElementById('hub').style.display = 'none';
   document.getElementById('admin-wrapper').style.display = 'block';
@@ -1898,7 +2241,8 @@ function goTo(module) {
     'registro-inv': 'Registro de Inventarios', cierres: 'Cierres de caja', pedidos: 'Pedidos Helados',
     'pdf-upload': 'Añadir PDF', 'pdf-view': 'Ver Manual', usuarios: 'Usuarios', reuniones: 'Reuniones',
     gdd: 'Guías de Despacho', margenes: 'Márgenes', 'orden-compra': 'Pedidos', eerr: 'EERR', 'eerr-config': 'Config EERR',
-    goku: 'GOKU', vegeta: 'Control Ingredientes vs Inventario', flujo: 'Flujo de Caja Proyectado', 'ventas-productos': 'Ventas Productos'
+    goku: 'GOKU', 'ctrl-ing': 'Control Ing. vs Inventario', vegeta: 'Control Ingredientes vs Inventario', flujo: 'Flujo de Caja Proyectado',
+    rrhh: 'RRHH'
   };
   const titleEl = document.getElementById('admin-topbar-title');
   if (titleEl) titleEl.textContent = moduleNames[module] || module;
@@ -1986,6 +2330,9 @@ function goTo(module) {
     document.getElementById('goku-module').style.display = 'flex';
     gokuWeekOffset = 0;
     gokuLoadConfig().then(() => initGoku());
+  } else if (module === 'ctrl-ing') {
+    document.getElementById('ctrl-ing-module').style.display = 'flex';
+    ctrlIngInit();
   } else if (module === 'vegeta') {
     document.getElementById('vegeta-module').style.display = 'flex';
     initVegetaModule();
@@ -1998,9 +2345,9 @@ function goTo(module) {
   } else if (module === 'flujo') {
     document.getElementById('flujo-module').style.display = 'flex';
     flujoInit();
-  } else if (module === 'ventas-productos') {
-    document.getElementById('ventas-productos-module').style.display = 'flex';
-    ventasProductosInit();
+  } else if (module === 'rrhh') {
+    document.getElementById('rrhh-module').style.display = 'flex';
+    rrhhInit();
   }
 }
 
@@ -2169,7 +2516,35 @@ function renderVentas(from, to, results, partial = false) {
     ? new Date(from + 'T12:00:00Z').toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' })
     : `${fmtDate(from)} — ${fmtDate(to)}`;
 
-  document.getElementById('ventas-content').innerHTML = results.map(data => {
+  // Calcular totales combinados (solo locales con ventas reales)
+  const active = results.filter(d => !d.noFudo && !d.error && !d.noData);
+  const totalGeneral    = active.reduce((s, d) => s + (d.total || 0), 0);
+  const totalVentas     = active.reduce((s, d) => s + (d.salesCount || 0), 0);
+  const byMethodGlobal  = {};
+  active.forEach(d => {
+    Object.entries(d.byPayMethod || {}).forEach(([m, v]) => {
+      byMethodGlobal[m] = (byMethodGlobal[m] || 0) + v;
+    });
+  });
+  const methodsGlobal = Object.entries(byMethodGlobal)
+    .sort((a, b) => b[1] - a[1])
+    .map(([m, v]) => `
+      <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f0ebe3;font-size:14px">
+        <span style="color:#6c757d">${m}</span>
+        <span style="color:#212529;font-weight:600">${fmt(v)}</span>
+      </div>`).join('');
+
+  const totalCard = active.length > 1 ? `
+    <div style="background:#fdf8f3;border:2px solid #8B5A2B;border-radius:12px;padding:20px 22px;margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div style="font-size:13px;font-weight:700;color:#8B5A2B;text-transform:uppercase;letter-spacing:.05em">Total ${active.length} locales${partial ? ' (cargando…)' : ''}</div>
+        <span style="font-size:13px;color:#6c757d">${totalVentas} ventas</span>
+      </div>
+      <div style="font-size:32px;font-weight:800;color:#8B5A2B;margin-bottom:12px">${fmt(totalGeneral)}</div>
+      ${methodsGlobal}
+    </div>` : '';
+
+  document.getElementById('ventas-content').innerHTML = totalCard + results.map(data => {
     if (data.noFudo) return '';
     if (data.error) return `
       <div class="card" style="margin-bottom:16px">
@@ -2536,6 +2911,734 @@ function renderGoku(state, loading) {
       <span style="font-weight:600;color:#374151;font-size:15px">Resultado semana</span>
       <span style="font-size:28px;font-weight:800;color:${utilColor}">${utilidad >= 0 ? '+' : ''}${fmt(utilidad)}</span>
     </div>`;
+}
+
+// ── CONTROL ING. VS INVENTARIO ──────────────────────────────
+let ctrlIngInventories   = [];
+let ctrlIngConfig        = { sheetTab: '', productIds: [] };
+let ctrlIngSheetTabs     = [];
+let ctrlIngActiveTab     = 'calce';
+let ctrlIngConfigAllItems = [];
+let ctrlSecCategories    = {}; // global: sección → [categorías]
+let ctrlAllProductCats   = []; // categorías globales de productos
+let ctrlProductCatMap    = {}; // productId → category
+let ctrlWeekOffset       = 0;
+
+function ctrlGetWeekRange() {
+  const today = gokuServerToday || getTodayClient();
+  const d = new Date(today + 'T12:00:00Z');
+  const dow = d.getUTCDay();
+  const mondayOffset = (dow === 0 ? -6 : 1 - dow) + ctrlWeekOffset * 7;
+  const monday = new Date(d.getTime() + mondayOffset * 86400000);
+  const sunday = new Date(monday.getTime() + 6 * 86400000);
+  return { from: monday.toISOString().slice(0, 10), to: sunday.toISOString().slice(0, 10) };
+}
+
+function ctrlApplyWeek() {
+  const { from, to } = ctrlGetWeekRange();
+  const fmtDate = d => new Date(d + 'T12:00:00Z').toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' });
+  const lbl = document.getElementById('ctrl-week-label');
+  if (lbl) lbl.textContent = `${fmtDate(from)} → ${fmtDate(to)}`;
+  const picker = document.getElementById('ctrl-week-picker');
+  if (picker) picker.value = from;
+  const df = document.getElementById('ctrl-date-from');
+  const dt = document.getElementById('ctrl-date-to');
+  if (df) df.value = from;
+  if (dt) dt.value = to;
+}
+
+function ctrlShiftWeek(delta) {
+  ctrlWeekOffset += delta;
+  ctrlApplyWeek();
+}
+
+function ctrlJumpToDate(dateStr) {
+  if (!dateStr) return;
+  const today = gokuServerToday || getTodayClient();
+  const todayD = new Date(today + 'T12:00:00Z');
+  const todayDow = todayD.getUTCDay();
+  const mondayNow = new Date(todayD.getTime() + (todayDow === 0 ? -6 : 1 - todayDow) * 86400000);
+  const picked = new Date(dateStr + 'T12:00:00Z');
+  const pickedDow = picked.getUTCDay();
+  const mondayPicked = new Date(picked.getTime() + (pickedDow === 0 ? -6 : 1 - pickedDow) * 86400000);
+  ctrlWeekOffset = Math.round((mondayPicked - mondayNow) / (7 * 86400000));
+  ctrlApplyWeek();
+}
+
+function ctrlSetMode(mode) {
+  const esSemana = mode === 'semana';
+  document.getElementById('ctrl-semana-ctrl').style.display = esSemana ? 'flex' : 'none';
+  document.getElementById('ctrl-rango-ctrl').style.display  = esSemana ? 'none' : 'flex';
+  document.getElementById('ctrl-mode-semana').style.background = esSemana ? '#374151' : '#fff';
+  document.getElementById('ctrl-mode-semana').style.color      = esSemana ? '#fff' : '#6b7280';
+  document.getElementById('ctrl-mode-rango').style.background  = esSemana ? '#fff' : '#374151';
+  document.getElementById('ctrl-mode-rango').style.color       = esSemana ? '#6b7280' : '#fff';
+  if (esSemana) ctrlApplyWeek(); else ctrlApplyRango();
+}
+
+function ctrlApplyRango() {
+  const from = document.getElementById('ctrl-rango-from').value;
+  const to   = document.getElementById('ctrl-rango-to').value;
+  const df = document.getElementById('ctrl-date-from');
+  const dt = document.getElementById('ctrl-date-to');
+  if (df) df.value = from;
+  if (dt) dt.value = to;
+}
+
+async function ctrlIngCargar() {
+  await ctrlIngLoadVentasSummary();
+}
+
+async function ctrlIngInit() {
+  const sel = document.getElementById('ctrl-rest-sel');
+  sel.innerHTML = restaurants.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
+  ctrlWeekOffset = 0;
+  ctrlApplyWeek();
+  await Promise.all([ctrlIngLoadSheetTabs(), ctrlIngLoadSecCategories(), ctrlIngLoadProductCats()]);
+  ctrlIngSwitchTab('calce');
+  await ctrlIngRestChange();
+}
+
+async function ctrlIngLoadSheetTabs() {
+  try {
+    const r = await apiFetch('/api/ventas/sheet-tabs');
+    const d = await r.json();
+    ctrlIngSheetTabs = d.tabs || [];
+  } catch(e) { ctrlIngSheetTabs = []; }
+}
+
+async function ctrlIngLoadSecCategories() {
+  try {
+    const r = await apiFetch('/api/ctrl/section-categories');
+    const d = await r.json();
+    ctrlSecCategories = d.sectionCategories || {};
+  } catch(e) { ctrlSecCategories = {}; }
+}
+
+async function ctrlIngSaveSecCategories() {
+  const sectionCategories = {};
+  document.querySelectorAll('.ctrl-cfg-sec-cat:checked').forEach(cb => {
+    const sec = cb.dataset.section;
+    const cat = cb.dataset.cat;
+    if (!sectionCategories[sec]) sectionCategories[sec] = [];
+    sectionCategories[sec].push(cat);
+  });
+  const btn = document.getElementById('ctrl-sec-cat-btn');
+  const msg = document.getElementById('ctrl-sec-cat-msg');
+  if (btn) { btn.disabled = true; btn.textContent = 'Guardando...'; }
+  try {
+    const res = await apiFetch('/api/ctrl/section-categories', {
+      method: 'PUT', body: JSON.stringify({ sectionCategories })
+    });
+    if (!res.ok) throw new Error('Error del servidor');
+    ctrlSecCategories = sectionCategories;
+    if (msg) msg.innerHTML = '<span style="color:#16a34a">✓ Guardado para todos los locales</span>';
+    setTimeout(() => { if (msg) msg.innerHTML = ''; }, 3000);
+  } catch(e) {
+    if (msg) msg.innerHTML = `<span style="color:#dc3545">Error: ${e.message}</span>`;
+  }
+  if (btn) { btn.disabled = false; btn.textContent = 'Guardar para todos los locales'; }
+}
+
+async function ctrlIngLoadProductCats() {
+  try {
+    const r = await apiFetch('/api/ctrl/product-categories');
+    const d = await r.json();
+    ctrlAllProductCats = d.categories || [];
+    ctrlProductCatMap  = d.catMap || {};
+  } catch(e) { ctrlAllProductCats = []; ctrlProductCatMap = {}; }
+}
+
+async function ctrlIngLoadVentasSummary() {
+  const summaryDiv = document.getElementById('ctrl-ventas-summary');
+  if (!summaryDiv) return;
+  const sheetTab = ctrlIngConfig?.sheetTab;
+  const from = document.getElementById('ctrl-date-from')?.value;
+  const to   = document.getElementById('ctrl-date-to')?.value;
+  if (!sheetTab || !from || !to) { summaryDiv.innerHTML = '<div style="color:#9ca3af;font-size:13px;padding:8px 0">Configurá la hoja de ventas en ⚙️ Configurar para ver el análisis.</div>'; return; }
+
+  summaryDiv.innerHTML = '<div style="color:#9ca3af;font-size:12px;padding:8px 0">Cargando ventas…</div>';
+  try {
+    const res  = await apiFetch(`/api/ventas-sheets?sheet=${encodeURIComponent(sheetTab)}`);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    const fromD = new Date(from + 'T00:00:00');
+    const toD   = new Date(to   + 'T23:59:59');
+    const rows  = (data.rows || []).filter(r => {
+      if ((r['Cancelada'] || '').toLowerCase() === 'si') return false;
+      const parts = (r['Creación'] || '').split(' ')[0].split('-');
+      if (parts.length < 3) return false;
+      const d = new Date(`${parts[2]}-${parts[1]}-${parts[0]}T00:00:00`);
+      return d >= fromD && d <= toD;
+    });
+
+    if (!rows.length) {
+      summaryDiv.innerHTML = '<div style="background:#fff;border:1px solid #dee2e6;border-radius:10px;padding:14px 20px;font-size:13px;color:#9ca3af">Sin ventas registradas para este período.</div>';
+      return;
+    }
+
+    const fmt  = n => '$' + Math.round(n).toLocaleString('es-CL');
+    const fmtN = n => (Math.round(n * 10) / 10).toLocaleString('es-CL');
+    const totalPesos    = rows.reduce((s, r) => s + (parseInt(r['Precio'])   || 0), 0);
+    const totalUnidades = rows.reduce((s, r) => s + (parseInt(r['Cantidad']) || 0), 0);
+    const totalBoletas  = new Set(rows.map(r => r['Id. Venta'])).size;
+    const ticketProm    = totalBoletas > 0 ? totalPesos / totalBoletas : 0;
+    const itemsPorBoleta = totalBoletas > 0 ? totalUnidades / totalBoletas : 0;
+    const precioPromItem = totalUnidades > 0 ? totalPesos / totalUnidades : 0;
+    const catColors = ['#3b82f6','#10b981','#f59e0b','#8b5cf6','#ef4444','#0ea5e9','#f97316','#6366f1','#14b8a6','#ec4899'];
+
+    // Por producto
+    const byProd = {};
+    rows.forEach(r => {
+      const nombre = (r['Producto'] || '').trim();
+      const cat    = r['Categoría'] || 'Sin categoría';
+      if (!nombre) return;
+      const key = nombre + '||' + cat;
+      if (!byProd[key]) byProd[key] = { nombre, cat, pesos: 0, unidades: 0 };
+      byProd[key].pesos    += parseInt(r['Precio'])   || 0;
+      byProd[key].unidades += parseInt(r['Cantidad']) || 0;
+    });
+    const prodList = Object.values(byProd).sort((a,b) => b.pesos - a.pesos);
+    const maxProd = prodList.length ? prodList[0].pesos : 1;
+
+    // Por categoría
+    const byCat = {};
+    rows.forEach(r => {
+      const cat = (r['Categoría'] || 'Sin categoría').trim() || 'Sin categoría';
+      if (!byCat[cat]) byCat[cat] = { pesos: 0, unidades: 0 };
+      byCat[cat].pesos    += parseInt(r['Precio'])   || 0;
+      byCat[cat].unidades += parseInt(r['Cantidad']) || 0;
+    });
+    const catList = Object.entries(byCat).sort((a,b) => b[1].pesos - a[1].pesos);
+
+    // Por día
+    const byDia = { 'Lun':0,'Mar':0,'Mié':0,'Jue':0,'Vie':0,'Sáb':0,'Dom':0 };
+    const diaNames = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+    rows.forEach(r => {
+      const parts = (r['Creación'] || '').split(' ')[0].split('-');
+      if (parts.length < 3) return;
+      const d = new Date(`${parts[2]}-${parts[1]}-${parts[0]}T12:00:00`);
+      const dia = diaNames[d.getDay()];
+      if (dia in byDia) byDia[dia] += parseInt(r['Precio']) || 0;
+    });
+    const maxDia = Math.max(...Object.values(byDia), 1);
+
+    const kpiCard = (label, value, color, big) =>
+      `<div style="background:#f9fafb;border-radius:8px;padding:10px 14px;border:1px solid #f0f0f0">
+        <div style="font-size:${big?'22px':'16px'};font-weight:800;color:${color};line-height:1.1">${value}</div>
+        <div style="font-size:10px;color:#9ca3af;margin-top:3px;text-transform:uppercase;letter-spacing:.04em">${label}</div>
+      </div>`;
+
+    const uniqueId = () => Math.random().toString(36).slice(2,8);
+    const tablaId  = 'ctrl-vtabla-' + uniqueId();
+    const tablaToggleId = 'ctrl-vtoggle-' + uniqueId();
+
+    summaryDiv.innerHTML = `
+      <!-- Fila 1: KPIs -->
+      <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:16px">
+        ${kpiCard('Total Ingresos',    fmt(totalPesos),                             '#10b981', true)}
+        ${kpiCard('Ticket Promedio',   fmt(ticketProm),                              '#f59e0b', true)}
+        ${kpiCard('Boletas / Mesas',   totalBoletas.toLocaleString('es-CL'),         '#8b5cf6', false)}
+        ${kpiCard('Ítems Vendidos',    totalUnidades.toLocaleString('es-CL'),        '#3b82f6', false)}
+        ${kpiCard('Ítems / Boleta',    fmtN(itemsPorBoleta),                         '#6366f1', false)}
+        ${kpiCard('Precio Prom. Ítem', fmt(precioPromItem),                          '#0ea5e9', false)}
+      </div>
+
+      <!-- Fila 2: Categorías | Productos + Días -->
+      <div style="display:grid;grid-template-columns:1.1fr 1fr;gap:16px;margin-bottom:16px">
+
+        <!-- Categorías table -->
+        <div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden">
+          <div style="padding:14px 18px;border-bottom:1px solid #f3f4f6;font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em">Por categoría</div>
+          <table style="width:100%;border-collapse:collapse;font-size:12px">
+            <thead><tr style="background:#f9fafb">
+              <th style="padding:8px 14px;text-align:left;color:#6b7280;font-size:10px;text-transform:uppercase;font-weight:600">Categoría</th>
+              <th style="padding:8px 10px;text-align:right;color:#6b7280;font-size:10px;text-transform:uppercase;font-weight:600">Und.</th>
+              <th style="padding:8px 14px;text-align:right;color:#6b7280;font-size:10px;text-transform:uppercase;font-weight:600">Ingresos</th>
+              <th style="padding:8px 14px;text-align:right;color:#6b7280;font-size:10px;text-transform:uppercase;font-weight:600">%</th>
+            </tr></thead>
+            <tbody>
+              ${catList.map(([cat, d], i) => {
+                const pct   = totalPesos > 0 ? (d.pesos / totalPesos * 100).toFixed(1) : '0.0';
+                const color = catColors[i % catColors.length];
+                return `<tr style="border-bottom:1px solid #f9f9f9">
+                  <td style="padding:8px 14px;color:#111827;font-weight:500">
+                    <div style="display:flex;align-items:center;gap:6px">
+                      <div style="width:8px;height:8px;border-radius:50%;background:${color};flex-shrink:0"></div>
+                      ${cat}
+                    </div>
+                  </td>
+                  <td style="padding:8px 10px;text-align:right;color:#6b7280">${d.unidades}</td>
+                  <td style="padding:8px 14px;text-align:right;font-weight:600;color:#111827">${fmt(d.pesos)}</td>
+                  <td style="padding:8px 14px;text-align:right;color:${color};font-weight:600">${pct}%</td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Columna derecha: Top productos + Días -->
+        <div style="display:flex;flex-direction:column;gap:16px">
+        <div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden">
+          <div style="padding:14px 18px;border-bottom:1px solid #f3f4f6;font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em">Top productos</div>
+          <div style="padding:10px 0;max-height:360px;overflow-y:auto">
+            ${prodList.map((p, i) => {
+              const pct = totalPesos > 0 ? (p.pesos / totalPesos * 100).toFixed(1) : 0;
+              const bar = Math.round((p.pesos / maxProd) * 100);
+              const color = catColors[i % catColors.length];
+              return `<div style="padding:5px 16px">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
+                  <span style="font-size:10px;font-weight:700;color:#d1d5db;width:16px;text-align:right;flex-shrink:0">${i+1}</span>
+                  <span style="font-size:12px;color:#111827;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:${i<3?'600':'400'}" title="${p.nombre}">${p.nombre}</span>
+                  <span style="font-size:11px;color:#374151;font-weight:600;white-space:nowrap">${fmt(p.pesos)}</span>
+                  <span style="font-size:10px;color:#9ca3af;width:30px;text-align:right">${pct}%</span>
+                </div>
+                <div style="height:2px;background:#f0f0f0;border-radius:2px;margin-left:24px">
+                  <div style="width:${bar}%;height:100%;background:${color};border-radius:2px"></div>
+                </div>
+              </div>`;
+            }).join('')}
+          </div>
+        </div>
+
+        <!-- Ingresos por día: barras horizontales -->
+        <div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:18px">
+          <div style="font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">Ingresos por día</div>
+          ${Object.entries(byDia).map(([dia, v]) => {
+            const pct = Math.round((v / maxDia) * 100);
+            return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+              <div style="width:28px;font-size:11px;font-weight:600;color:#6b7280;flex-shrink:0">${dia}</div>
+              <div style="flex:1;background:#f3f4f6;border-radius:3px;height:18px;position:relative">
+                <div style="width:${pct}%;height:100%;background:#3b82f6;border-radius:3px;transition:width .3s"></div>
+              </div>
+              <div style="width:80px;text-align:right;font-size:11px;font-weight:600;color:#374151;flex-shrink:0">${v>0?fmt(v):'—'}</div>
+            </div>`;
+          }).join('')}
+        </div>
+        </div><!-- fin columna derecha -->
+      </div>
+
+      <!-- Tabla completa (expandible) -->
+      <div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden">
+        <div style="padding:12px 18px;display:flex;align-items:center;justify-content:space-between;cursor:pointer"
+          onclick="const el=document.getElementById('${tablaId}');const isOpen=el.style.display!=='none';el.style.display=isOpen?'none':'block';document.getElementById('${tablaToggleId}').textContent=isOpen?'▶ Ver':'▼ Ocultar'">
+          <span style="font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em">Tabla completa — ${rows.length} registros</span>
+          <span id="${tablaToggleId}" style="font-size:11px;color:#3b82f6;font-weight:600;cursor:pointer">▶ Ver</span>
+        </div>
+        <div id="${tablaId}" style="display:none;overflow-x:auto;max-height:400px;overflow-y:auto">
+          <table style="width:100%;border-collapse:collapse;font-size:12px">
+            <thead style="position:sticky;top:0;background:#f9fafb;z-index:1">
+              <tr>
+                <th style="padding:8px 14px;text-align:left;color:#6b7280;font-size:10px;font-weight:600;text-transform:uppercase">Fecha</th>
+                <th style="padding:8px 14px;text-align:left;color:#6b7280;font-size:10px;font-weight:600;text-transform:uppercase">Producto</th>
+                <th style="padding:8px 14px;text-align:left;color:#6b7280;font-size:10px;font-weight:600;text-transform:uppercase">Categoría</th>
+                <th style="padding:8px 14px;text-align:right;color:#6b7280;font-size:10px;font-weight:600;text-transform:uppercase">Cant.</th>
+                <th style="padding:8px 14px;text-align:right;color:#6b7280;font-size:10px;font-weight:600;text-transform:uppercase">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rows.map((r, i) => `
+                <tr style="border-bottom:1px solid #f3f4f6;${i%2===1?'background:#fafafa':''}">
+                  <td style="padding:7px 14px;color:#6b7280;white-space:nowrap">${(r['Creación']||'').split(' ')[0]}</td>
+                  <td style="padding:7px 14px;color:#111827;font-weight:500">${r['Producto']||''}</td>
+                  <td style="padding:7px 14px"><span style="background:#f3f4f6;color:#374151;font-size:10px;padding:1px 7px;border-radius:99px">${r['Categoría']||''}</span></td>
+                  <td style="padding:7px 14px;text-align:right;color:#374151">${r['Cantidad']||0}</td>
+                  <td style="padding:7px 14px;text-align:right;font-weight:600;color:#111827">${fmt(parseInt(r['Precio'])||0)}</td>
+                </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>`;
+  } catch(e) {
+    summaryDiv.innerHTML = `<div style="color:#9ca3af;font-size:12px;padding:4px 0">Sin datos de ventas (${e.message})</div>`;
+  }
+}
+
+async function ctrlIngInformeTodo() {
+  const informeDiv = document.getElementById('ctrl-informe-all');
+  if (!informeDiv) return;
+  informeDiv.innerHTML = '<div style="color:#9ca3af;font-size:13px;padding:12px 0">Generando informe...</div>';
+  // TODO: implement multi-section report
+  informeDiv.innerHTML = '';
+}
+
+function ctrlIngSwitchTab(tab) {
+  ctrlIngActiveTab = tab;
+  ['calce','config'].forEach(t => {
+    const el = document.getElementById(`ctrl-tab-${t}`);
+    if (el) el.style.display = t === tab ? '' : 'none';
+    const btn = document.getElementById(`ctrl-tab-btn-${t}`);
+    if (btn) {
+      btn.style.background = t === tab ? '#f0f4ff' : '#fff';
+      btn.style.color = t === tab ? '#1d4ed8' : '#374151';
+      btn.style.fontWeight = t === tab ? '700' : '400';
+    }
+  });
+  if (tab === 'config' && ctrlIngInventories.length) ctrlIngRenderConfigTab();
+  if (tab === 'calce'  && ctrlIngInventories.length) ctrlIngRenderCalcePreview();
+}
+
+async function ctrlIngRestChange() {
+  const restId = document.getElementById('ctrl-rest-sel').value;
+  if (!restId) return;
+  ctrlIngInventories = [];
+  ctrlIngConfig = { sheetTab: '', productIds: [] };
+  ctrlIngConfigAllItems = [];
+  document.getElementById('ctrl-sections-preview').innerHTML = '<span style="color:#9ca3af;font-size:13px">Cargando...</span>';
+  document.getElementById('ctrl-calc-all-btn').style.display = 'none';
+  if (ctrlIngActiveTab === 'config') document.getElementById('ctrl-tab-config').innerHTML = '<span style="color:#9ca3af;font-size:13px">Cargando...</span>';
+  try {
+    const [invData, cfgData] = await Promise.all([
+      apiFetch(`/api/ctrl/inventories/${restId}`).then(r => r.json()),
+      apiFetch(`/api/ctrl/config/${restId}`).then(r => r.json()),
+    ]);
+    ctrlIngInventories = invData.inventories || [];
+    ctrlIngConfig = { sheetTab: '', productIds: [], ...cfgData };
+    const allItemsMap = {};
+    ctrlIngInventories.forEach(inv => {
+      (inv.items || []).forEach(item => {
+        if (item.productId && (item.name || item.productName) && !allItemsMap[item.productId]) {
+          allItemsMap[item.productId] = item;
+        }
+      });
+    });
+    ctrlIngConfigAllItems = Object.values(allItemsMap).sort((a,b) =>
+      (a.name||a.productName||'').localeCompare(b.name||b.productName||'', 'es'));
+  } catch(e) { console.error('ctrl-ing load:', e); }
+  if (ctrlIngActiveTab === 'calce') ctrlIngRenderCalcePreview();
+  else ctrlIngRenderConfigTab();
+}
+
+function ctrlIngGroupBySections() {
+  const sections = {};
+  ctrlIngInventories.forEach(inv => {
+    const sec = inv.section || 'Sin sección';
+    if (!sections[sec]) sections[sec] = [];
+    sections[sec].push(inv);
+  });
+  return sections;
+}
+
+function ctrlIngRenderCalcePreview() {
+  const sections = ctrlIngGroupBySections();
+  const preview = document.getElementById('ctrl-sections-preview');
+  const sectionNames = Object.keys(sections);
+  if (!sectionNames.length) {
+    preview.innerHTML = '<span style="color:#9ca3af;font-size:13px">No hay inventarios para este local.</span>';
+    document.getElementById('ctrl-calc-all-btn').style.display = 'none';
+    return;
+  }
+  const fmtD = d => d ? new Date(d+'T12:00:00Z').toLocaleDateString('es-CL', {day:'numeric', month:'short', year:'numeric'}) : '—';
+  const prodCount = (ctrlIngConfig.productIds || []).length;
+  const sectionsWithTwo = sectionNames.filter(s => sections[s].length >= 2);
+  preview.innerHTML = sectionNames.map(sec => {
+    const invs = sections[sec];
+    const hasTwo = invs.length >= 2;
+    const invFin = invs[0];
+    const invIni = hasTwo ? invs[1] : null;
+    const secId = sec.replace(/[^a-zA-Z0-9]/g, '_');
+    return `
+      <div style="background:#fff;border:1px solid #dee2e6;border-radius:12px;padding:20px 24px;margin-bottom:12px">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px">
+          <div>
+            <div style="font-size:15px;font-weight:700;color:#212529;margin-bottom:6px">${sec}</div>
+            ${hasTwo ? `
+              <div style="font-size:12px;color:#6c757d">
+                <span style="font-weight:600;color:#374151">Inicial:</span> ${fmtD(invIni.date)}${invIni.createdByName ? ' — '+invIni.createdByName : ''}
+                &nbsp;→&nbsp;
+                <span style="font-weight:600;color:#374151">Final:</span> ${fmtD(invFin.date)}${invFin.createdByName ? ' — '+invFin.createdByName : ''}
+              </div>
+              <div style="font-size:12px;color:#6c757d;margin-top:2px">${prodCount} producto${prodCount!==1?'s':''} configurado${prodCount!==1?'s':''}</div>
+            ` : `<div style="font-size:12px;color:#f59e0b;margin-top:2px">⚠ Solo hay 1 inventario — se necesitan al menos 2</div>`}
+          </div>
+          ${hasTwo && prodCount > 0 ? `
+            <button onclick="ctrlIngCalcularSeccion('${sec}','${secId}')"
+              style="padding:8px 18px;background:#1d4ed8;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap">
+              Calcular →
+            </button>
+          ` : hasTwo && prodCount === 0 ? `
+            <button onclick="ctrlIngSwitchTab('config')"
+              style="padding:8px 18px;background:#f59e0b;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">
+              ⚙️ Configurar productos
+            </button>
+          ` : ''}
+        </div>
+        <div id="ctrl-result-${secId}"></div>
+      </div>`;
+  }).join('');
+  document.getElementById('ctrl-calc-all-btn').style.display = sectionsWithTwo.length > 1 && prodCount > 0 ? 'block' : 'none';
+}
+
+async function ctrlIngCalcularSeccion(sectionName, secId) {
+  const restId = document.getElementById('ctrl-rest-sel').value;
+  const sections = ctrlIngGroupBySections();
+  const invs = sections[sectionName];
+  if (!invs || invs.length < 2) return;
+  const invFin = invs[0];
+  const invIni = invs[1];
+  let productIds = [...(ctrlIngConfig.productIds || [])];
+  if (!productIds.length) { alert('No hay productos configurados. Andá a ⚙️ Configurar primero.'); return; }
+
+  // Filtrar por categorías de sección (usando mapa directo de la colección products)
+  const secCats = ctrlSecCategories[sectionName];
+  if (secCats && secCats.length > 0) {
+    const catSet = new Set(secCats);
+    const filtered = productIds.filter(pid => {
+      const cat = ctrlProductCatMap[pid]
+        || ctrlIngConfigAllItems.find(i => i.productId === pid)?.category
+        || 'Sin categoría';
+      return catSet.has(cat);
+    });
+    if (filtered.length > 0) productIds = filtered;
+  }
+
+  const resultDiv = document.getElementById(`ctrl-result-${secId}`);
+  if (resultDiv) resultDiv.innerHTML = '<div style="padding:10px 0;color:#9ca3af;font-size:13px">Calculando...</div>';
+  try {
+    const res = await apiFetch('/api/ctrl/ing/calce', {
+      method: 'POST',
+      body: JSON.stringify({ restaurantId: restId, invInicialId: invIni.id, invFinalId: invFin.id, productIds, sheetTab: ctrlIngConfig.sheetTab || null })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    if (resultDiv) resultDiv.innerHTML = '<div style="margin-top:12px">' + ctrlIngBuildResultTable(data) + '</div>';
+  } catch(e) {
+    if (resultDiv) resultDiv.innerHTML = `<span style="color:#dc3545;font-size:13px">Error: ${e.message}</span>`;
+  }
+}
+
+async function ctrlIngCalcularTodo() {
+  const sections = ctrlIngGroupBySections();
+  for (const sec of Object.keys(sections)) {
+    if (sections[sec].length >= 2) {
+      await ctrlIngCalcularSeccion(sec, sec.replace(/[^a-zA-Z0-9]/g, '_'));
+    }
+  }
+}
+
+function ctrlIngBuildResultTable(data) {
+  const { results = [], from, to, ventasFrom, ventasTo, hasVentas, gddSummary = [], invInfo } = data;
+  const fmt  = n => n == null ? '—' : (Math.round(n * 1000) / 1000).toLocaleString('es-CL');
+  const fmtN = n => n == null ? '—' : (Math.round(n * 1000) / 1000).toLocaleString('es-CL');
+  const fmtD = d => d ? new Date(d+'T12:00:00Z').toLocaleDateString('es-CL', {day:'numeric', month:'short', year:'numeric'}) : '—';
+  const colorDiff = n => n == null ? '#9ca3af' : n > 0 ? '#dc2626' : n < 0 ? '#16a34a' : '#374151';
+  const th  = label => `<th style="padding:9px 10px;font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.3px;white-space:nowrap;text-align:right;border-bottom:2px solid #e9ecef;background:#f9fafb">${label}</th>`;
+  const thL = label => `<th style="padding:9px 10px;font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.3px;text-align:left;border-bottom:2px solid #e9ecef;background:#f9fafb">${label}</th>`;
+  const td  = (v, color='#212529', bold=false) => `<td style="padding:8px 10px;font-size:13px;color:${color};text-align:right;border-bottom:1px solid #f0f0f0;${bold?'font-weight:700':''};white-space:nowrap">${v}</td>`;
+
+  const rows = results.map((r, idx) => {
+    // Stock teórico final = lo que DEBERÍA quedar según ventas y recetas
+    const stockTeoFin = (hasVentas && r.consumoTeorico != null)
+      ? r.stockInicial + (r.entradasGDD || 0) - r.consumoTeorico
+      : null;
+    // Diferencia = stock teórico - stock real: positivo=malo (consumió de más), negativo=bueno
+    const diff = stockTeoFin != null ? stockTeoFin - r.stockFinal : null;
+    const skuBadge = r.sku ? `<span style="font-family:monospace;font-size:10px;background:#f1f5f9;color:#475569;border:1px solid #e2e8f0;border-radius:3px;padding:0 4px;margin-left:4px">${r.sku}</span>` : '';
+    const hasDetalle = hasVentas && r.detalle && r.detalle.length > 0;
+    const detalleId = `ctrl-det-${idx}`;
+    const toggleBtn = hasDetalle
+      ? `<button onclick="var el=document.getElementById('${detalleId}');el.style.display=el.style.display==='none'?'table-row':'none'"
+           style="font-size:10px;padding:1px 6px;border:1px solid #dee2e6;border-radius:4px;background:#f8fafc;cursor:pointer;color:#6b7280;margin-left:6px">▼ detalle</button>`
+      : '';
+    const sorted = hasDetalle ? [...r.detalle].sort((a,b) => b.subtotal - a.subtotal) : [];
+    const detalleRow = hasDetalle ? `
+      <tr id="${detalleId}" style="display:none;background:#fafbff">
+        <td colspan="7" style="padding:0 10px 12px 10px;border-bottom:1px solid #e9ecef">
+          <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.3px;margin:10px 0 6px">
+            Detalle consumo teórico — ${r.name}
+          </div>
+          <table style="width:100%;border-collapse:collapse;font-size:12px">
+            <thead><tr style="background:#f1f5f9">
+              <th style="text-align:left;padding:5px 8px;color:#6b7280;font-weight:600">Plato vendido</th>
+              <th style="text-align:right;padding:5px 8px;color:#6b7280;font-weight:600">Vendidos</th>
+              <th style="text-align:right;padding:5px 8px;color:#6b7280;font-weight:600">Uso / unidad</th>
+              <th style="text-align:right;padding:5px 8px;color:#6b7280;font-weight:600">Subtotal</th>
+            </tr></thead>
+            <tbody>
+              ${sorted.map(d => `<tr>
+                <td style="padding:4px 8px;color:#374151">${d.recipeName}</td>
+                <td style="text-align:right;padding:4px 8px;color:#6b7280">${fmtN(d.cantVendida)}</td>
+                <td style="text-align:right;padding:4px 8px;color:#6b7280">${fmtN(d.usoPorUnidad)} ${r.unit||''}</td>
+                <td style="text-align:right;padding:4px 8px;font-weight:600;color:#1d4ed8">${fmtN(d.subtotal)} ${r.unit||''}</td>
+              </tr>`).join('')}
+              <tr style="background:#e8f0fe">
+                <td colspan="3" style="padding:5px 8px;font-weight:700;color:#374151;text-align:right">TOTAL TEÓRICO</td>
+                <td style="text-align:right;padding:5px 8px;font-weight:800;color:#1d4ed8">${fmtN(r.consumoTeorico)} ${r.unit||''}</td>
+              </tr>
+            </tbody>
+          </table>
+        </td>
+      </tr>` : '';
+
+    const stockTeoHtml = stockTeoFin != null
+      ? `<span style="font-weight:700;color:#1d4ed8">${fmt(stockTeoFin)}</span>`
+      : `<span style="color:#d1d5db">—</span>`;
+    const diffHtml = diff != null
+      ? `<span style="font-weight:700;color:${colorDiff(diff)}">${diff>=0?'+':''}${fmt(diff)}</span>`
+      : `<span style="color:#d1d5db">—</span>`;
+
+    return `<tr onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background=''">
+      <td style="padding:8px 10px;font-size:13px;color:#212529;border-bottom:1px solid #f0f0f0">
+        ${r.name}${skuBadge}${toggleBtn}<div style="font-size:10px;color:#9ca3af">${r.unit||''}</div>
+      </td>
+      ${td(fmt(r.stockInicial))}
+      ${td(r.entradasGDD > 0 ? `<span style="color:#16a34a">+${fmt(r.entradasGDD)}</span>` : fmt(r.entradasGDD || 0))}
+      ${td(hasVentas ? fmt(r.consumoTeorico) : '—', '#6c757d')}
+      <td style="padding:8px 10px;font-size:13px;text-align:right;border-bottom:1px solid #f0f0f0;background:#f0f7ff">${stockTeoHtml}</td>
+      ${td(fmt(r.stockFinal), '#212529', true)}
+      <td style="padding:8px 10px;font-size:13px;text-align:right;border-bottom:1px solid #f0f0f0">${diffHtml}</td>
+    </tr>${detalleRow}`;
+  }).join('');
+
+  return `
+    <div style="font-size:12px;color:#9ca3af;margin-bottom:8px">Período: ${fmtD(from)} → ${fmtD(to)} · ${results.length} producto${results.length!==1?'s':''}</div>
+    <div style="border-radius:10px;border:1px solid #e9ecef;overflow:auto">
+      <table style="width:100%;border-collapse:collapse;min-width:700px">
+        <thead><tr>
+          ${thL('Producto')}
+          ${th('Stock Ini.')}
+          ${th('GDD +')}
+          ${th('Cons. Teórico')}
+          <th style="padding:9px 10px;font-size:11px;font-weight:600;color:#1d4ed8;text-transform:uppercase;letter-spacing:.3px;white-space:nowrap;text-align:right;border-bottom:2px solid #e9ecef;background:#eff6ff">Stock q. debería quedar</th>
+          ${th('Stock Fin. (real)')}
+          ${th('Diferencia')}
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+
+function ctrlIngRenderConfigTab() {
+  const sheetOpts = ctrlIngSheetTabs.map(t =>
+    `<option value="${t}" ${t === ctrlIngConfig.sheetTab ? 'selected' : ''}>${t}</option>`).join('');
+  const items = ctrlIngConfigAllItems;
+  const checkedIds = new Set(ctrlIngConfig.productIds || []);
+  const checkedCount = items.filter(i => checkedIds.has(i.productId)).length;
+
+  const sections = [...new Set(ctrlIngInventories.map(inv => inv.section).filter(Boolean))].sort();
+  const noSections = sections.length === 0;
+  const allCats = ctrlAllProductCats;
+  const noCats = allCats.length === 0;
+
+  document.getElementById('ctrl-tab-config').innerHTML = `
+    <div style="max-width:860px;margin:0 auto">
+      <div style="background:#fff;border:1px solid #dee2e6;border-radius:12px;padding:20px 24px;margin-bottom:16px">
+        <div style="font-size:14px;font-weight:700;color:#212529;margin-bottom:12px">Hoja de ventas</div>
+        <select id="ctrl-cfg-sheet" style="padding:8px 10px;border:1px solid #dee2e6;border-radius:8px;font-size:13px;background:#fff;min-width:280px">
+          <option value="">— Sin ventas —</option>
+          ${sheetOpts}
+        </select>
+      </div>
+      <div style="background:#fff;border:1px solid #dee2e6;border-radius:12px;padding:20px 24px;margin-bottom:16px">
+        <div style="font-size:14px;font-weight:700;color:#212529;margin-bottom:4px">Productos a analizar</div>
+        <div style="font-size:12px;color:#6c757d;margin-bottom:12px">Seleccioná los ingredientes a monitorear para este local</div>
+        <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center">
+          <button onclick="ctrlIngCfgSelectAll(true)" style="font-size:12px;padding:4px 12px;border:1px solid #dee2e6;border-radius:6px;background:#fff;cursor:pointer;color:#374151">Todos</button>
+          <button onclick="ctrlIngCfgSelectAll(false)" style="font-size:12px;padding:4px 12px;border:1px solid #dee2e6;border-radius:6px;background:#fff;cursor:pointer;color:#374151">Ninguno</button>
+          <span id="ctrl-cfg-prod-count" style="font-size:12px;color:#9ca3af">${checkedCount} seleccionados</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:6px;max-height:420px;overflow-y:auto;padding-right:4px">
+          ${items.length ? items.map(item => {
+            const nm = item.name || item.productName;
+            return `<label style="display:flex;align-items:center;gap:8px;padding:6px 10px;border:1px solid #e9ecef;border-radius:8px;cursor:pointer;font-size:13px;background:#fafafa"
+              onmouseover="this.style.background='#f0f4ff'" onmouseout="this.style.background='#fafafa'">
+              <input type="checkbox" class="ctrl-cfg-prod-cb" value="${item.productId}" ${checkedIds.has(item.productId) ? 'checked' : ''}
+                onchange="document.getElementById('ctrl-cfg-prod-count').textContent=document.querySelectorAll('.ctrl-cfg-prod-cb:checked').length+' seleccionados'"
+                style="accent-color:#1d4ed8;width:14px;height:14px;flex-shrink:0">
+              <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${nm}">${nm}</span>
+            </label>`;
+          }).join('') : '<span style="color:#9ca3af;font-size:13px">No hay inventarios disponibles.</span>'}
+        </div>
+      </div>
+      <!-- Categorías por sección (configuración global — aplica a todos los locales) -->
+      ${(() => {
+        if (!sections.length || !allCats.length) return '';
+        return `
+        <div style="background:#fff;border:1px solid #dee2e6;border-radius:12px;padding:20px 24px;margin-bottom:16px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+            <div style="font-size:14px;font-weight:700;color:#212529">Categorías por sección</div>
+            <span style="font-size:11px;background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;border-radius:99px;padding:2px 10px;font-weight:600">🌐 Global — todos los locales</span>
+          </div>
+          <div style="font-size:12px;color:#6c757d;margin-bottom:16px">Configurá esto una sola vez. Qué categorías de producto pertenecen a cada sección.</div>
+          ${noSections ? '<div style="color:#9ca3af;font-size:13px;margin-bottom:8px">Este local no tiene secciones. Agregá Barra / Cocina en ⚙️ Locales.</div>' : ''}
+          ${noCats && !noSections ? '<div style="color:#9ca3af;font-size:13px;margin-bottom:8px">Cargando categorías...</div>' : ''}
+          ${(!noSections && !noCats) ? sections.map(sec => {
+            const checked = new Set(ctrlSecCategories[sec] || []);
+            return `
+            <div style="margin-bottom:16px">
+              <div style="font-size:12px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px;display:flex;align-items:center;gap:8px">
+                <span style="display:inline-block;width:3px;height:14px;background:#1d4ed8;border-radius:2px"></span>
+                ${sec}
+              </div>
+              <div style="display:flex;flex-wrap:wrap;gap:6px">
+                ${allCats.map(cat => {
+                  const isOn = checked.has(cat);
+                  return `<label data-sec="${sec}" data-cat="${cat}" onclick="ctrlIngToggleSecCat(this)"
+                    style="display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border:1px solid ${isOn?'#1d4ed8':'#e9ecef'};border-radius:99px;cursor:pointer;font-size:12px;background:${isOn?'#eff6ff':'#fafafa'};color:${isOn?'#1d4ed8':'#6b7280'};user-select:none;transition:all .15s">
+                    <input type="checkbox" class="ctrl-cfg-sec-cat" data-section="${sec}" data-cat="${cat}" ${isOn?'checked':''} style="display:none">
+                    ${cat}
+                  </label>`;
+                }).join('')}
+              </div>
+            </div>`;
+          }).join('') : ''}
+          <div style="display:flex;align-items:center;gap:12px;margin-top:4px">
+            <button id="ctrl-sec-cat-btn" onclick="ctrlIngSaveSecCategories()"
+              style="padding:8px 18px;background:#16a34a;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">
+              Guardar para todos los locales
+            </button>
+            <div id="ctrl-sec-cat-msg" style="font-size:13px"></div>
+          </div>
+        </div>`;
+      })()}
+      <button onclick="ctrlIngSaveConfig()" id="ctrl-cfg-save-btn"
+        style="width:100%;padding:12px;background:#1d4ed8;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:8px">
+        Guardar configuración
+      </button>
+      <div id="ctrl-cfg-msg" style="text-align:center;font-size:13px;height:20px"></div>
+    </div>`;
+}
+
+function ctrlIngCfgSelectAll(checked) {
+  document.querySelectorAll('.ctrl-cfg-prod-cb').forEach(cb => { cb.checked = checked; });
+  document.getElementById('ctrl-cfg-prod-count').textContent =
+    document.querySelectorAll('.ctrl-cfg-prod-cb:checked').length + ' seleccionados';
+}
+
+function ctrlIngToggleSecCat(label) {
+  const cb = label.querySelector('input[type=checkbox]');
+  cb.checked = !cb.checked;
+  if (cb.checked) {
+    label.style.borderColor = '#1d4ed8';
+    label.style.background  = '#eff6ff';
+    label.style.color       = '#1d4ed8';
+  } else {
+    label.style.borderColor = '#e9ecef';
+    label.style.background  = '#fafafa';
+    label.style.color       = '#6b7280';
+  }
+}
+
+async function ctrlIngSaveConfig() {
+  const restId     = document.getElementById('ctrl-rest-sel').value;
+  const sheetTab   = document.getElementById('ctrl-cfg-sheet')?.value || '';
+  const productIds = [...document.querySelectorAll('.ctrl-cfg-prod-cb:checked')].map(cb => cb.value);
+  const btn = document.getElementById('ctrl-cfg-save-btn');
+  const msg = document.getElementById('ctrl-cfg-msg');
+  btn.disabled = true; btn.textContent = 'Guardando...';
+  try {
+    const res = await apiFetch(`/api/ctrl/config/${restId}`, {
+      method: 'PUT', body: JSON.stringify({ sheetTab, productIds })
+    });
+    if (!res.ok) throw new Error('Error del servidor');
+    ctrlIngConfig = { sheetTab, productIds };
+    msg.innerHTML = '<span style="color:#16a34a">✓ Configuración guardada</span>';
+    setTimeout(() => { if (msg) msg.innerHTML = ''; }, 3000);
+  } catch(e) {
+    msg.innerHTML = `<span style="color:#dc3545">Error: ${e.message}</span>`;
+  }
+  btn.disabled = false; btn.textContent = 'Guardar configuración';
 }
 
 // ── VEGETA ──────────────────────────────────────────────────
@@ -4780,8 +5883,7 @@ function renderAdminSidebar() {
       items: [
         { id: 'margenes',          icon: 'fas fa-percentage',    name: 'Márgenes',                    adminOnly: false },
         { id: 'goku',              icon: 'fas fa-bolt',          name: 'GOKU',                        adminOnly: false },
-        { id: 'ventas-productos',  icon: 'fas fa-receipt',       name: 'Ventas Productos',            adminOnly: false },
-        { id: 'vegeta',            icon: 'fas fa-balance-scale', name: 'Control Ing. vs Inventario',  adminOnly: false },
+        { id: 'ctrl-ing',          icon: 'fas fa-balance-scale', name: 'Control Ing. vs Inventario',  adminOnly: false },
         { id: 'eerr',              icon: 'fas fa-chart-line',    name: 'EERR',                        adminOnly: false },
         { id: 'flujo',             icon: 'fas fa-stream',        name: 'Flujo de Caja Proyectado',    adminOnly: false },
       ]
@@ -4793,6 +5895,12 @@ function renderAdminSidebar() {
         { id: 'b2b-catalogo', icon: 'fas fa-box-open',      name: 'Catálogo',               adminOnly: false },
         { id: 'pedidos',      icon: 'fas fa-shopping-cart', name: 'Pedidos Helados',        adminOnly: false },
         { id: 'orden-compra', icon: 'fas fa-cart-plus',     name: 'Pedidos de Compra',      adminOnly: false },
+      ]
+    },
+    {
+      label: 'RRHH', icon: 'fas fa-user-tie',
+      items: [
+        { id: 'rrhh',         icon: 'fas fa-user-tie',      name: 'RRHH',                   adminOnly: false },
       ]
     },
     {
@@ -4930,8 +6038,7 @@ function renderSidebar() {
     { label: 'Finanzas', items: [
       { id: 'margenes',          icon: '📐', name: 'Márgenes',                    bg: 'linear-gradient(135deg,#7c3aed,#a855f7)', adminOnly: false },
       { id: 'goku',              icon: '⚡', name: 'GOKU',                        bg: 'linear-gradient(135deg,#f59e0b,#f97316)', adminOnly: false },
-      { id: 'ventas-productos',  icon: '🧾', name: 'Ventas Productos',            bg: 'linear-gradient(135deg,#0f766e,#10b981)', adminOnly: false },
-      { id: 'vegeta',            icon: '📊', name: 'Control Ing. vs Inventario',  bg: 'linear-gradient(135deg,#1d4ed8,#3b82f6)', adminOnly: false },
+      { id: 'ctrl-ing',          icon: '📊', name: 'Control Ing. vs Inventario',  bg: 'linear-gradient(135deg,#1d4ed8,#3b82f6)', adminOnly: false },
       { id: 'eerr',              icon: '📊', name: 'EERR',                        bg: 'linear-gradient(135deg,#1d4ed8,#3b82f6)', adminOnly: false },
       { id: 'flujo',             icon: '💰', name: 'Flujo de Caja Proyectado',    bg: 'linear-gradient(135deg,#065f46,#10b981)', adminOnly: false },
     ]},
@@ -4940,6 +6047,9 @@ function renderSidebar() {
       { id: 'b2b-catalogo', icon: '📦', name: 'Catálogo',               bg: 'linear-gradient(135deg,#0369a1,#0ea5e9)', adminOnly: false },
       { id: 'pedidos',      icon: '🛒', name: 'Pedidos Helados',        bg: 'linear-gradient(135deg,#b45309,#f59e0b)', adminOnly: false },
       { id: 'orden-compra', icon: '🛍️', name: 'Pedidos de Compra',      bg: 'linear-gradient(135deg,#0f766e,#14b8a6)', adminOnly: false },
+    ]},
+    { label: 'RRHH', items: [
+      { id: 'rrhh',         icon: '👷', name: 'RRHH',                   bg: 'linear-gradient(135deg,#0f4c75,#1b6ca8)', adminOnly: false },
     ]},
     { label: 'Administración', items: [
       { id: 'locales',      icon: '🏪', name: 'Locales',                bg: 'linear-gradient(135deg,#374151,#6b7280)', adminOnly: true  },
@@ -4990,6 +6100,7 @@ function renderHub() {
     { id: 'margenes',      icon: '📐', name: 'Márgenes',                      bg: 'linear-gradient(135deg,#7c3aed,#a855f7)', adminOnly: false },
     { id: 'orden-compra',  icon: '🛍️', name: 'Pedidos',                       bg: 'linear-gradient(135deg,#0f766e,#14b8a6)', adminOnly: false },
     { id: 'eerr',          icon: '📊', name: 'EERR',                          bg: 'linear-gradient(135deg,#1d4ed8,#3b82f6)', adminOnly: false },
+    { id: 'rrhh',          icon: '👷', name: 'RRHH',                          bg: 'linear-gradient(135deg,#0f4c75,#1b6ca8)', adminOnly: false },
     { id: 'usuarios',      icon: '👥', name: 'Usuarios',                      bg: 'linear-gradient(135deg,#c95e6b,#e07585)', adminOnly: true  },
   ];
   const visible = allModules.filter(m => {
@@ -13167,6 +14278,557 @@ async function agentSend() {
     btn.disabled = false; btn.style.opacity = '1';
     input.focus();
   }
+}
+</script>
+
+<script>
+// ── RRHH ──────────────────────────────────────────────────────
+let rrhhEmployees = [];
+let rrhhLiqEmployee = null;
+
+// UF valores día 15 de cada mes 2026 (fuente: SII)
+const UF_2026 = {
+  1: 39734, 2: 39777, 3: 39819, 4: 39981, 5: 40372,
+  6: 40724, 7: 40834, 8: 40853, 9: 40880, 10: null, 11: null, 12: null
+};
+
+function rrhhLiqAutoUF() {
+  const mes  = Number(document.getElementById('rrhh-liq-mes')?.value);
+  const anio = Number(document.getElementById('rrhh-liq-anio')?.value);
+  const ufEl = document.getElementById('rrhh-liq-uf');
+  if (!ufEl) return;
+  if (anio === 2026 && UF_2026[mes]) {
+    ufEl.value = UF_2026[mes];
+  }
+  rrhhLiqCalc();
+}
+let rrhhEditId = null;
+
+const AFP_RATES = {
+  'CAPITAL':   0.0144,
+  'CUPRUM':    0.0144,
+  'HABITAT':   0.0127,
+  'MODELO':    0.0058,
+  'PLANVITAL': 0.0116,
+  'PROVIDA':   0.0145,
+  'UNO':       0.0046,
+};
+
+async function rrhhInit() {
+  // Populate local selectors
+  const localSel = document.getElementById('rrhh-filter-local');
+  const rfLocal  = document.getElementById('rf-local');
+  const liqEmpSel = document.getElementById('rrhh-liq-emp');
+  if (localSel) {
+    localSel.innerHTML = '<option value="">Todos los locales</option>' +
+      restaurants.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
+  }
+  if (rfLocal) {
+    rfLocal.innerHTML = '<option value="">— Seleccionar —</option>' +
+      restaurants.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
+  }
+  // Set current month/year and auto-fill UF
+  const now = new Date();
+  const mesSel = document.getElementById('rrhh-liq-mes');
+  if (mesSel) mesSel.value = now.getMonth() + 1;
+  document.getElementById('rrhh-liq-anio').value = now.getFullYear();
+  rrhhLiqAutoUF();
+  // Load employees
+  await rrhhLoadEmployees();
+  rrhhRenderTrabajadores();
+  rrhhRenderHistorial();
+}
+
+async function rrhhLoadEmployees() {
+  try {
+    const res = await apiFetch('/api/rrhh/employees');
+    const data = await res.json();
+    rrhhEmployees = data.employees || [];
+    // Populate liq employee selector
+    const sel = document.getElementById('rrhh-liq-emp');
+    if (sel) {
+      sel.innerHTML = '<option value="">— Seleccionar —</option>' +
+        rrhhEmployees
+          .filter(e => e.activo !== false)
+          .sort((a,b) => (a.nombre||'').localeCompare(b.nombre||'','es'))
+          .map(e => `<option value="${e.id}">${e.nombre} — ${e.cargo || ''} (${restaurants.find(r=>r.id===e.restaurantId)?.name||e.restaurantId||''})</option>`)
+          .join('');
+    }
+  } catch(e) { console.error('rrhh load:', e); }
+}
+
+function rrhhSwitchTab(tab) {
+  document.getElementById('rrhh-tab-trabajadores').style.display  = tab === 'trabajadores'  ? 'block' : 'none';
+  document.getElementById('rrhh-tab-liquidaciones').style.display = tab === 'liquidaciones' ? 'block' : 'none';
+  document.getElementById('rrhh-tab-trab-btn').style.background = tab === 'trabajadores' ? '#fff' : 'rgba(255,255,255,.2)';
+  document.getElementById('rrhh-tab-trab-btn').style.color = tab === 'trabajadores' ? '#0f4c75' : '#fff';
+  document.getElementById('rrhh-tab-liq-btn').style.background = tab === 'liquidaciones' ? '#fff' : 'rgba(255,255,255,.2)';
+  document.getElementById('rrhh-tab-liq-btn').style.color = tab === 'liquidaciones' ? '#0f4c75' : '#fff';
+}
+
+function rrhhAvatarColor(name) {
+  const colors = ['#0f4c75','#1b6ca8','#0e7490','#065f46','#7c3aed','#b45309','#9d174d','#374151'];
+  let h = 0; for (const c of (name||'?')) h = (h * 31 + c.charCodeAt(0)) & 0xffff;
+  return colors[h % colors.length];
+}
+
+function rrhhRenderTrabajadores() {
+  const localFilter  = document.getElementById('rrhh-filter-local')?.value || '';
+  const statusFilter = document.getElementById('rrhh-filter-status')?.value;
+  const search       = (document.getElementById('rrhh-search')?.value || '').toLowerCase();
+  const fmt = n => '$' + Math.round(n||0).toLocaleString('es-CL');
+
+  let emps = [...rrhhEmployees];
+  if (localFilter)  emps = emps.filter(e => e.restaurantId === localFilter);
+  if (statusFilter === 'activo')   emps = emps.filter(e => e.activo !== false);
+  if (statusFilter === 'inactivo') emps = emps.filter(e => e.activo === false);
+  if (search) emps = emps.filter(e =>
+    (e.nombre||'').toLowerCase().includes(search) ||
+    (e.rut||'').toLowerCase().includes(search) ||
+    (e.cargo||'').toLowerCase().includes(search)
+  );
+  emps.sort((a,b) => (a.nombre||'').localeCompare(b.nombre||'','es'));
+
+  const list = document.getElementById('rrhh-trab-list');
+  if (!list) return;
+  if (!emps.length) {
+    list.innerHTML = '<div style="color:#9ca3af;font-size:13px;padding:24px;text-align:center">Sin trabajadores para mostrar.</div>';
+    return;
+  }
+
+  // Agrupar por local
+  const byRest = {};
+  emps.forEach(e => {
+    const key = e.restaurantId || '__sin_local__';
+    if (!byRest[key]) byRest[key] = [];
+    byRest[key].push(e);
+  });
+
+  list.innerHTML = Object.entries(byRest).map(([restId, grupo]) => {
+    const restName = restaurants.find(r => r.id === restId)?.name || restId || 'Sin local';
+    const rows = grupo.map(e => {
+      const isActivo = e.activo !== false;
+      const initials = (e.nombre||'?').split(' ').slice(0,2).map(w=>w[0]||'').join('').toUpperCase();
+      const avatarBg = rrhhAvatarColor(e.nombre);
+      const saludTxt = e.salud === 'ISAPRE' && e.saludIsapreUf > 0
+        ? `ISAPRE (${e.saludIsapreUf} UF)` : (e.salud || '—');
+      const contrato = e.tipoContrato === 'Plazo fijo' && e.fechaTermino
+        ? `PF hasta ${e.fechaTermino}` : (e.tipoContrato || '—');
+
+      return `
+      <tr style="border-bottom:1px solid #f3f4f6;transition:background .15s" onmouseover="this.style.background='#fafbff'" onmouseout="this.style.background=''">
+        <td style="padding:12px 16px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:36px;height:36px;border-radius:50%;background:${avatarBg};color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0">${initials}</div>
+            <div>
+              <div style="font-size:13px;font-weight:700;color:#111827">${e.nombre||'—'}</div>
+              <div style="font-size:11px;color:#6b7280">${e.rut||'—'}</div>
+            </div>
+          </div>
+        </td>
+        <td style="padding:12px 16px">
+          <div style="font-size:13px;color:#374151;font-weight:500">${e.cargo||'—'}</div>
+          <div style="font-size:11px;color:#9ca3af">${e.jornada||''}</div>
+        </td>
+        <td style="padding:12px 16px">
+          <div style="font-size:13px;font-weight:700;color:#0f4c75">${fmt(e.sueldoBase)}</div>
+          <div style="font-size:11px;color:#9ca3af">${contrato}</div>
+        </td>
+        <td style="padding:12px 16px">
+          <div style="font-size:12px;color:#374151">${e.afp||'—'}</div>
+          <div style="font-size:11px;color:#9ca3af">${saludTxt}</div>
+        </td>
+        <td style="padding:12px 16px">
+          <div style="font-size:11px;color:#6b7280">${e.celular||'—'}</div>
+          <div style="font-size:11px;color:#9ca3af;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px">${e.correo||''}</div>
+        </td>
+        <td style="padding:12px 16px">
+          <span style="font-size:11px;padding:3px 10px;border-radius:99px;font-weight:600;${isActivo?'background:#d1fae5;color:#065f46':'background:#f3f4f6;color:#6b7280'}">${isActivo?'Activo':'Inactivo'}</span>
+        </td>
+        <td style="padding:12px 16px;text-align:right;white-space:nowrap">
+          <button onclick="rrhhOpenModal('${e.id}')" style="font-size:11px;padding:4px 12px;border:1px solid #e5e7eb;border-radius:6px;background:#fff;cursor:pointer;color:#374151;margin-right:4px;font-weight:500">Editar</button>
+          <button onclick="rrhhDelete('${e.id}')" style="font-size:11px;padding:4px 10px;border:1px solid #fee2e2;border-radius:6px;background:#fff;cursor:pointer;color:#dc2626">✕</button>
+        </td>
+      </tr>`;
+    }).join('');
+
+    return `
+    <div style="background:#fff;border:1px solid #e5e7eb;border-radius:14px;overflow:hidden;margin-bottom:20px">
+      <div style="padding:12px 20px;background:linear-gradient(135deg,#0f4c75,#1b6ca8);display:flex;align-items:center;justify-content:space-between">
+        <div style="font-size:13px;font-weight:700;color:#fff">🏪 ${restName}</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.7)">${grupo.length} trabajador${grupo.length!==1?'es':''}</div>
+      </div>
+      <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse">
+          <thead>
+            <tr style="background:#f9fafb;border-bottom:1px solid #e5e7eb">
+              <th style="padding:8px 16px;text-align:left;font-size:10px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.05em">Trabajador</th>
+              <th style="padding:8px 16px;text-align:left;font-size:10px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.05em">Cargo</th>
+              <th style="padding:8px 16px;text-align:left;font-size:10px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.05em">Sueldo base</th>
+              <th style="padding:8px 16px;text-align:left;font-size:10px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.05em">Previsión</th>
+              <th style="padding:8px 16px;text-align:left;font-size:10px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.05em">Contacto</th>
+              <th style="padding:8px 16px;text-align:left;font-size:10px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.05em">Estado</th>
+              <th style="padding:8px 16px"></th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function rrhhOpenModal(id = null) {
+  rrhhEditId = id;
+  const modal = document.getElementById('rrhh-modal');
+  const title = document.getElementById('rrhh-modal-title');
+  if (id) {
+    const e = rrhhEmployees.find(x => x.id === id);
+    if (!e) return;
+    title.textContent = 'Editar trabajador';
+    document.getElementById('rf-nombre').value     = e.nombre || '';
+    document.getElementById('rf-rut').value        = e.rut || '';
+    document.getElementById('rf-fecnac').value     = e.fechaNacimiento || '';
+    document.getElementById('rf-nacionalidad').value = e.nacionalidad || '';
+    document.getElementById('rf-direccion').value  = e.direccion || '';
+    document.getElementById('rf-celular').value    = e.celular || '';
+    document.getElementById('rf-correo').value     = e.correo || '';
+    document.getElementById('rf-sexo').value       = e.sexo || 'Mujer';
+    document.getElementById('rf-ecivil').value     = e.estadoCivil || 'Soltero/a';
+    document.getElementById('rf-local').value      = e.restaurantId || '';
+    document.getElementById('rf-cargo').value      = e.cargo || '';
+    document.getElementById('rf-sueldo').value     = e.sueldoBase || 0;
+    document.getElementById('rf-jornada').value    = e.jornada || 'Completo';
+    document.getElementById('rf-contrato').value   = e.tipoContrato || 'Indefinido';
+    document.getElementById('rf-fecing').value     = e.fechaInicio || '';
+    document.getElementById('rf-fecterm').value    = e.fechaTermino || '';
+    document.getElementById('rf-fecterm-row').style.display = e.tipoContrato === 'Plazo fijo' ? 'block' : 'none';
+    document.getElementById('rf-afp').value        = e.afp || 'UNO';
+    document.getElementById('rf-salud').value      = e.salud || 'FONASA';
+    document.getElementById('rf-isapre-row').style.display = e.salud === 'ISAPRE' ? 'block' : 'none';
+    document.getElementById('rf-isapre-uf').value  = e.saludIsapreUf || '';
+    document.getElementById('rf-colacion').value   = e.colacion || 0;
+    document.getElementById('rf-movil').value      = e.movilizacion || 0;
+    document.getElementById('rf-asig-monto').value = e.asignacionMonto || 0;
+    document.getElementById('rf-asig-concepto').value = e.asignacionConcepto || '';
+    document.getElementById('rf-activo').checked   = e.activo !== false;
+  } else {
+    title.textContent = 'Agregar trabajador';
+    document.getElementById('rrhh-form').reset();
+    document.getElementById('rf-fecterm-row').style.display = 'none';
+    document.getElementById('rf-isapre-row').style.display  = 'none';
+    document.getElementById('rf-activo').checked = true;
+  }
+  document.getElementById('rrhh-form-msg').innerHTML = '';
+  modal.style.display = 'block';
+  document.body.style.overflow = 'hidden';
+}
+
+function rrhhCloseModal() {
+  document.getElementById('rrhh-modal').style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+async function rrhhSaveEmployee(ev) {
+  ev.preventDefault();
+  const msg = document.getElementById('rrhh-form-msg');
+  const emp = {
+    nombre:             document.getElementById('rf-nombre').value.trim(),
+    rut:                document.getElementById('rf-rut').value.trim(),
+    fechaNacimiento:    document.getElementById('rf-fecnac').value,
+    nacionalidad:       document.getElementById('rf-nacionalidad').value.trim(),
+    direccion:          document.getElementById('rf-direccion').value.trim(),
+    celular:            document.getElementById('rf-celular').value.trim(),
+    correo:             document.getElementById('rf-correo').value.trim(),
+    sexo:               document.getElementById('rf-sexo').value,
+    estadoCivil:        document.getElementById('rf-ecivil').value,
+    restaurantId:       document.getElementById('rf-local').value,
+    cargo:              document.getElementById('rf-cargo').value.trim(),
+    sueldoBase:         Number(document.getElementById('rf-sueldo').value),
+    jornada:            document.getElementById('rf-jornada').value,
+    tipoContrato:       document.getElementById('rf-contrato').value,
+    fechaInicio:        document.getElementById('rf-fecing').value,
+    fechaTermino:       document.getElementById('rf-fecterm').value,
+    afp:                document.getElementById('rf-afp').value,
+    salud:              document.getElementById('rf-salud').value,
+    saludIsapreUf:      Number(document.getElementById('rf-isapre-uf').value) || 0,
+    colacion:           Number(document.getElementById('rf-colacion').value) || 0,
+    movilizacion:       Number(document.getElementById('rf-movil').value) || 0,
+    asignacionMonto:    Number(document.getElementById('rf-asig-monto').value) || 0,
+    asignacionConcepto: document.getElementById('rf-asig-concepto').value.trim(),
+    activo:             document.getElementById('rf-activo').checked,
+  };
+  msg.innerHTML = '<span style="color:#9ca3af">Guardando...</span>';
+  try {
+    const url    = rrhhEditId ? `/api/rrhh/employees/${rrhhEditId}` : '/api/rrhh/employees';
+    const method = rrhhEditId ? 'PUT' : 'POST';
+    const res    = await apiFetch(url, { method, body: JSON.stringify(emp) });
+    if (!res.ok) throw new Error('Error del servidor');
+    msg.innerHTML = '<span style="color:#16a34a">✓ Guardado</span>';
+    await rrhhLoadEmployees();
+    rrhhRenderTrabajadores();
+    setTimeout(rrhhCloseModal, 800);
+  } catch(e) {
+    msg.innerHTML = `<span style="color:#dc3545">Error: ${e.message}</span>`;
+  }
+}
+
+async function rrhhDelete(id) {
+  const emp = rrhhEmployees.find(e => e.id === id);
+  if (!emp || !confirm(`¿Eliminar a ${emp.nombre}?`)) return;
+  try {
+    await apiFetch(`/api/rrhh/employees/${id}`, { method: 'DELETE' });
+    await rrhhLoadEmployees();
+    rrhhRenderTrabajadores();
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
+// ── Liquidaciones ─────────────────────────────────────────────
+function rrhhLiqLoadEmployee() {
+  const id = document.getElementById('rrhh-liq-emp')?.value;
+  rrhhLiqEmployee = rrhhEmployees.find(e => e.id === id) || null;
+  const infoDiv = document.getElementById('rrhh-liq-emp-info');
+  if (rrhhLiqEmployee && infoDiv) {
+    const e = rrhhLiqEmployee;
+    const fmt = n => '$' + Math.round(n||0).toLocaleString('es-CL');
+    infoDiv.style.display = 'block';
+    infoDiv.innerHTML = `
+      <div style="font-weight:700;color:#0f4c75;margin-bottom:6px">${e.nombre}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:3px">
+        <div>Cargo: ${e.cargo||'—'}</div>
+        <div>AFP: ${e.afp||'—'} (${((AFP_RATES[e.afp]||0)*100).toFixed(2)}%)</div>
+        <div>Sueldo base: <strong>${fmt(e.sueldoBase)}</strong></div>
+        <div>Salud: ${e.salud||'—'}${e.saludIsapreUf?' ('+e.saludIsapreUf+' UF)':''}</div>
+        <div>Colación: ${fmt(e.colacion)}</div>
+        <div>Movilización: ${fmt(e.movilizacion)}</div>
+      </div>`;
+  } else if (infoDiv) {
+    infoDiv.style.display = 'none';
+  }
+  rrhhLiqCalc();
+}
+
+function rrhhLiqCalc() {
+  const e = rrhhLiqEmployee;
+  const resultDiv = document.getElementById('rrhh-liq-result');
+  if (!e || !resultDiv) return;
+
+  const diasTrab  = Number(document.getElementById('rrhh-liq-dias')?.value) || 30;
+  const diasMes   = Number(document.getElementById('rrhh-liq-dias-mes')?.value) || 30;
+  const heOrd     = Number(document.getElementById('rrhh-liq-he-ord')?.value) || 0;
+  const heDom     = Number(document.getElementById('rrhh-liq-he-dom')?.value) || 0;
+  const heFer     = Number(document.getElementById('rrhh-liq-he-fer')?.value) || 0;
+  const bonos     = Number(document.getElementById('rrhh-liq-bonos')?.value) || 0;
+  const utm       = Number(document.getElementById('rrhh-liq-utm')?.value) || 68306;
+  const ufVal     = Number(document.getElementById('rrhh-liq-uf')?.value) || 40853;
+
+  const sueldoBase = e.sueldoBase || 0;
+  const afpTasa    = AFP_RATES[e.afp] || AFP_RATES['UNO'];
+  const colacion   = e.colacion || 0;
+  const movil      = e.movilizacion || 0;
+  const asigMonto  = e.asignacionMonto || 0;
+
+  // 1. Sueldo base proporcional a días trabajados
+  const sueldoConDias = Math.round((sueldoBase / diasMes) * diasTrab);
+
+  // 2. Valor hora normal = sueldo_base / (días_mes × 8)
+  const valorHora = sueldoBase / (diasMes * 8);
+
+  // 3. Horas extra ordinarias (50% recargo sobre valor hora)
+  const totalHeOrd = Math.round(valorHora * 1.5 * heOrd);
+
+  // 4. Domingos laborados (30% recargo sobre valor hora)
+  const totalHeDom = Math.round(valorHora * 1.3 * heDom);
+
+  // 5. Feriado irrenunciable (50% recargo sobre valor hora)
+  const totalHeFer = Math.round(valorHora * 1.5 * heFer);
+
+  // 6. Gratificación: MIN(25% sueldo base, 4.75 × IMM / 12) — Art. 50 CT
+  const IMM = 553553; // Ingreso Mínimo Mensual 2026
+  const baseGratif  = sueldoConDias + totalHeOrd + totalHeDom + totalHeFer + bonos + asigMonto;
+  const gratif25    = Math.round(sueldoConDias * 0.25);
+  const gratifTope  = Math.round(4.75 * IMM / 12); // $219.114
+  const gratificacion = Math.min(gratif25, gratifTope);
+  const usaTope = gratif25 > gratifTope;
+
+  // 7. Total imponible
+  const totalImponible = baseGratif + gratificacion;
+
+  // 8. Total no imponible
+  const totalNoImponible = colacion + movil;
+
+  // 9. Total bruto
+  const totalBruto = totalImponible + totalNoImponible;
+
+  // 10. Descuentos previsionales
+  const descAfp = Math.round(totalImponible * afpTasa);
+
+  let descSalud;
+  if (e.salud === 'ISAPRE' && e.saludIsapreUf > 0) {
+    descSalud = Math.round(e.saludIsapreUf * ufVal);
+  } else {
+    descSalud = Math.round(totalImponible * 0.07); // FONASA 7%
+  }
+
+  const descSegCes = Math.round(totalImponible * 0.006); // Empleado 0.6%
+
+  // 11. Renta tributable = imponible - AFP - salud - seg.ces.
+  const rentaTributable = totalImponible - descAfp - descSalud - descSegCes;
+
+  // 12. Impuesto único 2da categoría (tramos en UTM)
+  const impuesto = calcImpuesto(rentaTributable, utm);
+
+  // 13. Total descuentos y líquido
+  const totalDescuentos = descAfp + descSalud + descSegCes + impuesto;
+  const liquidoAPagar   = totalBruto - totalDescuentos;
+
+  // 14. Aportes empleador
+  const aporteMutual   = Math.round(totalImponible * 0.0093);
+  const aporteSegCes   = Math.round(totalImponible * 0.024);
+  const aporteSis      = Math.round(totalImponible * 0.0178);
+  const totalAportesEmp = aporteMutual + aporteSegCes + aporteSis;
+
+  const fmt = n => '$' + Math.round(n).toLocaleString('es-CL');
+  const row = (label, value, bold=false, color='#212529', bg='') =>
+    `<tr style="${bg?'background:'+bg:''}">
+      <td style="padding:7px 14px;font-size:13px;color:#6b7280">${label}</td>
+      <td style="padding:7px 14px;font-size:13px;text-align:right;${bold?'font-weight:700;':''}color:${color}">${value}</td>
+    </tr>`;
+
+  resultDiv.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div>
+        <div style="font-size:16px;font-weight:800;color:#0f4c75">${e.nombre}</div>
+        <div style="font-size:12px;color:#6b7280">${e.cargo||''} · ${restaurants.find(r=>r.id===e.restaurantId)?.name||''}</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:11px;color:#9ca3af">Líquido a pagar</div>
+        <div style="font-size:28px;font-weight:800;color:#10b981">${fmt(liquidoAPagar)}</div>
+      </div>
+    </div>
+
+    <table style="width:100%;border-collapse:collapse;margin-bottom:16px">
+      <thead><tr style="background:#f9fafb">
+        <th style="padding:8px 14px;text-align:left;font-size:10px;font-weight:600;color:#6b7280;text-transform:uppercase">Concepto</th>
+        <th style="padding:8px 14px;text-align:right;font-size:10px;font-weight:600;color:#6b7280;text-transform:uppercase">Monto</th>
+      </tr></thead>
+      <tbody>
+        <tr style="background:#eff6ff"><td colspan="2" style="padding:6px 14px;font-size:10px;font-weight:700;color:#1d4ed8;text-transform:uppercase">Haberes imponibles</td></tr>
+        ${row('Sueldo base ('+diasTrab+'/'+diasMes+' días)', fmt(sueldoConDias))}
+        ${heOrd > 0 ? row('Horas extra ordinarias ('+heOrd+'h × 50%)', fmt(totalHeOrd)) : ''}
+        ${heDom > 0 ? row('Domingos laborados ('+heDom+'h × 30%)', fmt(totalHeDom)) : ''}
+        ${heFer > 0 ? row('Feriado irrenunciable ('+heFer+'h × 50%)', fmt(totalHeFer)) : ''}
+        ${bonos > 0 ? row('Otros bonos', fmt(bonos)) : ''}
+        ${asigMonto > 0 ? row('Asignación fija ('+e.asignacionConcepto+')', fmt(asigMonto)) : ''}
+        ${row(usaTope ? 'Gratificación (tope 4,75 IMM/12)' : 'Gratificación (25% haber)', fmt(gratificacion))}
+        ${row('TOTAL IMPONIBLE', fmt(totalImponible), true, '#0f4c75', '#f0f7ff')}
+        <tr style="background:#f0fdf4"><td colspan="2" style="padding:6px 14px;font-size:10px;font-weight:700;color:#16a34a;text-transform:uppercase">Haberes no imponibles</td></tr>
+        ${colacion > 0 ? row('Colación', fmt(colacion)) : ''}
+        ${movil > 0 ? row('Movilización', fmt(movil)) : ''}
+        ${row('TOTAL BRUTO', fmt(totalBruto), true, '#111827', '#f9fafb')}
+        <tr style="background:#fef2f2"><td colspan="2" style="padding:6px 14px;font-size:10px;font-weight:700;color:#dc2626;text-transform:uppercase">Descuentos trabajador</td></tr>
+        ${row('AFP '+e.afp+' ('+((afpTasa)*100).toFixed(2)+'%)', '-'+fmt(descAfp), false, '#dc2626')}
+        ${row(e.salud==='ISAPRE'?'ISAPRE ('+e.saludIsapreUf+' UF)':'FONASA (7%)', '-'+fmt(descSalud), false, '#dc2626')}
+        ${row('Seguro cesantía (0.6%)', '-'+fmt(descSegCes), false, '#dc2626')}
+        ${row('Renta tributable', fmt(rentaTributable), false, '#374151', '#fafafa')}
+        ${row('Impuesto único 2ª cat.', impuesto > 0 ? '-'+fmt(impuesto) : '$0', false, impuesto > 0 ? '#dc2626' : '#6b7280')}
+        ${row('TOTAL DESCUENTOS', '-'+fmt(totalDescuentos), true, '#dc2626', '#fef2f2')}
+        <tr style="background:#d1fae5"><td colspan="2" style="padding:6px 14px;font-size:10px;font-weight:700;color:#065f46;text-transform:uppercase">Resultado</td></tr>
+        ${row('LÍQUIDO A PAGAR', fmt(liquidoAPagar), true, '#065f46', '#d1fae5')}
+      </tbody>
+    </table>
+
+    <div style="background:#f8fafc;border-radius:8px;padding:12px 14px;font-size:12px">
+      <div style="font-weight:700;color:#374151;margin-bottom:8px">Aportes empleador (costo empresa)</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+        ${[
+          ['Mutual Seg. (0.93%)', fmt(aporteMutual)],
+          ['Seg. Cesantía (2.4%)', fmt(aporteSegCes)],
+          ['SIS (1.78%)', fmt(aporteSis)],
+        ].map(([l,v]) => `<div style="background:#fff;border:1px solid #e5e7eb;border-radius:6px;padding:8px 10px">
+          <div style="color:#6b7280;font-size:10px">${l}</div>
+          <div style="font-weight:700;color:#374151">${v}</div>
+        </div>`).join('')}
+      </div>
+      <div style="margin-top:8px;font-weight:700;color:#374151">Costo total empresa: <span style="color:#0f4c75">${fmt(liquidoAPagar + totalAportesEmp)}</span></div>
+    </div>
+
+    <div id="rrhh-liq-data" style="display:none" data-json='${JSON.stringify({
+      empleadoId: e.id, empleadoNombre: e.nombre, cargo: e.cargo,
+      restaurantId: e.restaurantId,
+      diasTrab, diasMes, heOrd, heDom, heFer, bonos,
+      sueldoBase, sueldoConDias, totalHeOrd, totalHeDom, totalHeFer,
+      gratificacion, usaTope, IMM, totalImponible, totalNoImponible, totalBruto,
+      descAfp, descSalud, descSegCes, rentaTributable, impuesto,
+      totalDescuentos, liquidoAPagar,
+      aporteMutual, aporteSegCes, aporteSis,
+      utm, ufVal
+    }).replace(/'/g,"&#39;")}' ></div>`;
+}
+
+function calcImpuesto(renta, utm) {
+  if (renta <= 0) return 0;
+  const utms = renta / utm;
+  let imp = 0;
+  if      (utms <= 13.5) imp = 0;
+  else if (utms <= 30)   imp = renta * 0.04   - utm * 0.54;
+  else if (utms <= 50)   imp = renta * 0.08   - utm * 1.74;
+  else if (utms <= 70)   imp = renta * 0.135  - utm * 4.49;
+  else if (utms <= 90)   imp = renta * 0.23   - utm * 11.14;
+  else if (utms <= 120)  imp = renta * 0.304  - utm * 17.80;
+  else if (utms <= 150)  imp = renta * 0.35   - utm * 23.32;
+  else                   imp = renta * 0.40   - utm * 30.82;
+  return Math.max(0, Math.round(imp));
+}
+
+async function rrhhLiqGuardar() {
+  const dataEl = document.getElementById('rrhh-liq-data');
+  const msg    = document.getElementById('rrhh-liq-msg');
+  if (!dataEl || !rrhhLiqEmployee) { if(msg) msg.innerHTML='<span style="color:#dc3545">Calculá primero</span>'; return; }
+  const mes  = document.getElementById('rrhh-liq-mes')?.value;
+  const anio = document.getElementById('rrhh-liq-anio')?.value;
+  const payload = { ...JSON.parse(dataEl.dataset.json.replace(/&#39;/g,"'")), mes, anio };
+  if (msg) msg.innerHTML = '<span style="color:#9ca3af">Guardando...</span>';
+  try {
+    const res = await apiFetch('/api/rrhh/liquidaciones', { method:'POST', body: JSON.stringify(payload) });
+    if (!res.ok) throw new Error('Error del servidor');
+    if (msg) msg.innerHTML = '<span style="color:#16a34a">✓ Liquidación guardada</span>';
+    setTimeout(() => { if(msg) msg.innerHTML=''; }, 3000);
+    rrhhRenderHistorial();
+  } catch(e) {
+    if (msg) msg.innerHTML = `<span style="color:#dc3545">Error: ${e.message}</span>`;
+  }
+}
+
+async function rrhhRenderHistorial() {
+  const div = document.getElementById('rrhh-liq-historial');
+  if (!div) return;
+  try {
+    const res  = await apiFetch('/api/rrhh/liquidaciones');
+    const data = await res.json();
+    const liqs = (data.liquidaciones || []).slice(0, 20);
+    const fmt = n => '$' + Math.round(n||0).toLocaleString('es-CL');
+    const meses = ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+    if (!liqs.length) { div.innerHTML = '<div style="color:#9ca3af;font-size:13px">Sin liquidaciones guardadas.</div>'; return; }
+    div.innerHTML = liqs.map(l => `
+      <div style="background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:12px 16px;margin-bottom:8px;display:flex;align-items:center;gap:12px">
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:600;color:#111827">${l.empleadoNombre||'—'}</div>
+          <div style="font-size:11px;color:#6b7280">${l.cargo||''} · ${meses[l.mes]||''} ${l.anio||''}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:14px;font-weight:700;color:#10b981">${fmt(l.liquidoAPagar)}</div>
+          <div style="font-size:10px;color:#9ca3af">Líquido</div>
+        </div>
+        <button onclick="rrhhLiqDelete('${l.id}')" style="font-size:11px;padding:3px 8px;border:1px solid #fee2e2;border-radius:6px;background:#fff5f5;cursor:pointer;color:#dc2626">✕</button>
+      </div>`).join('');
+  } catch(e) { div.innerHTML = '<div style="color:#9ca3af;font-size:13px">Error cargando historial.</div>'; }
+}
+
+async function rrhhLiqDelete(id) {
+  if (!confirm('¿Eliminar esta liquidación?')) return;
+  await apiFetch(`/api/rrhh/liquidaciones/${id}`, { method: 'DELETE' });
+  rrhhRenderHistorial();
 }
 </script>
 
