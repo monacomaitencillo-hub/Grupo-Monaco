@@ -323,6 +323,16 @@ app.get('/api/ventas/:restaurantId', requireAuth, async (req, res) => {
       page++;
     }
 
+    // Server-side date filter: Fudo's lte may be ignored, so we filter manually
+    // Convert each sale's createdAt to Chilean date and verify it's within [from, to]
+    const toDateCL = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Santiago' });
+    allSales = allSales.filter(sale => {
+      const ca = sale.attributes?.createdAt;
+      if (!ca) return true;
+      const saleDate = toDateCL.format(new Date(ca));
+      return saleDate >= from && saleDate <= to;
+    });
+
     console.log(`Ventas ${restaurantId} ${from}→${to}: ${allSales.length} ventas`);
 
     if (!allSales.length) {
@@ -366,7 +376,7 @@ app.get('/api/ventas/:restaurantId', requireAuth, async (req, res) => {
       });
     });
 
-    res.json({ from, to, total, byPayMethod, salesCount: allSales.length });
+    res.json({ from, to, fudoRange: { start: startStr, end: endStr }, total, byPayMethod, salesCount: allSales.length });
   } catch(e) {
     console.error('ventas error:', e);
     res.status(500).json({ error: e.message });
@@ -3964,8 +3974,8 @@ app.post('/api/ctrl/ing/calce', requireAuth, async (req, res) => {
 
     // 1. Cargar datos base en paralelo
     const [invIniDoc, invFinDoc, recipesSnap, prepsSnap, prodsSnap, gddSnap] = await Promise.all([
-      db.collection('inventories').doc(invInicialId).get(),
-      db.collection('inventories').doc(invFinalId).get(),
+      db.collection('inventoryRecords').doc(invInicialId).get(),
+      db.collection('inventoryRecords').doc(invFinalId).get(),
       db.collection('recipes').get(),
       db.collection('preparations').get(),
       db.collection('products').get(),
@@ -4243,6 +4253,101 @@ function createMcpServer() {
         const margin = sellingNet > 0 ? Math.round((sellingNet - cost) / sellingNet * 100) : null;
         return { nombre: r.name, local: r.restaurantName || '—', categoria: r.category || '—', costo: Math.round(cost), precioVenta: selling, margen: margin !== null ? margin + '%' : 'sin precio', porciones: r.porciones || 1 };
       }).sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
+      return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+    }
+  );
+
+  server.tool(
+    'get_insumos',
+    'Devuelve la lista de insumos/ingredientes con costo por unidad estándar (kg o L). Filtrable por local y búsqueda de texto.',
+    {
+      restaurantName: z.string().optional().describe('Nombre del local (opcional). Ej: "Giardini"'),
+      search:         z.string().optional().describe('Texto para filtrar por nombre del insumo (opcional). Ej: "tomate"'),
+    },
+    async ({ restaurantName, search }) => {
+      const [prodSnap, supSnap, restSnap, priceSnap] = await Promise.all([
+        db.collection('products').orderBy('name').get(),
+        db.collection('suppliers').get(),
+        db.collection('restaurants').get(),
+        db.collection('product_price_history').get(),
+      ]);
+
+      const suppliers = {};
+      const restNames = {};
+      supSnap.docs.forEach(d  => { suppliers[d.id] = d.data().name; });
+      restSnap.docs.forEach(d => { restNames[d.id] = d.data().name; });
+
+      // Precio más reciente por producto
+      const latestPriceMap = {};
+      const latestDateMap  = {};
+      priceSnap.docs.forEach(d => {
+        const { productId, mes, precio, updatedAt } = d.data();
+        if (!productId) return;
+        if (!latestPriceMap[productId] || mes > latestPriceMap[productId].mes) {
+          latestPriceMap[productId] = { mes, precio };
+          latestDateMap[productId]  = updatedAt || mes || null;
+        }
+      });
+
+      // Factor de normalización: convierte la unidad guardada a kg o L
+      function normalizeCost(costPerUnit, unit) {
+        if (!unit) return { costoNeto: costPerUnit, unidadEstandar: 'unidad', factor: null };
+        const u = unit.toLowerCase().trim();
+        // Ya está en kg o L
+        if (u === 'kg' || u === 'kilo' || u === 'kilos')          return { costoNeto: costPerUnit, unidadEstandar: 'kg',    factor: null };
+        if (u === 'l'  || u === 'litro' || u === 'litros' || u === 'lt') return { costoNeto: costPerUnit, unidadEstandar: 'L',  factor: null };
+        if (u === 'unidad' || u === 'und' || u === 'u')            return { costoNeto: costPerUnit, unidadEstandar: 'unidad', factor: null };
+        // Gramos → kg
+        if (u === 'g' || u === 'gr' || u === 'gramo' || u === 'gramos')
+          return { costoNeto: Math.round(costPerUnit * 1000), unidadEstandar: 'kg', factor: '×1000 (g→kg)' };
+        // Mililitros → L
+        if (u === 'ml' || u === 'cc' || u === 'mililitro' || u === 'mililitros')
+          return { costoNeto: Math.round(costPerUnit * 1000), unidadEstandar: 'L', factor: '×1000 (ml→L)' };
+        // 100g
+        if (u === '100g' || u === '100 g')
+          return { costoNeto: Math.round(costPerUnit * 10), unidadEstandar: 'kg', factor: '×10 (100g→kg)' };
+        // Porción genérica: dejar como unidad
+        return { costoNeto: costPerUnit, unidadEstandar: u, factor: null };
+      }
+
+      let items = prodSnap.docs.map(d => {
+        const data = d.data();
+        const rawCost = latestPriceMap[d.id]?.precio ?? data.costPerUnit ?? 0;
+        const { costoNeto, unidadEstandar, factor } = normalizeCost(rawCost, data.unit);
+        return {
+          id:           d.id,
+          nombre:       data.name || '—',
+          unidad:       unidadEstandar,
+          costoNeto,
+          factor,
+          proveedor:    (data.supplierIds || []).map(id => suppliers[id]).filter(Boolean).join(', ') || null,
+          locales:      (data.restaurantIds || []).map(id => restNames[id]).filter(Boolean),
+          categoria:    data.category || null,
+          actualizado:  latestDateMap[d.id] || null,
+        };
+      });
+
+      // Filtros
+      if (restaurantName) {
+        const q = restaurantName.toLowerCase();
+        items = items.filter(i => i.locales.some(l => l.toLowerCase().includes(q)));
+      }
+      if (search) {
+        const q = search.toLowerCase();
+        items = items.filter(i => i.nombre.toLowerCase().includes(q));
+      }
+
+      // Limpiar campos nulls para respuesta limpia
+      const result = items.map(i => {
+        const out = { nombre: i.nombre, unidad: i.unidad, costoNeto: i.costoNeto };
+        if (i.factor)     out.factorConversion = i.factor;
+        if (i.proveedor)  out.proveedor = i.proveedor;
+        if (i.locales?.length) out.locales = i.locales;
+        if (i.categoria)  out.categoria = i.categoria;
+        if (i.actualizado) out.actualizado = i.actualizado;
+        return out;
+      });
+
       return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
     }
   );

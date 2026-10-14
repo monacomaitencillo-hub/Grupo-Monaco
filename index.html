@@ -819,9 +819,9 @@
       <button class="filter-btn active" id="ventas-hoy-btn" onclick="setVentasToday()">Hoy</button>
       <div style="display:flex;align-items:center;gap:4px">
         <button onclick="shiftVentasRange(-1)" style="width:28px;height:28px;border-radius:50%;border:1px solid #dee2e6;background:transparent;color:#6c757d;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center">‹</button>
-        <input type="date" id="ventas-date-from" onchange="loadVentas()" title="Desde">
+        <input type="date" id="ventas-date-from" onchange="ventasFromChange()" title="Desde">
         <span style="color:#aaa;font-size:13px">—</span>
-        <input type="date" id="ventas-date-to" onchange="loadVentas()" title="Hasta">
+        <input type="date" id="ventas-date-to" onchange="ventasToChange()" title="Hasta">
         <button onclick="shiftVentasRange(1)" style="width:28px;height:28px;border-radius:50%;border:1px solid #dee2e6;background:transparent;color:#6c757d;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center">›</button>
       </div>
       <button id="ventas-stop-btn" onclick="stopVentas()" style="display:none;align-items:center;gap:5px;padding:5px 12px;border-radius:20px;border:1px solid #dee2e6;background:transparent;color:#6c757d;font-size:13px;cursor:pointer">
@@ -1243,8 +1243,8 @@
       </div>
 
       <!-- Panel drill-down categoría -->
-      <div id="vp-drilldown" style="display:none;margin-top:20px">
-        <div style="background:#fff;border-radius:14px;border:1px solid #e5e7eb;overflow:hidden">
+      <div id="vp-drilldown" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;overflow-y:auto;padding:24px 16px">
+        <div style="background:#fff;border-radius:14px;max-width:960px;margin:0 auto;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.3)">
           <div style="padding:16px 20px;border-bottom:1px solid #e5e7eb;display:flex;align-items:center;justify-content:space-between">
             <div>
               <span style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.5px">Análisis de categoría</span>
@@ -2453,6 +2453,22 @@ function shiftVentasRange(delta) {
   loadVentas();
 }
 
+let _ventasDateTimer = null;
+function ventasFromChange() {
+  const fromEl = document.getElementById('ventas-date-from');
+  const toEl   = document.getElementById('ventas-date-to');
+  if (fromEl.value && toEl.value && fromEl.value > toEl.value) toEl.value = fromEl.value;
+  clearTimeout(_ventasDateTimer);
+  _ventasDateTimer = setTimeout(loadVentas, 500);
+}
+function ventasToChange() {
+  const fromEl = document.getElementById('ventas-date-from');
+  const toEl   = document.getElementById('ventas-date-to');
+  if (fromEl.value && toEl.value && toEl.value < fromEl.value) fromEl.value = toEl.value;
+  clearTimeout(_ventasDateTimer);
+  _ventasDateTimer = setTimeout(loadVentas, 500);
+}
+
 let ventasAbort = null;
 
 function stopVentas() {
@@ -2536,13 +2552,15 @@ function renderVentas(from, to, results, partial = false) {
 
   const totalCard = active.length > 1 ? `
     <div style="background:#fdf8f3;border:2px solid #8B5A2B;border-radius:12px;padding:20px 22px;margin-bottom:16px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
         <div style="font-size:13px;font-weight:700;color:#8B5A2B;text-transform:uppercase;letter-spacing:.05em">Total ${active.length} locales${partial ? ' (cargando…)' : ''}</div>
         <span style="font-size:13px;color:#6c757d">${totalVentas} ventas</span>
       </div>
+      <div style="font-size:11px;color:#a07850;margin-bottom:10px">📅 Período consultado: ${dateLabel}</div>
       <div style="font-size:32px;font-weight:800;color:#8B5A2B;margin-bottom:12px">${fmt(totalGeneral)}</div>
       ${methodsGlobal}
-    </div>` : '';
+    </div>` : `
+    <div style="font-size:11px;color:#9ca3af;margin-bottom:12px">📅 Período: ${dateLabel}</div>`;
 
   document.getElementById('ventas-content').innerHTML = totalCard + results.map(data => {
     if (data.noFudo) return '';
@@ -3001,7 +3019,7 @@ async function ctrlIngInit() {
 
 async function ctrlIngLoadSheetTabs() {
   try {
-    const r = await apiFetch('/api/ventas/sheet-tabs');
+    const r = await apiFetch('/api/ventas-sheets/tabs');
     const d = await r.json();
     ctrlIngSheetTabs = d.tabs || [];
   } catch(e) { ctrlIngSheetTabs = []; }
@@ -3256,11 +3274,143 @@ async function ctrlIngLoadVentasSummary() {
 }
 
 async function ctrlIngInformeTodo() {
-  const informeDiv = document.getElementById('ctrl-informe-all');
-  if (!informeDiv) return;
-  informeDiv.innerHTML = '<div style="color:#9ca3af;font-size:13px;padding:12px 0">Generando informe...</div>';
-  // TODO: implement multi-section report
-  informeDiv.innerHTML = '';
+  const sections = ctrlIngGroupBySections();
+  const sectionNames = Object.keys(sections).filter(s => sections[s].length >= 2);
+  if (!sectionNames.length) { alert('No hay secciones con al menos 2 inventarios para generar el informe.'); return; }
+
+  const restSel = document.getElementById('ctrl-rest-sel');
+  const restId  = restSel?.value;
+  const restNombre = restSel?.options[restSel.selectedIndex]?.text || 'Local';
+  const from = document.getElementById('ctrl-date-from')?.value || '';
+  const to   = document.getElementById('ctrl-date-to')?.value || '';
+  const fmtD = d => d ? new Date(d+'T12:00:00Z').toLocaleDateString('es-CL', {day:'numeric', month:'long', year:'numeric'}) : '—';
+
+  // Crear modal
+  let modal = document.getElementById('ctrl-informe-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'ctrl-informe-modal';
+    modal.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;overflow-y:auto;padding:24px 16px';
+    document.body.appendChild(modal);
+  }
+  modal.innerHTML = `
+    <div style="background:#fff;border-radius:16px;max-width:1000px;margin:0 auto;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+      <div style="padding:20px 28px;border-bottom:1px solid #e5e7eb;display:flex;align-items:center;justify-content:space-between;background:#f9fafb">
+        <div>
+          <div style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.5px">Informe de Calce · Inventario</div>
+          <h2 style="margin:4px 0 0;font-size:18px;font-weight:700;color:#111827">${restNombre}</h2>
+          ${from ? `<div style="font-size:12px;color:#6b7280;margin-top:2px">Período: ${fmtD(from)} → ${fmtD(to)}</div>` : ''}
+        </div>
+        <div style="display:flex;gap:8px">
+          <button onclick="window.print()" style="background:#10b981;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer">🖨 Imprimir / PDF</button>
+          <button onclick="document.getElementById('ctrl-informe-modal').style.display='none';document.body.style.overflow=''" style="background:#f3f4f6;border:none;border-radius:8px;padding:8px 16px;font-size:13px;color:#374151;cursor:pointer;font-weight:600">✕ Cerrar</button>
+        </div>
+      </div>
+      <div id="ctrl-informe-modal-body" style="padding:24px 28px">
+        <div style="text-align:center;padding:40px;color:#9ca3af;font-size:14px">Calculando secciones…</div>
+      </div>
+    </div>`;
+  modal.style.display = 'block';
+  document.body.style.overflow = 'hidden';
+
+  const body = document.getElementById('ctrl-informe-modal-body');
+  let productIds = [...(ctrlIngConfig.productIds || [])];
+  const fmt  = n => n == null ? '—' : (Math.round(n * 1000) / 1000).toLocaleString('es-CL');
+  const fmtC = n => n == null ? '—' : '$' + Math.round(n).toLocaleString('es-CL');
+  const colorDiff = n => n == null ? '#9ca3af' : n > 0 ? '#dc2626' : n < 0 ? '#16a34a' : '#374151';
+  const fmtDd = d => d ? new Date(d+'T12:00:00Z').toLocaleDateString('es-CL', {day:'numeric', month:'short', year:'numeric'}) : '—';
+
+  let allHtml = '';
+  for (const sec of sectionNames) {
+    const invs   = sections[sec];
+    const invFin = invs[0];
+    const invIni = invs[1];
+
+    // Filtrar por categorías de sección si hay config
+    let secProductIds = [...productIds];
+    const secCats = ctrlSecCategories[sec];
+    if (secCats && secCats.length > 0) {
+      const catSet = new Set(secCats);
+      const filtered = secProductIds.filter(pid => {
+        const cat = ctrlProductCatMap[pid]
+          || ctrlIngConfigAllItems.find(i => i.productId === pid)?.category
+          || 'Sin categoría';
+        return catSet.has(cat);
+      });
+      if (filtered.length > 0) secProductIds = filtered;
+    }
+
+    let tableHtml = '';
+    try {
+      const res  = await apiFetch('/api/ctrl/ing/calce', {
+        method: 'POST',
+        body: JSON.stringify({ restaurantId: restId, invInicialId: invIni.id, invFinalId: invFin.id, productIds: secProductIds, sheetTab: ctrlIngConfig.sheetTab || null })
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      const { results = [], from: dFrom, to: dTo, hasVentas } = data;
+
+      // Conteo de alertas (diferencia > 0)
+      const alertas = results.filter(r => {
+        const stockTeo = (hasVentas && r.consumoTeorico != null) ? r.stockInicial + (r.entradasGDD||0) - r.consumoTeorico : null;
+        return stockTeo != null && (stockTeo - r.stockFinal) > 0;
+      }).length;
+
+      tableHtml = `
+        <div style="font-size:12px;color:#9ca3af;margin-bottom:10px">
+          Período calce: ${fmtDd(dFrom)} → ${fmtDd(dTo)} · ${results.length} productos
+          ${alertas > 0 ? `· <span style="color:#dc2626;font-weight:600">⚠ ${alertas} con diferencia positiva</span>` : `· <span style="color:#16a34a;font-weight:600">✓ Sin diferencias</span>`}
+        </div>
+        <div style="overflow-x:auto;border-radius:10px;border:1px solid #e9ecef">
+          <table style="width:100%;border-collapse:collapse;font-size:12px;min-width:640px">
+            <thead>
+              <tr style="background:#f9fafb;border-bottom:2px solid #e5e7eb">
+                <th style="padding:9px 12px;text-align:left;font-weight:600;color:#374151">Producto</th>
+                <th style="padding:9px 12px;text-align:right;font-weight:600;color:#374151">Stock Ini.</th>
+                <th style="padding:9px 12px;text-align:right;font-weight:600;color:#374151">GDD +</th>
+                <th style="padding:9px 12px;text-align:right;font-weight:600;color:#d97706">Cons. Teórico</th>
+                <th style="padding:9px 12px;text-align:right;font-weight:600;color:#1d4ed8;background:#eff6ff">Debería quedar</th>
+                <th style="padding:9px 12px;text-align:right;font-weight:600;color:#374151">Stock Real</th>
+                <th style="padding:9px 12px;text-align:right;font-weight:600;color:#374151">Diferencia</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${results.map(r => {
+                const stockTeo = (hasVentas && r.consumoTeorico != null) ? r.stockInicial + (r.entradasGDD||0) - r.consumoTeorico : null;
+                const diff = stockTeo != null ? stockTeo - r.stockFinal : null;
+                return `<tr style="border-bottom:1px solid #f3f4f6">
+                  <td style="padding:8px 12px;color:#111827;font-weight:600">${r.name} <span style="font-size:10px;color:#9ca3af;font-weight:400">${r.unit||''}</span></td>
+                  <td style="padding:8px 12px;text-align:right;color:#374151">${fmt(r.stockInicial)}</td>
+                  <td style="padding:8px 12px;text-align:right;color:${r.entradasGDD>0?'#16a34a':'#6b7280'}">${r.entradasGDD>0?'+':''}${fmt(r.entradasGDD||0)}</td>
+                  <td style="padding:8px 12px;text-align:right;color:${hasVentas?'#d97706':'#9ca3af'};font-weight:${hasVentas?700:400}">${hasVentas?fmt(r.consumoTeorico):'—'}</td>
+                  <td style="padding:8px 12px;text-align:right;color:#1d4ed8;font-weight:700;background:#f0f7ff">${stockTeo!=null?fmt(stockTeo):'—'}</td>
+                  <td style="padding:8px 12px;text-align:right;color:#111827;font-weight:700">${fmt(r.stockFinal)}</td>
+                  <td style="padding:8px 12px;text-align:right;font-weight:700;color:${colorDiff(diff)}">${diff!=null?(diff>=0?'+':'')+fmt(diff):'—'}</td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>`;
+    } catch(e) {
+      tableHtml = `<div style="color:#dc2626;font-size:13px;padding:10px 0">Error al calcular: ${e.message}</div>`;
+    }
+
+    allHtml += `
+      <div style="margin-bottom:28px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+          <div style="width:4px;height:22px;background:#1d4ed8;border-radius:2px;flex-shrink:0"></div>
+          <div>
+            <div style="font-size:16px;font-weight:700;color:#111827">${sec}</div>
+            <div style="font-size:11px;color:#6b7280">
+              Inicial: ${fmtDd(invIni.date)} → Final: ${fmtDd(invFin.date)}
+            </div>
+          </div>
+        </div>
+        ${tableHtml}
+      </div>`;
+  }
+
+  body.innerHTML = allHtml || '<div style="color:#9ca3af;text-align:center;padding:40px">Sin datos para mostrar.</div>';
 }
 
 function ctrlIngSwitchTab(tab) {
@@ -3442,32 +3592,47 @@ function ctrlIngBuildResultTable(data) {
            style="font-size:10px;padding:1px 6px;border:1px solid #dee2e6;border-radius:4px;background:#f8fafc;cursor:pointer;color:#6b7280;margin-left:6px">▼ detalle</button>`
       : '';
     const sorted = hasDetalle ? [...r.detalle].sort((a,b) => b.subtotal - a.subtotal) : [];
+    const maxSub = sorted.length ? Math.max(...sorted.map(d => d.subtotal), 1) : 1;
+    const detColors = ['#3b82f6','#10b981','#f59e0b','#8b5cf6','#ef4444','#0ea5e9','#f97316','#ec4899','#14b8a6','#6366f1'];
     const detalleRow = hasDetalle ? `
-      <tr id="${detalleId}" style="display:none;background:#fafbff">
-        <td colspan="7" style="padding:0 10px 12px 10px;border-bottom:1px solid #e9ecef">
-          <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.3px;margin:10px 0 6px">
-            Detalle consumo teórico — ${r.name}
+      <tr id="${detalleId}" style="display:none">
+        <td colspan="7" style="padding:0;border-bottom:2px solid #e5e7eb">
+          <div style="background:#fafbff;padding:14px 20px 16px 20px">
+            <!-- Header -->
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+              <div style="width:3px;height:18px;background:#1d4ed8;border-radius:2px;flex-shrink:0"></div>
+              <div style="font-size:12px;font-weight:700;color:#1e293b">Consumo teórico de <span style="color:#1d4ed8">${r.name}</span> — ¿de dónde vienen los ${fmtN(r.consumoTeorico)} ${r.unit||''}?</div>
+            </div>
+            <!-- Cards de recetas -->
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;margin-bottom:12px">
+              ${sorted.map((d, i) => {
+                const col = detColors[i % detColors.length];
+                const pct = Math.round((d.subtotal / r.consumoTeorico) * 100);
+                const barW = Math.round((d.subtotal / maxSub) * 100);
+                return `<div style="background:#fff;border-radius:10px;border:1px solid #e5e7eb;border-top:3px solid ${col};padding:10px 14px">
+                  <div style="font-size:12px;font-weight:700;color:#1e293b;margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${d.recipeName}">${d.recipeName}</div>
+                  <div style="font-size:11px;color:#64748b;margin-bottom:8px">
+                    <span style="font-weight:600;color:#374151">${fmtN(d.cantVendida)}</span> vendido${d.cantVendida!==1?'s':''}
+                    × <span style="font-weight:600;color:#374151">${fmtN(d.usoPorUnidad)} ${r.unit||''}</span>
+                  </div>
+                  <div style="height:5px;background:#f1f5f9;border-radius:3px;margin-bottom:6px">
+                    <div style="width:${barW}%;height:100%;background:${col};border-radius:3px"></div>
+                  </div>
+                  <div style="display:flex;align-items:center;justify-content:space-between">
+                    <span style="font-size:10px;font-weight:600;color:#94a3b8">${pct}% del total</span>
+                    <span style="font-size:13px;font-weight:800;color:${col}">${fmtN(d.subtotal)} ${r.unit||''}</span>
+                  </div>
+                </div>`;
+              }).join('')}
+            </div>
+            <!-- Total -->
+            <div style="background:#1d4ed8;border-radius:8px;padding:8px 16px;display:flex;align-items:center;justify-content:space-between">
+              <div style="font-size:11px;font-weight:600;color:rgba(255,255,255,.8)">
+                ${sorted.length} receta${sorted.length!==1?'s':''} → consumo teórico total
+              </div>
+              <div style="font-size:16px;font-weight:800;color:#fff">${fmtN(r.consumoTeorico)} ${r.unit||''}</div>
+            </div>
           </div>
-          <table style="width:100%;border-collapse:collapse;font-size:12px">
-            <thead><tr style="background:#f1f5f9">
-              <th style="text-align:left;padding:5px 8px;color:#6b7280;font-weight:600">Plato vendido</th>
-              <th style="text-align:right;padding:5px 8px;color:#6b7280;font-weight:600">Vendidos</th>
-              <th style="text-align:right;padding:5px 8px;color:#6b7280;font-weight:600">Uso / unidad</th>
-              <th style="text-align:right;padding:5px 8px;color:#6b7280;font-weight:600">Subtotal</th>
-            </tr></thead>
-            <tbody>
-              ${sorted.map(d => `<tr>
-                <td style="padding:4px 8px;color:#374151">${d.recipeName}</td>
-                <td style="text-align:right;padding:4px 8px;color:#6b7280">${fmtN(d.cantVendida)}</td>
-                <td style="text-align:right;padding:4px 8px;color:#6b7280">${fmtN(d.usoPorUnidad)} ${r.unit||''}</td>
-                <td style="text-align:right;padding:4px 8px;font-weight:600;color:#1d4ed8">${fmtN(d.subtotal)} ${r.unit||''}</td>
-              </tr>`).join('')}
-              <tr style="background:#e8f0fe">
-                <td colspan="3" style="padding:5px 8px;font-weight:700;color:#374151;text-align:right">TOTAL TEÓRICO</td>
-                <td style="text-align:right;padding:5px 8px;font-weight:800;color:#1d4ed8">${fmtN(r.consumoTeorico)} ${r.unit||''}</td>
-              </tr>
-            </tbody>
-          </table>
         </td>
       </tr>` : '';
 
@@ -3484,7 +3649,7 @@ function ctrlIngBuildResultTable(data) {
       </td>
       ${td(fmt(r.stockInicial))}
       ${td(r.entradasGDD > 0 ? `<span style="color:#16a34a">+${fmt(r.entradasGDD)}</span>` : fmt(r.entradasGDD || 0))}
-      ${td(hasVentas ? fmt(r.consumoTeorico) : '—', '#6c757d')}
+      ${td(hasVentas ? fmt(r.consumoTeorico) : '—', hasVentas ? '#d97706' : '#9ca3af', hasVentas)}
       <td style="padding:8px 10px;font-size:13px;text-align:right;border-bottom:1px solid #f0f0f0;background:#f0f7ff">${stockTeoHtml}</td>
       ${td(fmt(r.stockFinal), '#212529', true)}
       <td style="padding:8px 10px;font-size:13px;text-align:right;border-bottom:1px solid #f0f0f0">${diffHtml}</td>
@@ -13499,11 +13664,12 @@ async function vpOpenDrilldown(cat) {
     </div>`).join('');
 
   document.getElementById('vp-drilldown').style.display = 'block';
-  document.getElementById('vp-drilldown').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  document.body.style.overflow = 'hidden';
 }
 
 function vpCloseDrilldown() {
   document.getElementById('vp-drilldown').style.display = 'none';
+  document.body.style.overflow = '';
 }
 
 async function vpShowReceta(nombre) {
@@ -14800,29 +14966,68 @@ async function rrhhLiqGuardar() {
   }
 }
 
+let rrhhHistorialData = [];
+
 async function rrhhRenderHistorial() {
   const div = document.getElementById('rrhh-liq-historial');
   if (!div) return;
   try {
     const res  = await apiFetch('/api/rrhh/liquidaciones');
     const data = await res.json();
-    const liqs = (data.liquidaciones || []).slice(0, 20);
+    rrhhHistorialData = data.liquidaciones || [];
+    const liqs = rrhhHistorialData.slice(0, 50);
     const fmt = n => '$' + Math.round(n||0).toLocaleString('es-CL');
     const meses = ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+    const mesesFull = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
     if (!liqs.length) { div.innerHTML = '<div style="color:#9ca3af;font-size:13px">Sin liquidaciones guardadas.</div>'; return; }
     div.innerHTML = liqs.map(l => `
-      <div style="background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:12px 16px;margin-bottom:8px;display:flex;align-items:center;gap:12px">
-        <div style="flex:1">
-          <div style="font-size:13px;font-weight:600;color:#111827">${l.empleadoNombre||'—'}</div>
-          <div style="font-size:11px;color:#6b7280">${l.cargo||''} · ${meses[l.mes]||''} ${l.anio||''}</div>
+      <div onclick="rrhhLiqCargar('${l.id}')" style="background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:12px 16px;margin-bottom:8px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:border-color .15s,box-shadow .15s" onmouseover="this.style.borderColor='#0f4c75';this.style.boxShadow='0 2px 8px rgba(15,76,117,.1)'" onmouseout="this.style.borderColor='#e5e7eb';this.style.boxShadow=''">
+        <div style="width:34px;height:34px;border-radius:50%;background:#e0f2fe;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <span style="font-size:14px">📄</span>
         </div>
-        <div style="text-align:right">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600;color:#111827;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${l.empleadoNombre||'—'}</div>
+          <div style="font-size:11px;color:#6b7280">${l.cargo||''} · ${mesesFull[l.mes]||''} ${l.anio||''}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
           <div style="font-size:14px;font-weight:700;color:#10b981">${fmt(l.liquidoAPagar)}</div>
           <div style="font-size:10px;color:#9ca3af">Líquido</div>
         </div>
-        <button onclick="rrhhLiqDelete('${l.id}')" style="font-size:11px;padding:3px 8px;border:1px solid #fee2e2;border-radius:6px;background:#fff5f5;cursor:pointer;color:#dc2626">✕</button>
+        <button onclick="event.stopPropagation();rrhhLiqDelete('${l.id}')" style="font-size:11px;padding:4px 9px;border:1px solid #fee2e2;border-radius:6px;background:#fff;cursor:pointer;color:#dc2626;flex-shrink:0">✕</button>
       </div>`).join('');
   } catch(e) { div.innerHTML = '<div style="color:#9ca3af;font-size:13px">Error cargando historial.</div>'; }
+}
+
+function rrhhLiqCargar(id) {
+  const l = rrhhHistorialData.find(x => x.id === id);
+  if (!l) return;
+
+  // Seleccionar empleado
+  const empSel = document.getElementById('rrhh-liq-emp');
+  if (empSel) empSel.value = l.empleadoId || '';
+
+  // Mes y año
+  const mesSel = document.getElementById('rrhh-liq-mes');
+  if (mesSel) mesSel.value = l.mes || (new Date().getMonth() + 1);
+  const anioEl = document.getElementById('rrhh-liq-anio');
+  if (anioEl) anioEl.value = l.anio || new Date().getFullYear();
+
+  // Inputs numéricos
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val ?? 0; };
+  set('rrhh-liq-dias',     l.diasTrab);
+  set('rrhh-liq-dias-mes', l.diasMes);
+  set('rrhh-liq-he-ord',   l.heOrd);
+  set('rrhh-liq-he-dom',   l.heDom);
+  set('rrhh-liq-he-fer',   l.heFer);
+  set('rrhh-liq-bonos',    l.bonos);
+  set('rrhh-liq-utm',      l.utm || 68306);
+  set('rrhh-liq-uf',       l.ufVal || 40853);
+
+  // Cargar empleado y recalcular
+  rrhhLiqLoadEmployee();
+
+  // Scroll al panel de resultado
+  document.getElementById('rrhh-liq-result')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 async function rrhhLiqDelete(id) {
