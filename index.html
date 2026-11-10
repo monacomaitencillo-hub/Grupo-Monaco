@@ -1750,6 +1750,7 @@
     <div class="cierres-tabs" style="margin-left:24px">
       <button class="cierres-tab active" id="gdd-tab-nueva"     onclick="gddSwitchTab('nueva')">Nueva guía</button>
       <button class="cierres-tab"        id="gdd-tab-historial" onclick="gddSwitchTab('historial')">Historial</button>
+      <button class="cierres-tab"        id="gdd-tab-productos" onclick="gddSwitchTab('productos')">Productos GDD</button>
     </div>
     <button id="gdd-export-btn" onclick="gddExportExcel()"
       style="margin-left:auto;background:#198754;color:#fff;border:none;border-radius:8px;padding:7px 16px;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px">
@@ -1761,7 +1762,7 @@
   <div id="gdd-tab-nueva-content" style="flex:1;padding:32px 28px;max-width:900px;width:100%;margin:0 auto">
 
     <div id="gdd-step-upload">
-      <p style="font-size:13px;color:#6c757d;margin-bottom:28px">Sube una foto o PDF de la guía de despacho para extraer los productos automáticamente.</p>
+      <p style="font-size:13px;color:#6c757d;margin-bottom:28px">Sube una foto o PDF de la guía de despacho para extraer los productos automáticamente. Si la guía tiene varias hojas, agrégalas todas antes de analizar.</p>
       <div style="display:flex;gap:16px;flex-wrap:wrap">
         <label for="gdd-file-input" style="flex:1;min-width:200px;cursor:pointer">
           <div class="gdd-upload-card">
@@ -1770,7 +1771,7 @@
             <div style="font-size:12px;color:#6c757d">JPG, PNG, PDF</div>
           </div>
         </label>
-        <input type="file" id="gdd-file-input" accept=".pdf,image/*" style="display:none" onchange="gddHandleFile(this)">
+        <input type="file" id="gdd-file-input" accept=".pdf,image/*" multiple style="display:none" onchange="gddHandleFile(this)">
 
         <label for="gdd-camera-input" style="flex:1;min-width:200px;cursor:pointer">
           <div class="gdd-upload-card">
@@ -1780,6 +1781,12 @@
           </div>
         </label>
         <input type="file" id="gdd-camera-input" accept="image/*" capture="environment" style="display:none" onchange="gddHandleFile(this)">
+      </div>
+      <div id="gdd-pending" style="display:none;margin-top:24px;background:#fff;border:1px solid #dee2e6;border-radius:12px;padding:16px 20px">
+        <div style="font-size:14px;font-weight:600;color:#212529;margin-bottom:10px">Hojas de esta guía</div>
+        <div id="gdd-pending-list" style="font-size:13px;color:#212529;margin-bottom:14px"></div>
+        <div style="font-size:12px;color:#6c757d;margin-bottom:14px">¿Tiene otra hoja? Usá "Abrir cámara" o "Subir" de nuevo para agregarla.</div>
+        <button onclick="gddAnalizar()" style="padding:10px 22px;background:#374151;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;color:#fff">Analizar guía</button>
       </div>
     </div>
 
@@ -1796,13 +1803,15 @@
           <div style="font-size:12px;color:#6c757d;margin-top:2px" id="gdd-result-fecha"></div>
         </div>
         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-          <select id="gdd-local-select" style="padding:8px 12px;border:1px solid #dee2e6;border-radius:8px;font-size:13px;background:#fff;color:#212529">
+          <select id="gdd-local-select" onchange="gddUpdateLocalHint()" style="padding:8px 12px;border:1px solid #dee2e6;border-radius:8px;font-size:13px;background:#fff;color:#212529">
             <option value="">— Seleccionar local —</option>
           </select>
           <button onclick="gddReset()" style="padding:8px 16px;background:transparent;border:1px solid #dee2e6;border-radius:8px;font-size:13px;cursor:pointer;color:#6c757d">Nueva guía</button>
           <button onclick="gddSave()" id="gdd-save-btn" style="padding:8px 20px;background:#374151;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;color:#fff">Guardar en BD</button>
         </div>
       </div>
+      <div id="gdd-local-hint" style="display:none;font-size:13px;color:#b45309;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px 12px;margin-bottom:12px"></div>
+      <div id="gdd-items-hint" style="display:none;font-size:13px;color:#b45309;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px 12px;margin-bottom:12px"></div>
       <div style="font-size:12px;color:#6c757d;margin-bottom:12px">Revisá y editá las cantidades antes de guardar.</div>
       <div style="overflow-x:auto">
         <table style="width:100%;border-collapse:collapse;font-size:13px">
@@ -1835,9 +1844,30 @@
       <select id="gdd-filter-anio" onchange="gddApplyFilter()" style="padding:7px 12px;border:1px solid #dee2e6;border-radius:8px;font-size:13px;background:#fff;color:#212529">
         <option value="">Todos los años</option>
       </select>
+      <label id="gdd-filter-revisar-wrap" style="display:none;align-items:center;gap:6px;font-size:13px;color:#b45309;cursor:pointer">
+        <input type="checkbox" id="gdd-filter-revisar" onchange="gddApplyFilter()" style="accent-color:#b45309"> Solo por revisar
+      </label>
       <span id="gdd-filter-count" style="font-size:12px;color:#6c757d"></span>
     </div>
     <div id="gdd-history-list"><div style="color:#6c757d;font-size:13px">Cargando...</div></div>
+  </div>
+
+  <!-- TAB: Productos GDD -->
+  <div id="gdd-tab-productos-content" style="display:none;flex:1;padding:32px 28px;max-width:900px;width:100%;margin:0 auto">
+    <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;align-items:center">
+      <input id="gdd-prod-search" oninput="gddRenderProductos()" placeholder="🔍 Buscar..."
+        style="padding:7px 12px;border:1px solid #dee2e6;border-radius:8px;font-size:13px;background:#fff;color:#212529;min-width:200px">
+      <select id="gdd-prod-tipo" onchange="gddRenderProductos()" style="padding:7px 12px;border:1px solid #dee2e6;border-radius:8px;font-size:13px;background:#fff;color:#212529">
+        <option value="">Todos los tipos</option>
+        <option value="Ingrediente">Ingredientes</option>
+        <option value="Preparación">Preparaciones</option>
+        <option value="Receta">Recetas</option>
+      </select>
+      <span id="gdd-prod-count" style="font-size:12px;color:#6c757d"></span>
+    </div>
+    <div style="font-size:12px;color:#6c757d;margin-bottom:12px">Todo lo marcado como "Viene por Guía de Despacho". Solo estos nombres se reconocen al escanear una guía. "Veces en guías" cuenta en cuántas guías guardadas aparece con cantidad.</div>
+    <div id="gdd-prod-list" style="overflow-x:auto"><div style="color:#6c757d;font-size:13px">Cargando...</div></div>
+    <div id="gdd-prod-sin-marca" style="overflow-x:auto"></div>
   </div>
 </div>
 
@@ -2314,11 +2344,9 @@ function goTo(module) {
     loadReuniones();
   } else if (module === 'gdd') {
     document.getElementById('gdd-module').style.display = 'flex';
-    // Poblar selector de local
-    const sel = document.getElementById('gdd-local-select');
-    sel.innerHTML = '<option value="">— Seleccionar local —</option>' +
-      restaurants.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
+    gddLoadClients();
     gddReset();
+    document.getElementById('gdd-tab-productos').style.display = gddEsEditor() ? '' : 'none';
     gddSwitchTab('nueva');
   } else if (module === 'margenes') {
     document.getElementById('margenes-module').style.display = 'flex';
@@ -10024,11 +10052,122 @@ function ocRenderResult(items, worker) {
 let gddData = null;
 
 function gddSwitchTab(tab) {
-  document.getElementById('gdd-tab-nueva').classList.toggle('active',     tab === 'nueva');
-  document.getElementById('gdd-tab-historial').classList.toggle('active', tab === 'historial');
-  document.getElementById('gdd-tab-nueva-content').style.display     = tab === 'nueva'     ? 'block' : 'none';
-  document.getElementById('gdd-tab-historial-content').style.display  = tab === 'historial' ? 'block' : 'none';
+  ['nueva', 'historial', 'productos'].forEach(t => {
+    document.getElementById(`gdd-tab-${t}`).classList.toggle('active', t === tab);
+    document.getElementById(`gdd-tab-${t}-content`).style.display = t === tab ? 'block' : 'none';
+  });
   if (tab === 'historial') gddLoadHistory();
+  if (tab === 'productos') gddLoadProductos();
+}
+
+let gddProductos = [];
+let gddSinMarca  = []; // [[nombre en guías, veces]] que no calzan con nada marcado GDD
+
+async function gddLoadProductos() {
+  const el = document.getElementById('gdd-prod-list');
+  el.innerHTML = '<div style="color:#6c757d;font-size:13px">Cargando...</div>';
+  try {
+    const res = await apiFetch('/api/gdd/export-data');
+    const { records, products, preparations, recipes } = await res.json();
+    const restName = id => restaurants.find(r => r.id === id)?.name || '';
+    // Mismo nombre que guarda el escaneo en items[].producto
+    const usos = {}, usosNuevas = {}; // usosNuevas: solo guías que se revisan (las antiguas tienen nombres viejos)
+    (records || []).forEach(r => (r.items || []).forEach(i => {
+      if (i.cantidad === null || i.cantidad === undefined) return;
+      usos[i.producto] = (usos[i.producto] || 0) + 1;
+      if (r.revisarNombres) usosNuevas[i.producto] = (usosNuevas[i.producto] || 0) + 1;
+    }));
+    const toRow = (tipo, x) => ({
+      tipo,
+      id:        x.id,
+      coleccion: { 'Ingrediente': 'products', 'Preparación': 'preparations', 'Receta': 'recipes' }[tipo],
+      name:      x.name,
+      categoria: x.category || x.categoria || '',
+      locales:   (x.restaurantIds?.length ? x.restaurantIds.map(restName) : [x.restaurantName || '']).filter(Boolean).join(', '),
+      usos:      usos[x.name] || 0,
+      usosNuevas: usosNuevas[x.name] || 0
+    });
+    gddProductos = [
+      ...products.filter(x => x.esGDD === true && x.name).map(x => toRow('Ingrediente', x)),
+      ...preparations.filter(x => x.esGDD === true && x.name).map(x => toRow('Preparación', x)),
+      ...recipes.filter(x => x.esGDD === true && x.name).map(x => toRow('Receta', x))
+    ].sort((a, b) => a.name.localeCompare(b.name, 'es'));
+    const marcados = new Set(gddProductos.map(p => p.name));
+    gddSinMarca = Object.entries(usosNuevas).filter(([name]) => !marcados.has(name)).sort((a, b) => b[1] - a[1]);
+    gddRenderProductos();
+  } catch(e) {
+    el.innerHTML = `<div style="color:#dc3545;font-size:13px">${e.message}</div>`;
+  }
+}
+
+async function gddDesmarcar(coleccion, id, btn) {
+  const p = gddProductos.find(x => x.id === id && x.coleccion === coleccion);
+  if (!p || !confirm(`¿Quitar la marca GDD de "${p.name}"?\nYa no se reconocerá al escanear guías.`)) return;
+  btn.disabled = true;
+  try {
+    const res  = await apiFetch(`/api/gdd/marca/${coleccion}/${id}`, { method: 'PATCH', body: JSON.stringify({ esGDD: false }) });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    gddProductos = gddProductos.filter(x => x !== p);
+    if (p.usosNuevas) gddSinMarca = [...gddSinMarca, [p.name, p.usosNuevas]].sort((a, b) => b[1] - a[1]);
+    gddRenderProductos();
+  } catch(e) {
+    alert('Error al quitar la marca: ' + e.message);
+    btn.disabled = false;
+  }
+}
+
+function gddRenderProductos() {
+  const q    = gddNorm(document.getElementById('gdd-prod-search').value);
+  const tipo = document.getElementById('gdd-prod-tipo').value;
+  const rows = gddProductos.filter(p =>
+    (!tipo || p.tipo === tipo) &&
+    (!q || gddNorm(`${p.name} ${p.categoria} ${p.locales}`).includes(q)));
+  document.getElementById('gdd-prod-count').textContent =
+    rows.length < gddProductos.length ? `${rows.length} de ${gddProductos.length}` : `${gddProductos.length} productos`;
+  const tipoColor = { 'Ingrediente': '#16a34a', 'Preparación': '#2563eb', 'Receta': '#8B5A2B' };
+  const th = 'padding:8px 10px;color:#6c757d;font-weight:600;font-size:11px;text-transform:uppercase';
+  document.getElementById('gdd-prod-list').innerHTML = !rows.length
+    ? '<div style="color:#adb5bd;font-size:13px;padding:40px 0;text-align:center">Sin resultados</div>'
+    : `<table style="width:100%;border-collapse:collapse;font-size:13px;background:#fff;border:1px solid #dee2e6;border-radius:12px">
+        <thead><tr style="border-bottom:2px solid #dee2e6">
+          <th style="${th};text-align:left">Nombre</th>
+          <th style="${th};text-align:left">Tipo</th>
+          <th style="${th};text-align:left">Categoría</th>
+          <th style="${th};text-align:left">Locales</th>
+          <th style="${th};text-align:center">Veces en guías</th>
+          <th style="${th}"></th>
+        </tr></thead>
+        <tbody>${rows.map(p => `
+          <tr style="border-bottom:1px solid #f0f0f0">
+            <td style="padding:8px 10px;color:#212529">${p.name}</td>
+            <td style="padding:8px 10px;color:${tipoColor[p.tipo]};font-size:12px;font-weight:600">${p.tipo}</td>
+            <td style="padding:8px 10px;color:#6c757d;font-size:12px">${p.categoria}</td>
+            <td style="padding:8px 10px;color:#6c757d;font-size:12px">${p.locales}</td>
+            <td style="padding:8px 10px;text-align:center;color:${p.usos ? '#212529' : '#adb5bd'}">${p.usos || '—'}</td>
+            <td style="padding:8px 10px;text-align:right">
+              <button onclick="gddDesmarcar('${p.coleccion}','${p.id}',this)" title="Quitar la marca GDD"
+                style="padding:4px 10px;background:#fff;border:1px solid #dee2e6;border-radius:6px;font-size:12px;color:#6c757d;cursor:pointer;white-space:nowrap">Quitar GDD</button>
+            </td>
+          </tr>`).join('')}
+        </tbody>
+      </table>`;
+  const sinMarca = gddSinMarca.filter(([name]) => !q || gddNorm(name).includes(q));
+  document.getElementById('gdd-prod-sin-marca').innerHTML = tipo || !sinMarca.length ? '' : `
+    <div style="font-size:14px;font-weight:600;color:#b45309;margin:28px 0 6px">En guías guardadas pero sin marca GDD (${sinMarca.length})</div>
+    <div style="font-size:12px;color:#6c757d;margin-bottom:12px">Nombres de guías nuevas (las antiguas no se revisan) que no coinciden con nada marcado. Puede que falte marcarlos, que el nombre haya cambiado o que el escaneo lo haya leído distinto.</div>
+    <table style="width:100%;border-collapse:collapse;font-size:13px;background:#fff;border:1px solid #fde68a;border-radius:12px">
+      <thead><tr style="border-bottom:2px solid #fde68a">
+        <th style="${th};text-align:left">Nombre en la guía</th>
+        <th style="${th};text-align:center">Veces en guías</th>
+      </tr></thead>
+      <tbody>${sinMarca.map(([name, n]) => `
+        <tr style="border-bottom:1px solid #f0f0f0">
+          <td style="padding:8px 10px;color:#212529">${name}</td>
+          <td style="padding:8px 10px;text-align:center">${n}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>`;
 }
 
 function gddReset() {
@@ -10038,22 +10177,64 @@ function gddReset() {
   document.getElementById('gdd-step-result').style.display  = 'none';
   document.getElementById('gdd-file-input').value   = '';
   document.getElementById('gdd-camera-input').value = '';
+  gddPendingFiles = [];
+  gddRenderPending();
 }
 
-async function gddHandleFile(input) {
-  const file = input.files[0];
-  if (!file) return;
+// Hojas de la guía que se van a analizar juntas (una guía puede tener varias hojas)
+let gddPendingFiles = [];
+
+function gddHandleFile(input) {
+  gddPendingFiles.push(...input.files);
+  input.value = ''; // permite volver a elegir/fotografiar
+  gddRenderPending();
+}
+
+function gddQuitarHoja(i) {
+  gddPendingFiles.splice(i, 1);
+  gddRenderPending();
+}
+
+function gddRenderPending() {
+  document.getElementById('gdd-pending').style.display = gddPendingFiles.length ? 'block' : 'none';
+  document.getElementById('gdd-pending-list').innerHTML = gddPendingFiles.map((f, i) => `
+    <div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid #f0f0f0">
+      <span style="color:#6c757d;width:60px">Hoja ${i + 1}</span>
+      <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${f.name}</span>
+      <button onclick="gddQuitarHoja(${i})" style="border:none;background:none;color:#adb5bd;cursor:pointer;font-size:14px">✕</button>
+    </div>`).join('');
+}
+
+// Achica las fotos del celular para no pasar el límite de tamaño de Vercel (~4,5 MB por envío)
+async function gddAchicarImagen(file, maxLado = 2000) {
+  if (!file.type.startsWith('image/')) return file;
+  try {
+    const img = await createImageBitmap(file);
+    const escala = Math.min(1, maxLado / Math.max(img.width, img.height));
+    const canvas = document.createElement('canvas');
+    canvas.width  = Math.round(img.width * escala);
+    canvas.height = Math.round(img.height * escala);
+    canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+    const blob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', 0.85));
+    return blob ? new File([blob], file.name.replace(/\.\w+$/, '') + '.jpg', { type: 'image/jpeg' }) : file;
+  } catch { return file; } // formatos que el navegador no puede abrir (ej. HEIC) se envían tal cual
+}
+
+async function gddAnalizar() {
+  if (!gddPendingFiles.length) return;
   document.getElementById('gdd-step-upload').style.display  = 'none';
   document.getElementById('gdd-step-loading').style.display = 'block';
   document.getElementById('gdd-step-result').style.display  = 'none';
   try {
     const fd = new FormData();
-    fd.append('file', file);
+    for (const f of gddPendingFiles) fd.append('files', await gddAchicarImagen(f));
     const res  = await apiFetch('/api/gdd/scan', { method: 'POST', body: fd, headers: {} });
+    if (res.status === 413) throw new Error('Las fotos pesan demasiado. Probá con menos hojas o fotos más livianas.');
     const json = await res.json();
     if (json.error) throw new Error(json.error);
     gddData = json.data;
-    gddData._imageUrl = json.imageUrl || null;
+    gddData._imageUrls = json.imageUrls || [];
+    gddNames = json.gddNames || [];
     gddRenderResult();
   } catch(e) {
     document.getElementById('gdd-step-loading').style.display = 'none';
@@ -10062,28 +10243,128 @@ async function gddHandleFile(input) {
   }
 }
 
+const gddNorm = s => (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/^(gdd|local)\s*:?\s*/, '').trim();
+
+// Las guías se nombran según el local al que entran ("GDD Giardini" → Giardini).
+// Los locales sin Fudo (Heladería) se excluyen: "GDD Heladería" son helados que entran a otro local.
+function gddLocalFromName(name) {
+  const n = gddNorm(name);
+  return n ? restaurants.find(r => !r.noFudo && gddNorm(r.name) === n) : undefined;
+}
+
+// Destino de una guía: un local propio (restaurantId) o un cliente externo de Helados B2B (clientId).
+// En los <select> se codifica como "r:<id>" o "c:<id>".
+let gddClients = [];
+
+async function gddLoadClients() {
+  try {
+    const res = await apiFetch('/api/inv/clients');
+    gddClients = (await res.json()).clients || [];
+  } catch { gddClients = []; }
+  document.getElementById('gdd-local-select').innerHTML = gddDestinoOptions('', '— Seleccionar destino —');
+}
+
+const gddDestinoValue = r => r.clientId ? `c:${r.clientId}` : r.restaurantId ? `r:${r.restaurantId}` : '';
+
+function gddDestinoParse(value) {
+  const [tipo, id] = (value || '').split(':');
+  return { restaurantId: tipo === 'r' ? id : '', clientId: tipo === 'c' ? id : '' };
+}
+
+function gddDestinoOptions(selected, vacio = '— Sin destino —') {
+  const opt = (value, label) => `<option value="${value}"${value === selected ? ' selected' : ''}>${label}</option>`;
+  return opt('', vacio) +
+    `<optgroup label="Mis locales">${restaurants.filter(r => !r.noFudo).map(r => opt(`r:${r.id}`, r.name)).join('')}</optgroup>` +
+    (gddClients.length ? `<optgroup label="Clientes">${gddClients.map(c => opt(`c:${c.id}`, c.fantasyName || c.name)).join('')}</optgroup>` : '');
+}
+
+// Lo escrito en "Destino" puede ser un local o un cliente (por razón social o nombre de fantasía)
+function gddDestinoFromText(text) {
+  const local = gddLocalFromName(text);
+  if (local) return `r:${local.id}`;
+  const n = gddNorm(text);
+  const cliente = n && gddClients.find(c => gddNorm(c.name) === n || gddNorm(c.fantasyName) === n);
+  return cliente ? `c:${cliente.id}` : '';
+}
+
+function gddUpdateLocalHint() {
+  const hint = document.getElementById('gdd-local-hint');
+  const show = gddData && !gddData._localFromName;
+  hint.style.display = show ? 'block' : 'none';
+  if (!show) return;
+  const leido = gddData.destino || gddData.local;
+  hint.textContent = document.getElementById('gdd-local-select').value
+    ? `"${gddData.proveedor || 'Esta guía'}" no indica el local en su nombre: revisá que el destino elegido sea el correcto.`
+    : `"${gddData.proveedor || 'Esta guía'}" no indica el local en su nombre${leido ? ` y no se reconoció el destino escrito ("${leido}")` : ''}: elegí el destino antes de guardar.`;
+}
+
 function gddRenderResult() {
   document.getElementById('gdd-step-loading').style.display = 'none';
   document.getElementById('gdd-step-result').style.display  = 'block';
   document.getElementById('gdd-result-proveedor').textContent = gddData.proveedor || 'Proveedor desconocido';
+  const byName = gddLocalFromName(gddData.proveedor);
+  gddData._localFromName = !!byName;
+  document.getElementById('gdd-local-select').value =
+    byName ? `r:${byName.id}` : gddDestinoFromText(gddData.destino || gddData.local);
+  gddUpdateLocalHint();
   const fechaEl = document.getElementById('gdd-result-fecha');
   fechaEl.innerHTML = `<span style="font-size:13px;color:#6c757d">Fecha:</span>
     <input type="date" value="${gddData.fecha || ''}"
       style="border:1px solid #dee2e6;border-radius:6px;padding:3px 8px;font-size:13px;color:#212529;background:#fff;margin-left:6px"
       onchange="gddData.fecha = this.value">`;
+  gddRenderItems();
+}
+
+// Nombres marcados como GDD (Ingredientes, Preparaciones, Recetas)
+let gddNames = [];
+
+// Los empleados escanean y guardan sin revisar; lo que no calce lo corrige un admin desde Historial
+const gddEsEditor  = () => userRole === 'admin' || userRole === 'superadmin';
+const gddIsEmpty   = item => item.cantidad === null || item.cantidad === undefined;
+const gddPorRevisar = items => (items || []).filter(i => !gddIsEmpty(i) && !gddNames.includes(i.producto));
+const gddSinCalzar = () => gddPorRevisar(gddData?.items);
+
+function gddSelectProducto(onchange) {
+  return `<select onchange="${onchange}"
+    style="width:100%;max-width:320px;padding:5px 8px;border:1px solid #fbbf24;border-radius:6px;font-size:13px;background:#fff">
+    <option value="">— Elegir producto GDD —</option>
+    ${gddNames.map(n => `<option value="${n.replace(/"/g, '&quot;')}">${n}</option>`).join('')}
+  </select>`;
+}
+
+function gddElegirProducto(i, name) {
+  const item = gddData.items[i];
+  if (item.nombreGuia === undefined) item.nombreGuia = item.producto;
+  item.producto = name || item.nombreGuia;
+  gddRenderItems();
+}
+
+function gddRenderItems() {
+  const editor     = gddEsEditor();
+  const pendientes = editor ? gddSinCalzar().length : 0;
+  const aviso = document.getElementById('gdd-items-hint');
+  aviso.style.display = pendientes ? 'block' : 'none';
+  aviso.textContent = `${pendientes} producto${pendientes !== 1 ? 's' : ''} con cantidad no calza${pendientes !== 1 ? 'n' : ''} con la lista GDD. Podés elegir el correcto en las filas amarillas, o guardar igual y corregirlo después desde Historial.`;
   const tbody = document.getElementById('gdd-result-tbody');
   tbody.innerHTML = (gddData.items || []).map((item, i) => {
-    const isEmpty = item.cantidad === null || item.cantidad === undefined;
-    return `<tr style="border-bottom:1px solid #e9ecef;${isEmpty ? 'opacity:.55' : ''}">
+    const isEmpty = gddIsEmpty(item);
+    const calza   = !editor || gddNames.includes(item.producto);
+    const leido   = item.nombreGuia ?? item.producto;
+    const productoCell = calza
+      ? `${item.producto || ''}${item.nombreGuia !== undefined ? `<div style="font-size:11px;color:#6c757d">En la guía: ${item.nombreGuia}</div>` : ''}`
+      : `<div style="font-size:11px;color:#b45309;margin-bottom:4px">En la guía: ${leido || '—'}</div>
+         ${gddSelectProducto(`gddElegirProducto(${i}, this.value)`)}`;
+    const bg = !calza && !isEmpty ? 'background:#fffbeb;' : '';
+    return `<tr style="border-bottom:1px solid #e9ecef;${bg}${isEmpty ? 'opacity:.55' : ''}">
       <td style="padding:8px 10px;font-size:12px;color:#6c757d;font-weight:500">${item.categoria || ''}</td>
-      <td style="padding:8px 10px;color:#212529">${item.producto || ''}</td>
+      <td style="padding:8px 10px;color:#212529">${productoCell}</td>
       <td style="padding:8px 10px;text-align:center;color:#6c757d">${item.unidad || ''}</td>
       <td style="padding:8px 10px;text-align:center">
         <input type="number" min="0" step="0.01"
           value="${isEmpty ? '' : item.cantidad}"
           placeholder="—"
           data-idx="${i}"
-          onchange="gddData.items[${i}].cantidad = this.value === '' ? null : Number(this.value)"
+          onchange="gddData.items[${i}].cantidad = this.value === '' ? null : Number(this.value); gddRenderItems()"
           style="width:80px;padding:5px 8px;border:1px solid ${isEmpty ? '#f0d0d0' : '#dee2e6'};border-radius:6px;text-align:center;font-size:13px;background:${isEmpty ? '#fff8f8' : '#fff'}">
       </td>
       <td style="padding:8px 10px;color:#6c757d;font-size:12px">${item.comentarios || ''}</td>
@@ -10095,10 +10376,10 @@ async function gddSave() {
   if (!gddData) return;
   const btn = document.getElementById('gdd-save-btn');
   const msg = document.getElementById('gdd-save-msg');
-  const localId = document.getElementById('gdd-local-select').value;
-  if (!localId) {
+  const destino = document.getElementById('gdd-local-select').value;
+  if (!destino) {
     msg.style.color = '#dc3545';
-    msg.textContent = 'Seleccioná el local antes de guardar.';
+    msg.textContent = 'Seleccioná el destino antes de guardar.';
     return;
   }
   btn.disabled = true; btn.textContent = 'Guardando...';
@@ -10109,8 +10390,8 @@ async function gddSave() {
         proveedor:    gddData.proveedor,
         fecha:        gddData.fecha,
         items:        gddData.items,
-        restaurantId: localId,
-        imageUrl:     gddData._imageUrl || null
+        ...gddDestinoParse(destino),
+        imageUrls:    gddData._imageUrls || []
       })
     });
     const data = await res.json();
@@ -10131,10 +10412,12 @@ let gddAllRecords = [];
 function gddApplyFilter() {
   const mes  = document.getElementById('gdd-filter-mes').value;
   const anio = document.getElementById('gdd-filter-anio').value;
+  const soloRevisar = gddEsEditor() && document.getElementById('gdd-filter-revisar').checked;
   const filtered = gddAllRecords.filter(r => {
     const fecha = r.fecha || '';
     if (mes  && fecha.substring(5, 7) !== mes)  return false;
     if (anio && fecha.substring(0, 4) !== anio) return false;
+    if (soloRevisar && !(r.revisarNombres && gddPorRevisar(r.items).length)) return false;
     return true;
   });
   document.getElementById('gdd-filter-count').textContent =
@@ -10148,13 +10431,16 @@ function gddRenderHistory(records) {
     el.innerHTML = '<div style="color:#adb5bd;font-size:13px;padding:40px 0;text-align:center">Sin guías para el período seleccionado</div>';
     return;
   }
+  const editor = gddEsEditor();
   el.innerHTML = records.map(r => {
       const itemsConCantidad = (r.items || []).filter(i => i.cantidad !== null && i.cantidad !== undefined);
+      const porRevisar = editor && r.revisarNombres ? gddPorRevisar(r.items) : [];
       return `
       <div style="background:#fff;border:1px solid #dee2e6;border-radius:12px;margin-bottom:14px;overflow:hidden">
         <div style="padding:16px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
           <div onclick="gddToggleRecord('${r.id}')" style="cursor:pointer;flex:1;min-width:0">
-            <div style="font-size:15px;font-weight:600;color:#212529">${r.proveedor || 'Sin proveedor'}</div>
+            <div style="font-size:15px;font-weight:600;color:#212529">${r.proveedor || 'Sin proveedor'}${porRevisar.length ? `
+              <span style="margin-left:8px;background:#fffbeb;border:1px solid #fde68a;color:#b45309;font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px;vertical-align:middle">⚠ ${porRevisar.length} por revisar</span>` : ''}</div>
             <div style="font-size:12px;color:#6c757d;margin-top:4px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
               <div style="display:flex;align-items:center;gap:4px" onclick="event.stopPropagation()">
                 <span style="color:#6c757d">Fecha:</span>
@@ -10162,8 +10448,16 @@ function gddRenderHistory(records) {
                   style="border:1px solid #dee2e6;border-radius:6px;padding:2px 6px;font-size:12px;color:#212529;background:#fff;cursor:text"
                   onchange="gddUpdateFecha('${r.id}',this.value)">
               </div>
+              <div style="display:flex;align-items:center;gap:4px" onclick="event.stopPropagation()">
+                <span style="color:#6c757d">· Destino:</span>
+                <select onchange="gddUpdateLocal('${r.id}',this)"
+                  style="border:1px solid ${gddDestinoValue(r) ? '#dee2e6' : '#f0b4b4'};border-radius:6px;padding:2px 6px;font-size:12px;color:#212529;background:${gddDestinoValue(r) ? '#fff' : '#fff8f8'}">
+                  ${gddDestinoOptions(gddDestinoValue(r))}
+                </select>
+              </div>
               <span>· ${itemsConCantidad.length} producto${itemsConCantidad.length !== 1 ? 's' : ''} · ${r.createdByName || r.createdBy || ''}</span>
-              ${r.imageUrl ? `<a href="${r.imageUrl}" target="_blank" style="color:#8B5A2B;font-size:11px;text-decoration:none;font-weight:500">📎 Ver imagen</a>` : ''}
+              ${(r.imageUrls?.length ? r.imageUrls : [r.imageUrl].filter(Boolean)).map((url, i, urls) =>
+                `<a href="${url}" target="_blank" style="color:#8B5A2B;font-size:11px;text-decoration:none;font-weight:500">📎 ${urls.length > 1 ? `Hoja ${i + 1}` : 'Ver imagen'}</a>`).join(' ')}
             </div>
           </div>
           <div style="display:flex;align-items:center;gap:8px">
@@ -10184,10 +10478,15 @@ function gddRenderHistory(records) {
               </tr>
             </thead>
             <tbody>
-              ${(r.items || []).map((item, idx) => `
-                <tr style="border-bottom:1px solid #f0f0f0">
+              ${(r.items || []).map((item, idx) => {
+                const revisar = porRevisar.includes(item);
+                return `
+                <tr style="border-bottom:1px solid #f0f0f0;${revisar ? 'background:#fffbeb' : ''}">
                   <td style="padding:6px 8px;color:#6c757d;font-size:12px">${item.categoria || ''}</td>
-                  <td style="padding:6px 8px;color:#212529">${item.producto || ''}</td>
+                  <td style="padding:6px 8px;color:#212529">${revisar
+                    ? `<div style="font-size:11px;color:#b45309;margin-bottom:4px">En la guía: ${item.producto || '—'}</div>
+                       ${gddSelectProducto(`gddCorregirProducto('${r.id}', ${idx}, this)`)}`
+                    : `${item.producto || ''}${item.nombreGuia !== undefined ? `<div style="font-size:11px;color:#6c757d">En la guía: ${item.nombreGuia}</div>` : ''}`}</td>
                   <td style="padding:6px 8px;text-align:center;color:#6c757d">${item.unidad || ''}</td>
                   <td style="padding:6px 8px;text-align:center">
                     <input type="number" min="0" step="0.01"
@@ -10196,7 +10495,8 @@ function gddRenderHistory(records) {
                       style="width:72px;padding:3px 6px;border:1px solid #dee2e6;border-radius:6px;text-align:center;font-size:13px;font-weight:600"
                       onchange="gddUpdateItemCantidad('${r.id}', ${idx}, this.value, this)">
                   </td>
-                </tr>`).join('')}
+                </tr>`;
+              }).join('')}
             </tbody>
           </table>
         </div>
@@ -10208,9 +10508,11 @@ async function gddLoadHistory() {
   const el = document.getElementById('gdd-history-list');
   el.innerHTML = '<div style="color:#6c757d;font-size:13px">Cargando...</div>';
   try {
-    const res  = await apiFetch('/api/gdd/records');
+    const [res, resNames] = await Promise.all([apiFetch('/api/gdd/records'), apiFetch('/api/gdd/names')]);
     const data = await res.json();
     gddAllRecords = data.records || [];
+    gddNames = (await resNames.json()).names || [];
+    document.getElementById('gdd-filter-revisar-wrap').style.display = gddEsEditor() ? 'flex' : 'none';
 
     // Poblar selector de años
     const years = [...new Set(gddAllRecords.map(r => (r.fecha||'').substring(0,4)).filter(Boolean))].sort().reverse();
@@ -10518,6 +10820,43 @@ async function gddUpdateFecha(id, fecha) {
   } catch(e) { alert('Error al guardar fecha: ' + e.message); }
 }
 
+async function gddCorregirProducto(id, idx, select) {
+  const producto = select.value;
+  if (!producto) return;
+  select.disabled = true;
+  try {
+    const res  = await apiFetch(`/api/gdd/records/${id}/items`, { method: 'PATCH', body: JSON.stringify({ idx, producto }) });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    const item = gddAllRecords.find(r => r.id === id)?.items?.[idx];
+    if (item) {
+      if (item.nombreGuia === undefined) item.nombreGuia = item.producto;
+      item.producto = producto;
+    }
+    gddApplyFilter();
+    // gddApplyFilter vuelve a dibujar todo cerrado; reabrir la guía si sigue en la lista
+    if (document.getElementById(`gdd-detail-${id}`)) gddToggleRecord(id);
+  } catch(e) {
+    alert('Error al corregir: ' + e.message);
+    select.disabled = false;
+  }
+}
+
+async function gddUpdateLocal(id, select) {
+  const destino = gddDestinoParse(select.value);
+  try {
+    const res = await apiFetch(`/api/gdd/records/${id}`, {
+      method: 'PATCH', body: JSON.stringify(destino)
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    const rec = gddAllRecords.find(r => r.id === id);
+    if (rec) Object.assign(rec, destino);
+    select.style.borderColor = select.value ? '#dee2e6' : '#f0b4b4';
+    select.style.background  = select.value ? '#fff' : '#fff8f8';
+  } catch(e) { alert('Error al guardar destino: ' + e.message); }
+}
+
 function gddToggleRecord(id) {
   const detail = document.getElementById(`gdd-detail-${id}`);
   const arrow  = document.getElementById(`gdd-arrow-${id}`);
@@ -10739,38 +11078,12 @@ function renderMargenRecetas() {
           <option value="">Todos los locales</option>
           ${restaurants.map(r => '<option value="' + r.id + '">' + r.name + '</option>').join('')}
         </select>
-        <select id="marg-filter-cat" class="prod-filter-sel" onchange="margenFilterCat=this.value;renderMargenRecetasContent()">
+        <select id="marg-filter-cat" class="prod-filter-sel" onchange="margenFilterCat=this.value;margenFilterSubcat='';margenRefreshSubcatFilter();renderMargenRecetasContent()">
           <option value="">Todas las categorías</option>
-          <option value="Comida">Comida</option>
-          <option value="Entradas">Entradas</option>
-          <option value="Platos de la Casa">Platos de la Casa</option>
-          <option value="Comidas Preparadas">Comidas Preparadas</option>
-          <option value="Pizzas">Pizzas</option>
-          <option value="Hamburguesas">Hamburguesas</option>
-          <option value="Churrascos">Churrascos</option>
-          <option value="Lomitos">Lomitos</option>
-          <option value="Barra">Barra</option>
-          <option value="Bebidas y Jugos">Bebidas y Jugos</option>
-          <option value="Cervezas">Cervezas</option>
-          <option value="Vinos">Vinos</option>
-          <option value="Shots">Shots</option>
-          <option value="Cortos">Cortos</option>
-          <option value="Postres">Postres</option>
-          <option value="Dulces">Dulces</option>
-          <option value="Cafetería">Cafetería</option>
+          ${margenCategorias().map(c => '<option value="' + c + '"' + (c === margenFilterCat ? ' selected' : '') + '>' + c + '</option>').join('')}
         </select>
         <select id="marg-filter-subcat" class="prod-filter-sel" onchange="margenFilterSubcat=this.value;renderMargenRecetasContent()">
-          <option value="">Todos los métodos</option>
-          <option value="Directo">Directo</option>
-          <option value="Cocteleado">Cocteleado</option>
-          <option value="Shot">Shot</option>
-          <option value="Batido">Batido</option>
-          <option value="Frappe">Frappe</option>
-          <option value="Caliente">Caliente</option>
-          <option value="Licuado">Licuado</option>
-          <option value="Machacado">Machacado</option>
-          <option value="De autor">De autor</option>
-          <option value="Otro">Otro</option>
+          ${margenSubcatOptionsHTML(margenFilterCat, margenFilterSubcat, 'Todas las subcategorías')}
         </select>
         <select id="marg-filter-margen" class="prod-filter-sel" onchange="margenFilterMargen=this.value;renderMargenRecetasContent()">
           <option value="">Todos los márgenes</option>
@@ -11009,6 +11322,39 @@ function margenCatColor(cat) {
     : cat === 'Dulces' ? '#db2777'
     : cat === 'Cafetería' ? '#d97706'
     : '#6c757d';
+}
+
+// Categorías y subcategorías de recetas: se arman con los datos (calzan con la carta SimpleQR)
+function margenCategorias() {
+  return [...new Set((margenRecipes || []).map(r => r.category || r.categoria).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'));
+}
+function margenSubcategorias(cat) {
+  return [...new Set((margenRecipes || []).filter(r => !cat || (r.category || r.categoria) === cat).map(r => r.subcategoria).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'));
+}
+function margenEsc(v) { return String(v).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;'); }
+function margenSubcatOptionsHTML(cat, selected, vacio) {
+  const subs = margenSubcategorias(cat);
+  if (selected && !subs.includes(selected)) subs.push(selected);
+  return '<option value="">' + vacio + '</option>' + subs.map(s => '<option value="' + margenEsc(s) + '"' + (s === selected ? ' selected' : '') + '>' + margenEsc(s) + '</option>').join('');
+}
+function margenRefreshSubcatFilter() {
+  const sel = document.getElementById('marg-filter-subcat');
+  if (sel) sel.innerHTML = margenSubcatOptionsHTML(margenFilterCat, margenFilterSubcat, 'Todas las subcategorías');
+}
+function margenFillFormCat(cat, subcat) {
+  const sel = document.getElementById('marg-form-cat');
+  if (!sel) return;
+  const cats = margenCategorias();
+  if (cat && !cats.includes(cat)) cats.push(cat);
+  sel.innerHTML = '<option value="">— Sin categoría —</option>' + cats.map(c => '<option value="' + margenEsc(c) + '"' + (c === cat ? ' selected' : '') + '>' + margenEsc(c) + '</option>').join('');
+  sel.value = cat || '';
+  margenFillFormSubcat(cat, subcat);
+}
+function margenFillFormSubcat(cat, subcat) {
+  const sel = document.getElementById('marg-form-subcat');
+  if (!sel) return;
+  sel.innerHTML = margenSubcatOptionsHTML(cat, subcat, '— Sin subcategoría —');
+  sel.value = subcat || '';
 }
 
 function margenSubcatBadge(subcat, extra) {
@@ -12065,7 +12411,7 @@ function margenOpenPrepModal(id) {
   document.getElementById('marg-form-gdd').checked                         = prep?.esGDD === true;
   document.getElementById('marg-gdd-prices-btn').style.display             = id ? '' : 'none';
   document.getElementById('marg-form-recipe-gdd-section').style.display   = 'none';
-  document.getElementById('marg-form-cat').value                           = prep?.category || '';
+  document.getElementById('marg-form-prep-cat').value                      = prep?.category || '';
   document.getElementById('marg-form-unit').innerHTML                      = buildUnitOptions(prep?.unit || 'unidad');
 
   // Poblar checkboxes de locales con subsecciones
@@ -12689,9 +13035,8 @@ function margenOpenFormModal(id) {
 
   document.getElementById('marg-form-promedio').checked = recipe?.esPromedio === true;
   document.getElementById('marg-form-porciones').value  = recipe?.porciones > 1 ? recipe.porciones : '';
-  document.getElementById('marg-form-cat').value        = recipe?.category || recipe?.categoria || '';
+  margenFillFormCat(recipe?.category || recipe?.categoria || '', recipe?.subcategoria || '');
   document.getElementById('marg-form-cat-wrap').style.display = '';
-  document.getElementById('marg-form-subcat').value     = recipe?.subcategoria || '';
   document.getElementById('marg-form-subcat-wrap').style.display = '';
   document.getElementById('marg-form-comentario').value = recipe?.comentario || '';
 
@@ -13051,7 +13396,7 @@ async function margenSaveForm() {
   // ── Guardar preparación ──
   if (isPrep) {
     const esGDD    = document.getElementById('marg-form-gdd')?.checked === true;
-    const category = document.getElementById('marg-form-cat')?.value.trim() || '';
+    const category = document.getElementById('marg-form-prep-cat')?.value.trim() || '';
     const unit     = document.getElementById('marg-form-unit')?.value || 'unidad';
     const restaurantIds = [...document.querySelectorAll('#marg-form-prep-rests input[type=checkbox]:not([name^="prepsec-"]):checked')].map(c => c.value);
     const restaurantSections = {};
@@ -13964,41 +14309,14 @@ function vpFilterTabla() {
         </div>
         <div id="marg-form-cat-wrap">
           <div class="field-label">Categoría</div>
-          <select id="marg-form-cat" class="inv-input">
+          <select id="marg-form-cat" class="inv-input" onchange="margenFillFormSubcat(this.value, '')">
             <option value="">— Sin categoría —</option>
-            <option value="Comida">Comida</option>
-            <option value="Entradas">Entradas</option>
-            <option value="Platos de la Casa">Platos de la Casa</option>
-            <option value="Comidas Preparadas">Comidas Preparadas</option>
-            <option value="Pizzas">Pizzas</option>
-            <option value="Hamburguesas">Hamburguesas</option>
-            <option value="Churrascos">Churrascos</option>
-            <option value="Lomitos">Lomitos</option>
-            <option value="Barra">Barra</option>
-            <option value="Bebidas y Jugos">Bebidas y Jugos</option>
-            <option value="Cervezas">Cervezas</option>
-            <option value="Vinos">Vinos</option>
-            <option value="Shots">Shots</option>
-            <option value="Cortos">Cortos</option>
-            <option value="Postres">Postres</option>
-            <option value="Dulces">Dulces</option>
-            <option value="Cafetería">Cafetería</option>
           </select>
         </div>
         <div id="marg-form-subcat-wrap">
-          <div class="field-label">Método / Subcategoría</div>
+          <div class="field-label">Subcategoría</div>
           <select id="marg-form-subcat" class="inv-input">
-            <option value="">— Sin método —</option>
-            <option value="Directo">Directo</option>
-            <option value="Cocteleado">Cocteleado</option>
-            <option value="Shot">Shot</option>
-            <option value="Batido">Batido</option>
-            <option value="Frappe">Frappe</option>
-            <option value="Caliente">Caliente</option>
-            <option value="Licuado">Licuado</option>
-            <option value="Machacado">Machacado</option>
-            <option value="De autor">De autor</option>
-            <option value="Otro">Otro</option>
+            <option value="">— Sin subcategoría —</option>
           </select>
         </div>
       </div>
@@ -14112,7 +14430,7 @@ function vpFilterTabla() {
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
           <div>
             <div class="field-label">Categoría</div>
-            <input id="marg-form-cat" class="inv-input" placeholder="Ej: Salsas, Masas...">
+            <input id="marg-form-prep-cat" class="inv-input" placeholder="Ej: Salsas, Masas...">
           </div>
           <div>
             <div class="field-label">Unidad</div>

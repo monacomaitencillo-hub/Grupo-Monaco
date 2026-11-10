@@ -1915,31 +1915,31 @@ app.delete('/api/orders/:id/factura', requireAuth, async (req, res) => {
 });
 
 // ── GDD: Guías de Despacho ────────────────────────────────
-app.post('/api/gdd/scan', requireAuth, upload.single('file'), async (req, res) => {
-  if (!req.file) return res.status(400).json({ error: 'No se recibió archivo' });
+// Nombres de productos, preparaciones y recetas marcados como "Viene por Guía de Despacho"
+async function gddMarkedNames() {
+  const snaps = await Promise.all(['products', 'preparations', 'recipes'].map(c => db.collection(c).where('esGDD', '==', true).get()));
+  return snaps.flatMap(s => s.docs.map(d => d.data().name).filter(Boolean)).sort();
+}
+
+app.get('/api/gdd/names', requireAuth, async (req, res) => {
+  res.json({ names: await gddMarkedNames() });
+});
+
+// Una guía puede venir en varias hojas (ej. GDD Barra): se analizan juntas como una sola guía
+app.post('/api/gdd/scan', requireAuth, upload.array('files', 10), async (req, res) => {
+  const files = req.files || [];
+  if (!files.length) return res.status(400).json({ error: 'No se recibió archivo' });
   if (!ANTHROPIC_API_KEY) return res.status(500).json({ error: 'ANTHROPIC_API_KEY no configurada' });
+  const borrarTemporales = () => files.forEach(f => { try { fs.unlinkSync(f.path); } catch {} });
 
   try {
-    const buf      = fs.readFileSync(req.file.path);
-    const b64      = buf.toString('base64');
-    const mime     = req.file.mimetype;
-    const isPdf    = mime === 'application/pdf';
-
-    const contentBlock = isPdf
-      ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: b64 } }
-      : { type: 'image',    source: { type: 'base64', media_type: mime,               data: b64 } };
+    const hojas = files.map(f => ({ buf: fs.readFileSync(f.path), mime: f.mimetype, name: f.originalname }));
+    const contentBlocks = hojas.map(({ buf, mime }) => mime === 'application/pdf'
+      ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: buf.toString('base64') } }
+      : { type: 'image',    source: { type: 'base64', media_type: mime,              data: buf.toString('base64') } });
 
     // Cargar lista de productos, preparaciones y recetas marcados como GDD para que Claude haga matching
-    const [prodSnap, prepSnap, recipeSnap] = await Promise.all([
-      db.collection('products').get(),
-      db.collection('preparations').get(),
-      db.collection('recipes').get()
-    ]);
-    const productNames = [
-      ...prodSnap.docs.map(d => d.data()).filter(p => p.esGDD === true && p.name).map(p => p.name),
-      ...prepSnap.docs.map(d => d.data()).filter(p => p.esGDD === true && p.name).map(p => p.name),
-      ...recipeSnap.docs.map(d => d.data()).filter(p => p.esGDD === true && p.name).map(p => p.name)
-    ].sort();
+    const productNames = await gddMarkedNames();
     const productList  = productNames.join('\n');
 
     const prompt = `Eres un asistente que extrae datos de guías de despacho chilenas.
@@ -1947,6 +1947,7 @@ Analiza la imagen/documento y extrae la siguiente información en JSON puro (sin
 {
   "proveedor": "nombre del proveedor del encabezado",
   "fecha": "fecha en formato YYYY-MM-DD si se puede leer, sino null",
+  "destino": "el destino indicado en la línea 'Destino' (o 'Local') de la guía, aparte del encabezado. Puede estar escrito a mano, o ser una lista de opciones con casillas: en ese caso es SOLO la opción cuya casilla tiene una marca (X, ✓, relleno o círculo); las casillas vacías no cuentan. Puede ser un local del grupo o un cliente externo (ej: 'Giardini', 'Patio Renata'). Copialo tal cual. Si no hay nada o no estás seguro de cuál está marcada, null",
   "items": [
     { "categoria": "CATEGORÍA", "producto": "nombre EXACTO del producto según la lista", "unidad": "unidad", "cantidad": número o null si está vacío, "comentarios": "texto si hay" }
   ]
@@ -1958,6 +1959,7 @@ ${productList}
 IMPORTANTE:
 - Para cada producto de la guía, primero busca una coincidencia EXACTA en la LISTA DE PRODUCTOS (ignorando mayúsculas/minúsculas). Si existe un match exacto, úsalo siempre.
 - ATENCIÓN: muchos nombres en la lista tienen ingredientes entre paréntesis, ej: "Torta Cuatro Leches (Leche, Leche Condensada, Leche Evaporada, Manjar)". En la guía puede aparecer solo la parte principal: "Torta Cuatro Leches" o incluso "Cuatro Leches". Compara IGNORANDO el contenido entre paréntesis y elige el producto de la lista cuya parte principal (antes del paréntesis) coincida mejor con el texto de la guía.
+- La guía puede omitir prefijos o sufijos que sí están en la lista. Ej: en la "GDD Heladería" la columna "Helado" dice solo el sabor ("Frambuesa", "Pie de Limón") y en la lista es "Helado Frambuesa 5L", "Helado Pie de Limón 5L". Un sabor de helado nunca corresponde a una torta, fruta o ingrediente suelto.
 - Solo si no hay match exacto ni por nombre base, busca el nombre más parecido. Cuando hay productos similares (ej: "Rallado" vs "Barra"), elige el que coincida en TODOS los descriptores del texto original.
 - Si no encuentras ningún match claro, usa el nombre tal como aparece en la guía.
 - SIEMPRE usa el nombre COMPLETO de la lista (incluyendo los paréntesis si los tiene) como valor de "producto" en el JSON.
@@ -1967,50 +1969,62 @@ IMPORTANTE:
 - Si una categoría agrupa varias filas, repite la categoría en cada item.
 Devuelve SOLO el JSON, nada más.`;
 
-    const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'x-api-key':         ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01',
-        'content-type':      'application/json'
-      },
-      body: JSON.stringify({
-        model:      'claude-opus-4-6',
-        max_tokens: 2048,
-        messages: [{ role: 'user', content: [contentBlock, { type: 'text', text: prompt }] }]
-      })
-    });
+    const leerHoja = async contentBlock => {
+      const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'x-api-key':         ANTHROPIC_API_KEY,
+          'anthropic-version': '2023-06-01',
+          'content-type':      'application/json'
+        },
+        body: JSON.stringify({
+          model:      'claude-opus-4-6',
+          max_tokens: 8192, // hojas como las de la GDD Barra tienen más de 50 productos
+          messages: [{ role: 'user', content: [contentBlock, { type: 'text', text: prompt }] }]
+        })
+      });
+      const anthropicData = await anthropicRes.json();
+      if (!anthropicRes.ok) throw new Error(anthropicData.error?.message || 'Error Claude API');
+      if (anthropicData.stop_reason === 'max_tokens') throw new Error('Una hoja tiene demasiados productos para leerla de una vez.');
+      const raw = anthropicData.content?.[0]?.text || '';
+      return JSON.parse(raw.replace(/```json|```/g, '').trim());
+    };
 
-    const anthropicData = await anthropicRes.json();
-    if (!anthropicRes.ok) throw new Error(anthropicData.error?.message || 'Error Claude API');
-
-    const raw  = anthropicData.content?.[0]?.text || '';
-    const json = raw.replace(/```json|```/g, '').trim();
-    const data = JSON.parse(json);
-    // Limpieza: quitar unidad entre paréntesis del nombre si quedó igual
-    // Subir imagen a Firebase Storage
-    let imageUrl = null;
-    try {
-      const ext        = req.file.originalname.split('.').pop() || 'jpg';
-      const destName   = `gdd/${Date.now()}_${randomUUID()}.${ext}`;
-      const fileRef    = bucket.file(destName);
-      await fileRef.save(buf, { contentType: mime, resumable: false });
-      await fileRef.makePublic();
-      imageUrl = `https://storage.googleapis.com/${bucket.name}/${destName}`;
-    } catch(storageErr) {
-      console.error('Storage upload error (no fatal):', storageErr.message);
+    // Cada hoja se lee en paralelo (leerlas juntas en una sola llamada pasa el límite de 60s de Vercel)
+    // y se juntan: encabezado de la primera hoja que lo tenga, productos de todas.
+    const leidas = await Promise.all(contentBlocks.map(leerHoja));
+    const data = {
+      proveedor: leidas.find(d => d.proveedor)?.proveedor || null,
+      fecha:     leidas.find(d => d.fecha)?.fecha         || null,
+      // Si las hojas no coinciden en el destino, no se elige ninguno: se pide a mano
+      destino:   new Set(leidas.map(d => d.destino).filter(Boolean)).size === 1 ? leidas.find(d => d.destino).destino : null,
+      items:     leidas.flatMap(d => d.items || [])
+    };
+    // Subir las hojas a Firebase Storage
+    const imageUrls = [];
+    for (const { buf, mime, name } of hojas) {
+      try {
+        const ext      = name.split('.').pop() || 'jpg';
+        const destName = `gdd/${Date.now()}_${randomUUID()}.${ext}`;
+        const fileRef  = bucket.file(destName);
+        await fileRef.save(buf, { contentType: mime, resumable: false });
+        await fileRef.makePublic();
+        imageUrls.push(`https://storage.googleapis.com/${bucket.name}/${destName}`);
+      } catch(storageErr) {
+        console.error('Storage upload error (no fatal):', storageErr.message);
+      }
     }
 
-    fs.unlinkSync(req.file.path);
-    res.json({ ok: true, data, imageUrl });
+    borrarTemporales();
+    res.json({ ok: true, data, imageUrls, gddNames: productNames });
   } catch(e) {
-    try { fs.unlinkSync(req.file.path); } catch {}
+    borrarTemporales();
     res.status(500).json({ error: e.message });
   }
 });
 
 app.post('/api/gdd/records', requireAuth, async (req, res) => {
-  const { proveedor, fecha, items, restaurantId, imageUrl } = req.body;
+  const { proveedor, fecha, items, restaurantId, clientId, imageUrls = [] } = req.body;
   if (!items?.length) return res.status(400).json({ error: 'Items requeridos' });
   const userDoc  = await db.collection('users').doc(req.uid).get();
   const userData = userDoc.data();
@@ -2019,7 +2033,11 @@ app.post('/api/gdd/records', requireAuth, async (req, res) => {
     fecha:        fecha || '',
     items,
     restaurantId: restaurantId || '',
-    imageUrl:     imageUrl || null,
+    clientId:     clientId || '',  // cliente externo (Helados B2B) cuando el destino no es un local
+    imageUrl:     imageUrls[0] || null,  // primera hoja (guías antiguas solo tienen este campo)
+    imageUrls,
+    // Las guías anteriores a esta marca usan nombres viejos y no se revisan
+    revisarNombres: true,
     createdAt:    new Date().toISOString(),
     createdBy:    req.email,
     createdByName: userData?.name || req.email
@@ -2028,14 +2046,22 @@ app.post('/api/gdd/records', requireAuth, async (req, res) => {
 });
 
 app.patch('/api/gdd/records/:id/items', requireAuth, async (req, res) => {
-  const { idx, cantidad } = req.body;
+  const { idx, cantidad, producto } = req.body;
   if (idx === undefined) return res.status(400).json({ error: 'idx requerido' });
+  if (producto !== undefined && !await isEditor(req.uid)) return res.status(403).json({ error: 'Sin permisos' });
   const docRef = db.collection('gdd_records').doc(req.params.id);
   const doc = await docRef.get();
   if (!doc.exists) return res.status(404).json({ error: 'No encontrado' });
   const items = doc.data().items || [];
   if (idx < 0 || idx >= items.length) return res.status(400).json({ error: 'Índice inválido' });
-  items[idx] = { ...items[idx], cantidad: cantidad === null ? null : Number(cantidad) };
+  const item = { ...items[idx] };
+  if (cantidad !== undefined) item.cantidad = cantidad === null ? null : Number(cantidad);
+  if (producto) {
+    // Conserva lo que decía el papel la primera vez que se corrige
+    if (item.nombreGuia === undefined) item.nombreGuia = item.producto;
+    item.producto = producto;
+  }
+  items[idx] = item;
   await docRef.update({ items });
   res.json({ ok: true });
 });
@@ -2069,8 +2095,19 @@ app.get('/api/gdd/export-data', requireAuth, async (req, res) => {
   });
 });
 
+// Marca/desmarca "Viene por Guía de Despacho" sin tocar el resto del documento
+app.patch('/api/gdd/marca/:coleccion/:id', requireAuth, async (req, res) => {
+  if (!await isEditor(req.uid)) return res.status(403).json({ error: 'Sin permisos' });
+  const { coleccion, id } = req.params;
+  if (!['products', 'preparations', 'recipes'].includes(coleccion)) return res.status(400).json({ error: 'Colección inválida' });
+  const ref = db.collection(coleccion).doc(id);
+  if (!(await ref.get()).exists) return res.status(404).json({ error: 'No encontrado' });
+  await ref.update({ esGDD: req.body.esGDD === true });
+  res.json({ ok: true });
+});
+
 app.patch('/api/gdd/records/:id', requireAuth, async (req, res) => {
-  const allowed = ['fecha', 'proveedor'];
+  const allowed = ['fecha', 'proveedor', 'restaurantId', 'clientId'];
   const update = {};
   allowed.forEach(k => { if (req.body[k] !== undefined) update[k] = req.body[k]; });
   if (!Object.keys(update).length) return res.status(400).json({ error: 'Sin campos' });
